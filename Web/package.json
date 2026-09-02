@@ -1,0 +1,38 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "audit:static": "node scripts/static-release-audit.mjs",
+    "audit:visual-contract": "node tests/Visual/verify-premium-contract.mjs",
+    "manifest:release": "node scripts/generate-release-manifests.mjs",
+    "manifest:verify": "node scripts/verify-release-manifest.mjs",
+    "audit:v1482": "node tests/Release/verify-v1482-contract.mjs",
+    "audit:v1483": "node tests/Release/verify-v1483-contract.mjs",
+    "audit:v1484": "node tests/Release/verify-v1484-contract.mjs",
+    "audit:v1485": "node tests/Release/verify-v1485-contract.mjs",
+    "audit:v1487": "node tests/Release/verify-v1487-contract.mjs",
+    "audit:v1488": "node tests/Release/verify-v1488-contract.mjs",
+    "audit:v1489": "node tests/Release/verify-v1489-contract.mjs",
+    "audit:v14811": "node tests/Release/verify-v14811-contract.mjs",
+    "audit:v14812": "node tests/Release/verify-v14812-contract.mjs",
+    "audit:v14813": "node tests/Release/verify-v14813-contract.mjs",
+    "audit:v14814": "node tests/Release/verify-v14814-contract.mjs",
+    "audit:v14818": "node tests/Release/verify-v14818-stability.mjs",
+    "audit:v14819": "node tests/Release/verify-v14819-simplified-ux.mjs",
+    "audit:v14820": "node tests/Release/verify-v14820-guided-self-configured-trading.mjs",
+    "audit:v14821": "node tests/Release/verify-v14821-full-qa-hostgator.mjs",
+    "audit:v14822": "node tests/Release/verify-v14822-database-self-repair.mjs",
+    "audit:v1492": "node tests/Release/verify-v1492-mobile-web-backend.mjs"
+  },
+  "devDependencies": {
+    "axios": "^1.11.0",
+    "concurrently": "^9.2.0",
+    "laravel-vite-plugin": "^2.0.0",
+    "vite": "^7.0.0"
+  },
+  "dependencies": {
+    "lightweight-charts": "^5.0.8"
+  }
+}

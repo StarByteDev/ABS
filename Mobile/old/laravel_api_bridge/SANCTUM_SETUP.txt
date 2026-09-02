@@ -1,0 +1,25 @@
+Laravel Sanctum setup for Flutter API
+====================================
+
+Recommended for mobile login tokens.
+
+Run inside Laravel project:
+
+composer require laravel/sanctum
+
+php artisan vendor:publish --provider="Laravel\Sanctum\SanctumServiceProvider"
+
+php artisan migrate
+
+In app/Models/User.php add:
+
+use Laravel\Sanctum\HasApiTokens;
+
+Then inside User class:
+
+use HasApiTokens, HasFactory, Notifiable;
+
+In routes/api.php paste the content from:
+laravel_api_bridge/routes_api_addition.php
+
+If you do not use Sanctum, you must implement your own token authentication middleware.

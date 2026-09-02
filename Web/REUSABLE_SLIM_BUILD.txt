@@ -1,0 +1,19 @@
+ABS V14.6.1 Reusable Slim Source Build
+======================================
+Purpose: compact source-of-truth package for future ChatGPT development/fixes.
+
+Removed only:
+- docs/reference/* (large historical UI screenshots)
+- docs/review/* (large review/concept screenshots)
+
+Preserved:
+- Laravel application code
+- Public/runtime assets
+- Resources/views/css/js/images
+- Database migrations/seeders
+- MySQL/Laragon setup and repair scripts
+- README, changelog and text documentation
+- Tests and configuration
+- Required Laravel storage/bootstrap cache directories via .gitkeep
+
+No application features were intentionally removed.

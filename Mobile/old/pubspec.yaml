@@ -1,0 +1,33 @@
+name: pulse_trading_intelligence
+version: 13.0.1+131
+publish_to: 'none'
+description: Pulse mobile app for web-connected crypto signal monitoring.
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.2
+  shared_preferences: ^2.3.2
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/pulse_logo.png
+    - assets/images/app_icon.png
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/images/app_icon.png
+  min_sdk_android: 23
+  remove_alpha_ios: true

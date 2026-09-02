@@ -1,0 +1,25 @@
+Backend API Fix for Mobile Login
+================================
+
+Your app error:
+The route api/mobile/login could not be found.
+
+Reason:
+The Laravel backend has no mobile API route.
+
+Do this:
+1. Open Laravel backend.
+2. Open routes/api.php.
+3. Paste content from laravel_api_bridge/routes_api_addition.php.
+4. Install Sanctum:
+   composer require laravel/sanctum
+   php artisan vendor:publish --provider="Laravel\Sanctum\SanctumServiceProvider"
+   php artisan migrate
+5. In app/Models/User.php add:
+   use Laravel\Sanctum\HasApiTokens;
+6. In User class use:
+   use HasApiTokens, HasFactory, Notifiable;
+7. Run:
+   php artisan optimize:clear
+   php artisan route:clear
+   php artisan config:clear

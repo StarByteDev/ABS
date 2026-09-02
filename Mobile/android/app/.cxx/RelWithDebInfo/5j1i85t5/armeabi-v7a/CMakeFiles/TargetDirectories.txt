@@ -1,0 +1,2 @@
+C:/D/PixelCraftsLab/ABS/Mobile/android/app/.cxx/RelWithDebInfo/5j1i85t5/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/D/PixelCraftsLab/ABS/Mobile/android/app/.cxx/RelWithDebInfo/5j1i85t5/armeabi-v7a/CMakeFiles/rebuild_cache.dir

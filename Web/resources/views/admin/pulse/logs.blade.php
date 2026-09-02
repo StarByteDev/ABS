@@ -1,0 +1,7 @@
+@extends('admin.layout')
+@section('title','Pulse Audit Logs')
+@section('heading','Pulse Audit & Activity Log')
+@section('content')
+<section class="panel admin-form"><form method="GET" class="admin-form-grid"><label>Action contains<input name="action" value="{{ request('action') }}"></label><label>Environment<select name="environment"><option value="">Any</option><option value="testnet" @selected(request('environment')==='testnet')>Practice</option><option value="live" @selected(request('environment')==='live')>Live</option></select></label><div class="full admin-page-actions"><button class="button button-primary">Filter</button></div></form></section>
+<section class="panel admin-table-wrap"><div style="overflow:auto"><table class="admin-data-table"><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Entity</th><th>Environment</th><th>IP</th><th>Context</th></tr></thead><tbody>@forelse($logs as $log)<tr><td>{{ $log->created_at?->format('d M Y H:i:s') }}</td><td>{{ $log->user?->email ?? 'System' }}</td><td>{{ $log->action }}</td><td>{{ $log->entity_type }} {{ $log->entity_id }}</td><td>{{ strtoupper($log->environment ?? '—') }}</td><td>{{ $log->ip_address ?? '—' }}</td><td><details><summary>View</summary><pre style="max-width:500px;white-space:pre-wrap">{{ json_encode($log->context,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES) }}</pre></details></td></tr>@empty<tr><td colspan="7">No Pulse audit record.</td></tr>@endforelse</tbody></table></div>{{ $logs->links() }}</section>
+@endsection

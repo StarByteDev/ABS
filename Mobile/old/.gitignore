@@ -1,0 +1,14 @@
+.dart_tool/
+.packages
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+*.iml
+.idea/
+.vscode/
+android/.gradle/
+android/app/build/
+ios/Pods/
+ios/Runner.xcworkspace/

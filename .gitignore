@@ -1,0 +1,24 @@
+# Web (Laravel)
+web/node_modules/
+web/vendor/
+web/.env
+web/.env.local
+web/storage/
+web/bootstrap/cache/
+web/public/hot
+
+# Mobile (Flutter)
+mobile/build/
+mobile/ios/Pods/
+mobile/android/.gradle/
+mobile/node_modules/
+mobile/pubspec.lock
+
+# General
+.DS_Store
+.vscode/
+.idea/
+*.log
+*.swp
+*.swo
+*~

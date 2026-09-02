@@ -1,0 +1,53 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
+const root = process.cwd();
+const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+const exists = file => fs.existsSync(path.join(root, file));
+const checks = [];
+const check = (name, ok) => checks.push({name, ok: !!ok});
+
+const build = read('BUILD_VERSION.txt');
+const appController = read('app/Http/Controllers/Api/V1/AppController.php');
+const openapi = read('docs/openapi.yaml');
+const pulseConfig = read('config/pulse.php');
+const consoleRoutes = read('routes/console.php');
+const market = read('app/Services/PulseMarketDataService.php');
+const scanner = read('app/Services/PulseScannerService.php');
+const pageData = read('app/Services/PulsePageDataService.php');
+const api = read('app/Http/Controllers/Api/V1/PulseController.php');
+const validation = read('app/Services/PulseSignalValidationService.php');
+const learning = read('app/Services/PulseLearningService.php');
+const trade = read('app/Services/PulseTradeService.php');
+const prodEnv = read('.env.production.example');
+const defaultEnv = read('.env.example');
+const readme = read('README.md');
+
+check('Build identity is V14.8.21 QA/HostGator release', build.includes('ABS V14.8.21') && build.includes('HostGator Shared Scheduler'));
+check('Mobile bootstrap build is 14.8.21', appController.includes("'build' => '14.8.21'"));
+check('OpenAPI identifies V14.8.21', openapi.includes('version: 14.8.21') && openapi.includes('V14.8.21'));
+check('Scheduler profile configuration exists', pulseConfig.includes("'scheduler' => [") && pulseConfig.includes("'hostgator_shared' => $hostgatorShared") && pulseConfig.includes("'cron_minutes' => $hostgatorShared ? 15 : 1"));
+check('HostGator production example selects shared profile', prodEnv.includes('PULSE_SCHEDULER_PROFILE=hostgator_shared'));
+check('HostGator production example uses 15-minute freshness target', prodEnv.includes('PULSE_MARKET_PRICE_REFRESH_SECONDS=900') && prodEnv.includes('PULSE_MARKET_READ_MAX_AGE_SECONDS=1200'));
+check('Default/local profile remains once-per-minute capable', defaultEnv.includes('PULSE_SCHEDULER_PROFILE=standard') && defaultEnv.includes('PULSE_MARKET_PRICE_REFRESH_SECONDS=60'));
+check('HostGator schedule uses everyFifteenMinutes', consoleRoutes.includes("if ((bool) config('pulse.scheduler.hostgator_shared', false))") && consoleRoutes.includes("Schedule::command('abs:pulse-market-data')->everyFifteenMinutes()") && consoleRoutes.includes("Schedule::command('abs:pulse-validate-signals')->everyFifteenMinutes()"));
+check('HostGator daily learning time aligns to 15-minute cron', consoleRoutes.includes("Schedule::command('abs:pulse-learning')->dailyAt('00:30')"));
+check('Standard/VPS schedule preserves every-minute central jobs', consoleRoutes.includes("Schedule::command('abs:pulse-market-data')->everyMinute()") && consoleRoutes.includes("Schedule::command('abs:pulse-validate-signals')->everyMinute()"));
+check('Scheduler doctor command is packaged', consoleRoutes.includes("Artisan::command('abs:scheduler-check'") && consoleRoutes.includes('HOSTGATOR SHARED SCHEDULER: READY'));
+check('Production acceptance includes scheduler and Pulse architecture tests', consoleRoutes.includes("$results['scheduler'] = $this->call('abs:scheduler-check')") && consoleRoutes.includes("$results['pulse_public']") && consoleRoutes.includes("$results['central_market']") && consoleRoutes.includes("$results['signal_validation']"));
+check('Central market service uses configurable read freshness', market.includes("config('pulse.market_data.read_max_age_seconds', 300)") && scanner.includes("config('pulse.market_data.read_max_age_seconds', 300)") && pageData.includes("config('pulse.market_data.read_max_age_seconds', 300)") && api.includes("config('pulse.market_data.read_max_age_seconds', 300)"));
+check('Central candle universe prioritizes selected user markets', market.includes('private function scannerUniverse') && market.includes("Schema::hasTable('pulse_user_settings')") && market.includes('PulseUserSetting::query()') && market.includes("merge(['BTCUSDT','ETHUSDT','SOLUSDT'])"));
+check('Central candle batch is cycle-based with legacy env compatibility', pulseConfig.includes('PULSE_MARKET_SCANNER_SYMBOLS_PER_CYCLE') && pulseConfig.includes('PULSE_MARKET_SCANNER_SYMBOLS_PER_MINUTE') && market.includes("scanner_symbols_per_cycle"));
+check('Signal validation still excludes entry minute', validation.includes('Entry candle is intentionally excluded from TP/SL validation'));
+check('Same-minute TP+SL remains ambiguous', validation.includes("'same_minute_tp_sl'") && validation.includes("'ambiguous'"));
+check('Evidence-protected learning remains', learning.includes('prior_samples') && learning.includes('daily_decay') && learning.includes('context_minimum_samples'));
+check('Guided self-configured trade flow remains', trade.includes("if (! $automatic && $executionMode === 'signal_only')") && trade.includes("'execution_mode' => 'manual'") && trade.includes('trade.managed_setup_enabled'));
+check('HostGator cron guide is packaged', exists('docs/HOSTGATOR_CRON_SETUP_V14_8_21.md'));
+check('V14.8.21 QA guide is packaged', exists('docs/ABS_V14_8_21_FULL_APPLICATION_QA_HOSTGATOR_SCHEDULER.md'));
+check('V14.8.21 mobile notes are packaged', exists('docs/MOBILE_API_V14_8_21.md'));
+check('README preserves cumulative history and adds V14.8.21', readme.includes('ABS V14.8.21') && readme.includes('Cumulative ABS Revision History') && readme.includes('ABS V14.8.20') && readme.includes('ABS V14.8.17'));
+
+const failed = checks.filter(c => !c.ok);
+for (const c of checks) console.log(`${c.ok ? 'PASS' : 'FAIL'}  ${c.name}`);
+console.log(`\nABS V14.8.21 full QA + HostGator scheduler contract: ${checks.length - failed.length}/${checks.length} checks passed.`);
+if (failed.length) process.exit(1);

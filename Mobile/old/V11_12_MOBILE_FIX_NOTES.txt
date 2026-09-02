@@ -1,0 +1,33 @@
+Alpha Block Solutions Mobile V11.12 Fix Notes
+============================================
+
+Fixes:
+- Login screen top branding changed to Alpha Block Solutions.
+- Dashboard top title changed to Alpha Block Solutions.
+- Android app label changed to Alpha Block Solutions where AndroidManifest exists.
+- Production backend URL set to:
+  https://signals.alphablocksolutions.com
+
+Important:
+The error "The route api/mobile/login could not be found" means the Laravel backend API route is missing.
+Flutter is calling:
+https://signals.alphablocksolutions.com/api/mobile/login
+
+Fix backend:
+1. Paste laravel_api_bridge/routes_api_addition.php into Laravel routes/api.php.
+2. Install Sanctum if needed:
+   composer require laravel/sanctum
+   php artisan vendor:publish --provider="Laravel\Sanctum\SanctumServiceProvider"
+   php artisan migrate
+3. Add HasApiTokens to app/Models/User.php.
+4. Run:
+   php artisan optimize:clear
+   php artisan route:clear
+   php artisan config:clear
+
+Test:
+https://signals.alphablocksolutions.com/api/mobile/login
+
+Expected browser result:
+Method Not Allowed = GOOD.
+404 = API bridge not installed.
