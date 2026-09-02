@@ -1,0 +1,20 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.alphablocksolutions.abs.app-mergeDebugResources-4:/values-night-v8/values-night-v8.xml",
+            "map": [
+                {
+                    "source": "C:\\D\\PixelCraftsLab\\ABS\\Mobile\\android\\app\\src\\main\\res\\values-night\\styles.xml",
+                    "from": {
+                        "startLines": "2,8",
+                        "startColumns": "4,4",
+                        "startOffsets": "55,419",
+                        "endLines": "7,10",
+                        "endColumns": "12,12",
+                        "endOffsets": "414,583"
+                    }
+                }
+            ]
+        }
+    ]
+}

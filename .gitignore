@@ -8,7 +8,7 @@ web/bootstrap/cache/
 web/public/hot
 
 # Mobile (Flutter)
-mobile/build/
+#mobile/build/
 mobile/ios/Pods/
 mobile/android/.gradle/
 mobile/node_modules/
