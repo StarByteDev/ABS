@@ -43,7 +43,7 @@
             "outputFile": "com.alphablocksolutions.abs.app-release-7:/values-night-v8_values-night-v8.arsc.flat",
             "map": [
                 {
-                    "source": "C:\\D\\PixelCraftsLab\\ABS\\Mobile\\android\\app\\src\\main\\res\\values-night\\styles.xml",
+                    "source": "C:\\D\\PixelCraftsLab\\ABS\\Build\\Mobile\\android\\app\\src\\main\\res\\values-night\\styles.xml",
                     "from": {
                         "startLines": "2,8",
                         "startColumns": "4,4",
@@ -332,7 +332,7 @@
             "outputFile": "com.alphablocksolutions.abs.app-release-7:/values-v31_values-v31.arsc.flat",
             "map": [
                 {
-                    "source": "C:\\D\\PixelCraftsLab\\ABS\\Mobile\\android\\app\\src\\main\\res\\values-v31\\styles.xml",
+                    "source": "C:\\D\\PixelCraftsLab\\ABS\\Build\\Mobile\\android\\app\\src\\main\\res\\values-v31\\styles.xml",
                     "from": {
                         "startLines": "3,17",
                         "startColumns": "4,4",
@@ -824,7 +824,7 @@
             "outputFile": "com.alphablocksolutions.abs.app-release-7:/values-night-v31_values-night-v31.arsc.flat",
             "map": [
                 {
-                    "source": "C:\\D\\PixelCraftsLab\\ABS\\Mobile\\android\\app\\src\\main\\res\\values-night-v31\\styles.xml",
+                    "source": "C:\\D\\PixelCraftsLab\\ABS\\Build\\Mobile\\android\\app\\src\\main\\res\\values-night-v31\\styles.xml",
                     "from": {
                         "startLines": "3,17",
                         "startColumns": "4,4",
@@ -3087,7 +3087,7 @@
             "outputFile": "com.alphablocksolutions.abs.app-release-7:/values_values.arsc.flat",
             "map": [
                 {
-                    "source": "C:\\D\\PixelCraftsLab\\ABS\\Mobile\\android\\app\\src\\main\\res\\values\\styles.xml",
+                    "source": "C:\\D\\PixelCraftsLab\\ABS\\Build\\Mobile\\android\\app\\src\\main\\res\\values\\styles.xml",
                     "from": {
                         "startLines": "2,8",
                         "startColumns": "4,4",
@@ -3176,23 +3176,6 @@
                     }
                 },
                 {
-                    "source": "C:\\D\\PixelCraftsLab\\ABS\\Mobile\\android\\app\\src\\main\\res\\values\\strings.xml",
-                    "from": {
-                        "startLines": "2",
-                        "startColumns": "4",
-                        "startOffsets": "55",
-                        "endColumns": "46",
-                        "endOffsets": "97"
-                    },
-                    "to": {
-                        "startLines": "153",
-                        "startColumns": "4",
-                        "startOffsets": "7704",
-                        "endColumns": "46",
-                        "endOffsets": "7746"
-                    }
-                },
-                {
                     "source": "C:\\Users\\arman\\.gradle\\caches\\8.9\\transforms\\a7cd099236d5fa8776e90c73ead93d82\\transformed\\browser-1.8.0\\res\\values\\values.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,11",
@@ -3207,6 +3190,23 @@
                         "startOffsets": "1883,1941,2007,2070,2395,2466,8262,8330,8397,8476",
                         "endColumns": "57,65,62,61,70,71,67,66,78,68",
                         "endOffsets": "1936,2002,2065,2127,2461,2533,8325,8392,8471,8540"
+                    }
+                },
+                {
+                    "source": "C:\\D\\PixelCraftsLab\\ABS\\Build\\Mobile\\android\\app\\src\\main\\res\\values\\strings.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "46",
+                        "endOffsets": "97"
+                    },
+                    "to": {
+                        "startLines": "153",
+                        "startColumns": "4",
+                        "startOffsets": "7704",
+                        "endColumns": "46",
+                        "endOffsets": "7746"
                     }
                 },
                 {

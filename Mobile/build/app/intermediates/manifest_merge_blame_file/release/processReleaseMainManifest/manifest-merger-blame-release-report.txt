@@ -9,50 +9,50 @@
 9        android:targetSdkVersion="36" />
 10
 11    <uses-permission android:name="android.permission.INTERNET" />
-11-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:2:5-67
-11-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:2:22-64
+11-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:2:5-67
+11-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:2:22-64
 12
 13    <queries>
-13-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:30:5-43:15
+13-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:30:5-43:15
 14        <intent>
-14-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:31:9-34:18
+14-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:31:9-34:18
 15            <action android:name="android.intent.action.PROCESS_TEXT" />
-15-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:32:13-72
-15-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:32:21-70
+15-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:32:13-72
+15-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:32:21-70
 16
 17            <data android:mimeType="text/plain" />
-17-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:33:13-50
-17-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:33:19-48
+17-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:33:13-50
+17-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:33:19-48
 18        </intent>
 19        <intent>
-19-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:35:9-38:18
+19-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:35:9-38:18
 20            <action android:name="android.intent.action.VIEW" />
-20-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:36:13-65
-20-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:36:21-62
+20-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:36:13-65
+20-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:36:21-62
 21
 22            <data android:scheme="https" />
-22-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:33:13-50
-22-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:37:19-41
+22-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:33:13-50
+22-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:37:19-41
 23        </intent>
 24        <intent>
-24-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:39:9-42:18
+24-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:39:9-42:18
 25            <action android:name="android.intent.action.VIEW" />
-25-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:36:13-65
-25-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:36:21-62
+25-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:36:13-65
+25-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:36:21-62
 26
 27            <data android:scheme="http" />
-27-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:33:13-50
-27-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:37:19-41
+27-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:33:13-50
+27-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:37:19-41
 28        </intent>
 29        <intent>
-29-->[:file_picker] C:\D\PixelCraftsLab\ABS\Mobile\build\file_picker\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:8:9-12:18
+29-->[:file_picker] C:\D\PixelCraftsLab\ABS\Build\Mobile\build\file_picker\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:8:9-12:18
 30            <action android:name="android.intent.action.GET_CONTENT" />
-30-->[:file_picker] C:\D\PixelCraftsLab\ABS\Mobile\build\file_picker\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:9:13-72
-30-->[:file_picker] C:\D\PixelCraftsLab\ABS\Mobile\build\file_picker\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:9:21-69
+30-->[:file_picker] C:\D\PixelCraftsLab\ABS\Build\Mobile\build\file_picker\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:9:13-72
+30-->[:file_picker] C:\D\PixelCraftsLab\ABS\Build\Mobile\build\file_picker\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:9:21-69
 31
 32            <data android:mimeType="*/*" />
-32-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:33:13-50
-32-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:33:19-48
+32-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:33:13-50
+32-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:33:19-48
 33        </intent>
 34    </queries>
 35
@@ -69,70 +69,70 @@
 41
 42    <application
 43        android:name="android.app.Application"
-43-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:5:9-42
+43-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:5:9-42
 44        android:allowBackup="false"
-44-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:7:9-36
+44-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:7:9-36
 45        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
 45-->[androidx.core:core:1.15.0] C:\Users\arman\.gradle\caches\8.9\transforms\42857c5c860aef96c0fecc4406a46f88\transformed\core-1.15.0\AndroidManifest.xml:28:18-86
 46        android:extractNativeLibs="false"
 47        android:icon="@mipmap/ic_launcher"
-47-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:6:9-43
+47-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:6:9-43
 48        android:label="ABS Pulse"
-48-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:4:9-34
+48-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:4:9-34
 49        android:usesCleartextTraffic="true" >
-49-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:8:9-44
+49-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:8:9-44
 50        <activity
-50-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:9:9-25:20
+50-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:9:9-25:20
 51            android:name="com.alphablocksolutions.abs.MainActivity"
-51-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:10:13-41
+51-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:10:13-41
 52            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-52-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:15:13-163
+52-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:15:13-163
 53            android:exported="true"
-53-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:11:13-36
+53-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:11:13-36
 54            android:hardwareAccelerated="true"
-54-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:16:13-47
+54-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:16:13-47
 55            android:launchMode="singleTop"
-55-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:12:13-43
+55-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:12:13-43
 56            android:taskAffinity=""
-56-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:13:13-36
+56-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:13:13-36
 57            android:theme="@style/LaunchTheme"
-57-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:14:13-47
+57-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:14:13-47
 58            android:windowSoftInputMode="adjustResize" >
-58-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:17:13-55
+58-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:17:13-55
 59            <meta-data
-59-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:18:13-20:55
+59-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:18:13-20:55
 60                android:name="io.flutter.embedding.android.NormalTheme"
-60-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:19:15-70
+60-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:19:15-70
 61                android:resource="@style/NormalTheme" />
-61-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:20:15-52
+61-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:20:15-52
 62
 63            <intent-filter>
-63-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:21:13-24:29
+63-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:21:13-24:29
 64                <action android:name="android.intent.action.MAIN" />
-64-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:22:17-68
-64-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:22:25-66
+64-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:22:17-68
+64-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:22:25-66
 65
 66                <category android:name="android.intent.category.LAUNCHER" />
-66-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:23:17-76
-66-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:23:27-74
+66-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:23:17-76
+66-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:23:27-74
 67            </intent-filter>
 68        </activity>
 69
 70        <meta-data
-70-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:26:9-28:33
+70-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:26:9-28:33
 71            android:name="flutterEmbedding"
-71-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:27:13-44
+71-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:27:13-44
 72            android:value="2" />
-72-->C:\D\PixelCraftsLab\ABS\Mobile\android\app\src\main\AndroidManifest.xml:28:13-30
+72-->C:\D\PixelCraftsLab\ABS\Build\Mobile\android\app\src\main\AndroidManifest.xml:28:13-30
 73
 74        <activity
-74-->[:url_launcher_android] C:\D\PixelCraftsLab\ABS\Mobile\build\url_launcher_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:8:9-11:74
+74-->[:url_launcher_android] C:\D\PixelCraftsLab\ABS\Build\Mobile\build\url_launcher_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:8:9-11:74
 75            android:name="io.flutter.plugins.urllauncher.WebViewActivity"
-75-->[:url_launcher_android] C:\D\PixelCraftsLab\ABS\Mobile\build\url_launcher_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:9:13-74
+75-->[:url_launcher_android] C:\D\PixelCraftsLab\ABS\Build\Mobile\build\url_launcher_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:9:13-74
 76            android:exported="false"
-76-->[:url_launcher_android] C:\D\PixelCraftsLab\ABS\Mobile\build\url_launcher_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:10:13-37
+76-->[:url_launcher_android] C:\D\PixelCraftsLab\ABS\Build\Mobile\build\url_launcher_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:10:13-37
 77            android:theme="@android:style/Theme.NoTitleBar.Fullscreen" />
-77-->[:url_launcher_android] C:\D\PixelCraftsLab\ABS\Mobile\build\url_launcher_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:11:13-71
+77-->[:url_launcher_android] C:\D\PixelCraftsLab\ABS\Build\Mobile\build\url_launcher_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:11:13-71
 78
 79        <uses-library
 79-->[androidx.window:window:1.2.0] C:\Users\arman\.gradle\caches\8.9\transforms\2f41317467998f3a4b0670933a5069d9\transformed\jetified-window-1.2.0\AndroidManifest.xml:23:9-25:40

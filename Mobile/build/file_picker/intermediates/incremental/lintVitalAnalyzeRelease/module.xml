@@ -1,0 +1,26 @@
+<lint-module
+    format="1"
+    dir="C:\Users\arman\AppData\Local\Pub\Cache\hosted\pub.dev\file_picker-11.0.3\android"
+    name=":file_picker"
+    type="LIBRARY"
+    maven="com.mr.flutter.plugin.filepicker:file_picker:1.0-SNAPSHOT"
+    agpVersion="8.7.3"
+    buildFolder="C:\D\PixelCraftsLab\ABS\Build\Mobile\build\file_picker"
+    bootClassPath="C:\Users\arman\AppData\Local\Android\sdk\platforms\android-35\android.jar;C:\Users\arman\AppData\Local\Android\sdk\build-tools\34.0.0\core-lambda-stubs.jar"
+    javaSourceLevel="17"
+    compileTarget="android-35"
+    neverShrinking="true">
+  <lintOptions
+      disable="InvalidPackage"
+      abortOnError="true"
+      absolutePaths="true"
+      checkReleaseBuilds="true"
+      explainIssues="true">
+    <severities>
+      <severity
+        id="InvalidPackage"
+        severity="IGNORE" />
+    </severities>
+  </lintOptions>
+  <variant name="release"/>
+</lint-module>

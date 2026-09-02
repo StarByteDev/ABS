@@ -4,7 +4,7 @@
             "outputFile": "com.alphablocksolutions.abs.app-mergeReleaseResources-4:/values-night-v31/values-night-v31.xml",
             "map": [
                 {
-                    "source": "C:\\D\\PixelCraftsLab\\ABS\\Mobile\\android\\app\\src\\main\\res\\values-night-v31\\styles.xml",
+                    "source": "C:\\D\\PixelCraftsLab\\ABS\\Build\\Mobile\\android\\app\\src\\main\\res\\values-night-v31\\styles.xml",
                     "from": {
                         "startLines": "3,17",
                         "startColumns": "4,4",

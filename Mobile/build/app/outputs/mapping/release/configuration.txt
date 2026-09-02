@@ -1,4 +1,4 @@
-# The proguard configuration file for the following section is C:\D\PixelCraftsLab\ABS\Mobile\build\app\intermediates\aapt_proguard_file\release\processReleaseResources\aapt_rules.txt
+# The proguard configuration file for the following section is C:\D\PixelCraftsLab\ABS\Build\Mobile\build\app\intermediates\aapt_proguard_file\release\processReleaseResources\aapt_rules.txt
 -keep class android.app.Application { <init>(); }
 -keep class androidx.core.app.CoreComponentFactory { <init>(); }
 -keep class androidx.profileinstaller.ProfileInstallReceiver { <init>(); }
@@ -8,8 +8,8 @@
 -keep class androidx.browser.browseractions.BrowserActionsFallbackMenuView { <init>(android.content.Context, android.util.AttributeSet); }
 
 
-# End of content from C:\D\PixelCraftsLab\ABS\Mobile\build\app\intermediates\aapt_proguard_file\release\processReleaseResources\aapt_rules.txt
-# The proguard configuration file for the following section is C:\D\PixelCraftsLab\ABS\Mobile\build\app\intermediates\default_proguard_files\global\proguard-android-optimize.txt-8.7.3
+# End of content from C:\D\PixelCraftsLab\ABS\Build\Mobile\build\app\intermediates\aapt_proguard_file\release\processReleaseResources\aapt_rules.txt
+# The proguard configuration file for the following section is C:\D\PixelCraftsLab\ABS\Build\Mobile\build\app\intermediates\default_proguard_files\global\proguard-android-optimize.txt-8.7.3
 # This is a configuration file for ProGuard.
 # http://proguard.sourceforge.net/index.html#manual/usage.html
 #
@@ -100,7 +100,7 @@
 # These classes are duplicated between android.jar and core-lambda-stubs.jar.
 -dontnote java.lang.invoke.**
 
-# End of content from C:\D\PixelCraftsLab\ABS\Mobile\build\app\intermediates\default_proguard_files\global\proguard-android-optimize.txt-8.7.3
+# End of content from C:\D\PixelCraftsLab\ABS\Build\Mobile\build\app\intermediates\default_proguard_files\global\proguard-android-optimize.txt-8.7.3
 # The proguard configuration file for the following section is C:\flutter\flutter_3.10\packages\flutter_tools\gradle\flutter_proguard_rules.pro
 # Build the ephemeral app in a module project.
 # Prevents: Warning: library class <plugin-package> depends on program class io.flutter.plugin.**
@@ -118,10 +118,10 @@
 -keep,allowshrinking,allowobfuscation class <1>
 
 # End of content from C:\flutter\flutter_3.10\packages\flutter_tools\gradle\flutter_proguard_rules.pro
-# The proguard configuration file for the following section is C:\D\PixelCraftsLab\ABS\Mobile\build\file_picker\intermediates\consumer_proguard_dir\release\exportReleaseConsumerProguardFiles\lib0\proguard.txt
+# The proguard configuration file for the following section is C:\D\PixelCraftsLab\ABS\Build\Mobile\build\file_picker\intermediates\consumer_proguard_dir\release\exportReleaseConsumerProguardFiles\lib0\proguard.txt
 
-# End of content from C:\D\PixelCraftsLab\ABS\Mobile\build\file_picker\intermediates\consumer_proguard_dir\release\exportReleaseConsumerProguardFiles\lib0\proguard.txt
-# The proguard configuration file for the following section is C:\D\PixelCraftsLab\ABS\Mobile\build\flutter_plugin_android_lifecycle\intermediates\consumer_proguard_dir\release\exportReleaseConsumerProguardFiles\lib0\proguard.txt
+# End of content from C:\D\PixelCraftsLab\ABS\Build\Mobile\build\file_picker\intermediates\consumer_proguard_dir\release\exportReleaseConsumerProguardFiles\lib0\proguard.txt
+# The proguard configuration file for the following section is C:\D\PixelCraftsLab\ABS\Build\Mobile\build\flutter_plugin_android_lifecycle\intermediates\consumer_proguard_dir\release\exportReleaseConsumerProguardFiles\lib0\proguard.txt
 # The point of this package is to specify that a dependent plugin intends to
 # use the AndroidX lifecycle classes. Make sure no R8 heuristics shrink classes
 # brought in by the embedding's pom.
@@ -132,7 +132,7 @@
 # https://issuetracker.google.com/issues/142778206.
 -keep class androidx.lifecycle.DefaultLifecycleObserver
 
-# End of content from C:\D\PixelCraftsLab\ABS\Mobile\build\flutter_plugin_android_lifecycle\intermediates\consumer_proguard_dir\release\exportReleaseConsumerProguardFiles\lib0\proguard.txt
+# End of content from C:\D\PixelCraftsLab\ABS\Build\Mobile\build\flutter_plugin_android_lifecycle\intermediates\consumer_proguard_dir\release\exportReleaseConsumerProguardFiles\lib0\proguard.txt
 # The proguard configuration file for the following section is C:\Users\arman\.gradle\caches\8.9\transforms\2f41317467998f3a4b0670933a5069d9\transformed\jetified-window-1.2.0\proguard.txt
 # Copyright (C) 2020 The Android Open Source Project
 #
