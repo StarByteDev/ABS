@@ -1,0 +1,11 @@
+/* ABS V15.1.6 — live deployment intelligence additions. Loaded last. */
+.abs-admin-v1516 .robot-readiness-bar{border-color:rgba(230,183,74,.48);background:linear-gradient(135deg,rgba(230,183,74,.08),rgba(37,184,203,.035) 48%,rgba(8,22,38,.7));}
+.abs-admin-v1516 .robot-readiness-bar .enterprise-command-kicker{color:#e6b74a;letter-spacing:.14em}
+.abs-admin-v1516 .execution-mini-list{display:grid;gap:8px;margin-top:8px}
+.abs-admin-v1516 .execution-mini-list>div{display:flex;justify-content:space-between;gap:18px;align-items:center;padding:11px 12px;border:1px solid rgba(118,157,190,.18);background:rgba(2,14,27,.42);border-radius:8px}
+.abs-admin-v1516 .execution-mini-list small{color:#8fa6bb}.abs-admin-v1516 .execution-mini-list b{font-variant-numeric:tabular-nums}
+.abs-admin-v1516 .strategy-results-table,.abs-admin-v1516 .enterprise-table{min-width:760px}
+.abs-admin-v1516 .strategy-impact{display:inline-flex;margin-top:5px;padding:2px 7px;border-radius:99px;border:1px solid currentColor;font-size:10px;font-weight:800}
+.abs-admin-v1516 .positive{color:#7ee6a0}.abs-admin-v1516 .negative{color:#ff7f86}
+.abs-admin-v1516 .market-health-grid .danger,.abs-admin-v1516 .execution-health-warning{border-color:rgba(255,96,105,.48)!important;background:rgba(126,26,35,.16)!important}
+@media(max-width:900px){.abs-admin-v1516 .execution-mini-list>div{align-items:flex-start;flex-direction:column;gap:3px}.abs-admin-v1516 .strategy-results-table,.abs-admin-v1516 .enterprise-table{min-width:680px}}

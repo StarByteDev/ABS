@@ -12,6 +12,7 @@ use App\Services\MarketDataService;
 use App\Services\PulseAutomationService;
 use App\Services\PulseMarketDataService;
 use App\Services\PulseSignalValidationService;
+use App\Services\PulseStrategyAnalyticsService;
 use App\Services\PulseLearningService;
 use App\Services\PulseTradeService;
 use App\Support\AbsSchemaRepair;
@@ -22,7 +23,7 @@ use Illuminate\Support\Facades\Schedule;
 use Symfony\Component\Console\Command\Command;
 
 Artisan::command('abs:about', function (): void {
-    $this->info('Alpha Block Solutions V15.0.9 — Investor Analytics & Premium Admin Build');
+    $this->info('Alpha Block Solutions V15.1.6 — Live Deployment Intelligence & Mobile API Final Build');
     $this->line('ABS API contract: /api/v1');
     $this->line('Pulse entry: /pulse');
     $this->line('Database repair mode: direct, non-destructive schema reconciliation');
@@ -32,7 +33,7 @@ Artisan::command('abs:about', function (): void {
 })->purpose('Display ABS and Pulse build information');
 
 Artisan::command('abs:doctor', function (): int {
-    $this->info('ABS V15.1.2 environment, MySQL database and Pulse doctor');
+    $this->info('ABS V15.1.6 environment, MySQL database and Pulse doctor');
     $this->newLine();
 
     $checks = [
@@ -47,6 +48,9 @@ Artisan::command('abs:doctor', function (): int {
         ['Premium Pulse page CSS available', file_exists(public_path('assets/css/pulse-premium.css'))],
         ['Premium Pulse page JavaScript available', file_exists(public_path('assets/js/pulse-premium.js'))],
         ['ABS brand logo available', file_exists(public_path('assets/brand/abs-logo-512.png'))],
+        ['ABS favicon.ico available', file_exists(public_path('favicon.ico'))],
+        ['ABS favicon PNG available', file_exists(public_path('favicon-32x32.png'))],
+        ['ABS Apple touch icon available', file_exists(public_path('apple-touch-icon.png'))],
         ['OpenAPI contract available', file_exists(base_path('docs/openapi.yaml'))],
     ];
 
@@ -103,11 +107,11 @@ Artisan::command('abs:repair {--seed : Insert or refresh the reviewed ABS and Pu
     $fresh = (bool) $this->option('fresh');
     $seed = (bool) $this->option('seed');
 
-    $this->info('ABS V15.0.9 MySQL database repair');
+    $this->info('ABS V15.1.6 MySQL database repair');
     $this->line('Target database: '.($database ?: '(not configured)'));
 
     if (config('database.default') !== 'mysql') {
-        $this->error('ABS V15.0.9 is a MySQL-first runtime build. Set DB_CONNECTION=mysql in .env and clear configuration cache.');
+        $this->error('ABS V15.1.6 is a MySQL-first runtime build. Set DB_CONNECTION=mysql in .env and clear configuration cache.');
         return Command::FAILURE;
     }
 
@@ -189,7 +193,7 @@ Artisan::command('abs:repair {--seed : Insert or refresh the reviewed ABS and Pu
 })->purpose('Non-destructively reconcile the ABS + Pulse schema without running conflicting legacy migrations');
 
 Artisan::command('abs:market-test', function (MarketDataService $market): int {
-    $this->info('ABS V15.0.9 public website market connectivity test');
+    $this->info('ABS V15.1.6 public website market connectivity test');
     $this->line('Binance hosts: '.implode(', ', (array) config('services.binance.base_urls')));
     $this->line('SSL verification: '.(config('services.market.ssl_verify') ? 'enabled' : 'disabled for local development'));
 
@@ -348,24 +352,31 @@ Artisan::command('abs:pulse-sync', function (PulseTradeService $trades): int {
     $completed = 0;
     $failed = 0;
 
-    UserServiceAccess::query()->with('user')->where('service', 'pulse')->where('status', 'active')->chunkById(50, function ($accesses) use ($trades, &$completed, &$failed): void {
-        foreach ($accesses as $access) {
-            if (! $access->user) {
-                continue;
-            }
+    // Always reconcile users with live trade records, even if their package expired
+    // after entry. Active-access users are included as well for normal account sync.
+    $activeAccessUsers = UserServiceAccess::query()->where('service', 'pulse')->where('status', 'active')->pluck('user_id');
+    $liveTradeUsers = DB::table('pulse_trades')->whereIn('status', ['pending','open','closing','protection_failed'])->pluck('user_id');
+    $userIds = $activeAccessUsers->merge($liveTradeUsers)->filter()->unique()->values();
+
+    User::query()->whereIn('id', $userIds)->chunkById(50, function ($users) use ($trades, &$completed, &$failed): void {
+        foreach ($users as $user) {
             try {
-                $trades->sync($access->user);
+                $summary = $trades->sync($user);
                 $completed++;
+                foreach ((array) ($summary['errors'] ?? []) as $error) {
+                    $failed++;
+                    $this->warn('User '.$user->id.' trade '.($error['trade_id'] ?? '?').': '.($error['message'] ?? 'Synchronization error'));
+                }
             } catch (Throwable $e) {
                 $failed++;
-                $this->warn('User '.$access->user_id.': '.$e->getMessage());
+                $this->warn('User '.$user->id.': '.$e->getMessage());
             }
         }
     });
 
-    $this->info("Pulse signed synchronization complete: {$completed} users synchronized; {$failed} failed.");
+    $this->info("Pulse signed synchronization complete: {$completed} users synchronized; {$failed} trade/user error(s).");
     return $failed > 0 ? Command::FAILURE : Command::SUCCESS;
-})->purpose('Reconcile active users’ Pulse orders/positions and attach exchange-side protection after fills');
+})->purpose('Reconcile all live Pulse orders/positions (including trades whose package later expired) and attach exchange-side protection after fills');
 
 Artisan::command('abs:pulse-automation', function (PulseAutomationService $automation): int {
     $result = $automation->runEligibleUsers();
@@ -524,7 +535,7 @@ Artisan::command('abs:scheduler-check', function (): int {
     $readAge = (int) config('pulse.market_data.read_max_age_seconds', 300);
     $hostgator = (bool) config('pulse.scheduler.hostgator_shared', false);
 
-    $this->info('ABS V14.9.0 scheduler profile check');
+    $this->info('ABS V15.1.6 scheduler profile check');
     $this->line('Profile: '.$profile);
     $this->line('Expected host cron cadence: every '.$minutes.' minute(s)');
     $this->line('Central price target: '.$target.' seconds');
@@ -549,7 +560,7 @@ Artisan::command('abs:scheduler-check', function (): int {
 })->purpose('Verify the selected Laravel scheduler profile and HostGator-safe market-data freshness settings');
 
 Artisan::command('abs:production-check {--email= : Optional recipient for a real outbound email test}', function (): int {
-    $this->info('ABS V14.9.0 production acceptance check');
+    $this->info('ABS V15.1.6 production acceptance check');
     $results = [];
     $results['environment'] = $this->call('abs:doctor');
     $results['views'] = $this->call('abs:view-audit');
@@ -558,6 +569,8 @@ Artisan::command('abs:production-check {--email= : Optional recipient for a real
     $results['pulse_public'] = $this->call('abs:pulse-test', ['--environment' => 'live']);
     $results['central_market'] = $this->call('abs:pulse-market-data');
     $results['signal_validation'] = $this->call('abs:pulse-validate-signals', ['--limit' => 100]);
+    $results['trade_sync'] = $this->call('abs:pulse-sync');
+    $results['execution_reconciliation'] = $this->call('abs:pulse-execution-check');
 
     $email = trim((string) $this->option('email'));
     if ($email !== '') {
@@ -577,7 +590,7 @@ Artisan::command('abs:production-check {--email= : Optional recipient for a real
     }
     $this->info('PRODUCTION ACCEPTANCE: READY FOR LIVE DEPLOYMENT');
     return Command::SUCCESS;
-})->purpose('Run full ABS environment, Blade/route, scheduler, public market, central market-data, signal validation and optional SMTP production checks');
+})->purpose('Run full ABS environment, Blade/route, scheduler, public market, central market-data, signal validation, execution reconciliation and optional SMTP production checks');
 
 Artisan::command('abs:pulse-market-data', function (PulseMarketDataService $market): int {
     try {
@@ -612,6 +625,64 @@ Artisan::command('abs:pulse-learning {--date=}', function (PulseLearningService 
         return Command::FAILURE;
     }
 })->purpose('Rebuild permanent daily strategy aggregates and evidence-protected learning state');
+
+Artisan::command('abs:pulse-analytics-backfill {--days=7 : Rebuild recent retained validation days for V15.1.6 profitability metrics}', function (PulseLearningService $learning): int {
+    $days = max(1, min(30, (int) $this->option('days')));
+    $this->info('ABS V15.1.6 strategy-profitability backfill');
+    $this->line('Requested window: '.$days.' day(s). Detailed signal validation retention may limit older reconstruction.');
+    try {
+        $availableDates = DB::table('pulse_signal_validations')
+            ->whereNotNull('resolved_at')
+            ->where('resolved_at', '>=', now()->subDays($days)->startOfDay())
+            ->selectRaw('DATE(resolved_at) as resolved_date')
+            ->distinct()->orderBy('resolved_date')->pluck('resolved_date');
+        if ($availableDates->isEmpty()) {
+            $this->warn('No retained resolved validation dates were available to backfill. New validations will populate V15.1.6 analytics automatically.');
+            return Command::SUCCESS;
+        }
+        foreach ($availableDates as $date) {
+            $learning->rebuildDate((string) $date);
+            $this->line('  rebuilt '.$date);
+        }
+        $this->info('Profitability analytics backfill complete: '.$availableDates->count().' day(s) rebuilt.');
+        return Command::SUCCESS;
+    } catch (Throwable $e) {
+        $this->error('Profitability analytics backfill failed: '.$e->getMessage());
+        return Command::FAILURE;
+    }
+})->purpose('Populate recent V15.1.6 R-multiple and strategy-profitability metrics from retained resolved validations');
+
+Artisan::command('abs:pulse-execution-check', function (PulseStrategyAnalyticsService $analytics): int {
+    $from = now()->subDay();
+    $to = now();
+    try {
+        $execution = $analytics->actualExecution($from, $to);
+        $lastMarketRun = DB::table('pulse_market_data_runs')->latest('id')->first();
+        $lastValidation = DB::table('pulse_signal_validations')->max('last_checked_at');
+        $lastTradeSync = DB::table('pulse_trades')->max('last_synced_at');
+        $staleTrades = DB::table('pulse_trades')->whereIn('status', ['submitting','pending','open','closing','protection_failed'])
+            ->where(function ($q) { $q->whereNull('last_synced_at')->orWhere('last_synced_at', '<', now()->subMinutes(3)); })->count();
+
+        $this->info('ABS V15.1.6 market → validation → execution health');
+        $this->line('Last central market run: '.($lastMarketRun?->completed_at ?: $lastMarketRun?->started_at ?: 'never'));
+        $this->line('Last signal validation check: '.($lastValidation ?: 'never'));
+        $this->line('Last trade sync: '.($lastTradeSync ?: 'never'));
+        $this->line('Active/open trade records: '.number_format((int) ($execution['open_trades'] ?? 0)));
+        $this->line('Stale active trade records (>3 min): '.number_format((int) $staleTrades));
+        $this->line('24h closed trades: '.number_format((int) ($execution['closed_trades'] ?? 0)));
+        $this->line('24h confirmed TP / SL: '.number_format((int) ($execution['tp_hits'] ?? 0)).' / '.number_format((int) ($execution['sl_hits'] ?? 0)));
+        $this->line('24h actual realized P&L: '.number_format((float) ($execution['realized_pnl'] ?? 0), 6).' · fees '.number_format((float) ($execution['fees'] ?? 0), 6));
+        if ($staleTrades > 0) {
+            $this->error('Execution reconciliation is stale. Verify the once-per-minute scheduler cron and Binance connectivity before live deployment.');
+            return Command::FAILURE;
+        }
+        $this->info('EXECUTION RECONCILIATION: HEALTHY');
+        return Command::SUCCESS;
+    } catch (Throwable $e) {
+        $this->error('Execution health check failed: '.$e->getMessage());
+        return Command::FAILURE;
+    }
+})->purpose('Verify central feed, signal validation and Binance trade reconciliation freshness and 24h TP/SL/P&L');
 
 Artisan::command('abs:sync-economic-calendar', function (EconomicCalendarService $calendar): int {
     if (! $calendar->configured()) {

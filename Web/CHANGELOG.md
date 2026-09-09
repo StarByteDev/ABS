@@ -1,3 +1,18 @@
+# ABS V15.1.6 — Live Deployment Intelligence & Mobile API Final Build
+
+- Replaced the incorrect favicon with assets generated from the existing production ABS logo without modifying the source brand logo.
+- Added strategy profitability and research-only all-signals what-if analytics (R multiple, expectancy, profit factor and simple unlevered model return).
+- Added actual Binance execution reconciliation metrics and conservative TP/SL protective-exit attribution.
+- Added central-feed → signal-validation → trade-sync health reporting to Admin Market Feed.
+- Preserved the 75% technical + 25% learned-reliability confidence engine and existing PulseScannerService byte-for-byte.
+- Added mobile API routes for guest Free Signal status/session/claim and authenticated strategy/simulation reports.
+- Updated mobile/OpenAPI documentation and API bootstrap capability metadata.
+- Added recent analytics backfill and live execution health Artisan commands.
+- Added non-destructive schema/migration/phpMyAdmin support for profitability fields.
+- Preserved direct USDT package activation, no active Sparks wallet, ABS News, rewarded Free Signal/ENTRY WATCH, emails and Binance precision guards.
+
+---
+
 # ABS V15.1.5 — Free Signal Entry Watch Fallback Build
 
 ## What changed in V15.1.5

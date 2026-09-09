@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#03111f">
-    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
-    <link rel="alternate icon" type="image/png" href="{{ asset('assets/brand/abs-logo-512.png') }}">
-    <link rel="apple-touch-icon" href="{{ asset('assets/brand/abs-logo-512.png') }}">
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
     <title>@yield('title','ABS Admin')</title>
     <link rel="stylesheet" href="{{ asset('assets/css/abs-app.css') }}?v={{ @filemtime(public_path('assets/css/abs-app.css')) ?: '13.9' }}">
     <link rel="stylesheet" href="{{ asset('assets/css/admin-premium-v1505.css') }}?v={{ @filemtime(public_path('assets/css/admin-premium-v1505.css')) ?: '15.0.5' }}">
@@ -16,13 +16,14 @@
     <link rel="stylesheet" href="{{ asset('assets/css/admin-executive-v1508.css') }}?v={{ @filemtime(public_path('assets/css/admin-executive-v1508.css')) ?: '15.0.8' }}">
     <link rel="stylesheet" href="{{ asset('assets/css/admin-executive-v1509.css') }}?v={{ @filemtime(public_path('assets/css/admin-executive-v1509.css')) ?: '15.0.9' }}">
     <link rel="stylesheet" href="{{ asset('assets/css/admin-executive-v1510.css') }}?v={{ @filemtime(public_path('assets/css/admin-executive-v1510.css')) ?: '15.1.2' }}">
+    <link rel="stylesheet" href="{{ asset('assets/css/admin-executive-v1516.css') }}?v={{ @filemtime(public_path('assets/css/admin-executive-v1516.css')) ?: '15.1.6' }}">
     @stack('head')
 </head>
 @php
     $routeName = request()->route()?->getName() ?? '';
     $is = static fn(string $pattern): bool => request()->routeIs($pattern);
 @endphp
-<body class="admin-body abs-admin-v1507 abs-admin-v1508 abs-admin-v1509 abs-admin-v1510">
+<body class="admin-body abs-admin-v1507 abs-admin-v1508 abs-admin-v1509 abs-admin-v1510 abs-admin-v1516">
 <button class="admin-mobile-menu" type="button" data-admin-menu aria-label="Open administration navigation" aria-expanded="false"><span></span><span></span><span></span></button>
 <div class="admin-sidebar-overlay" data-admin-overlay></div>
 <aside class="admin-sidebar abs-exec-sidebar" data-admin-sidebar>
@@ -38,6 +39,7 @@
         <a class="{{ $is('admin.pulse.signals')?'active':'' }}" href="{{ route('admin.pulse.signals') }}"><i>⌁</i><span>Signals</span></a>
         <a class="{{ $is('admin.pulse.dashboard')?'active':'' }}" href="{{ route('admin.pulse.dashboard') }}"><i>♜</i><span>Best Signal</span></a>
         <a class="{{ $is('admin.pulse.intelligence')?'active':'' }}" href="{{ route('admin.pulse.intelligence') }}"><i>▥</i><span>Pulse Intelligence</span></a>
+        <a class="{{ $is('admin.market-data')?'active':'' }}" href="{{ route('admin.market-data') }}"><i>⌁</i><span>Market Feed &amp; Cron</span></a>
         <a class="{{ $is('admin.pulse.logs')?'active':'' }}" href="{{ route('admin.pulse.logs') }}"><i>◎</i><span>Signal Oversight</span></a>
         <a class="{{ $is('admin.pulse.trades')?'active':'' }}" href="{{ route('admin.pulse.trades') }}"><i>↗</i><span>Trades</span></a>
         <a class="{{ $is('admin.pulse.memberships')?'active':'' }}" href="{{ route('admin.pulse.memberships') }}"><i>▤</i><span>Package Payments</span></a>
@@ -55,7 +57,7 @@
             <small>A product of Alpha Block Solutions</small>
         </div>
         <div class="abs-exec-system"><i></i><span><b>Platform online</b><small>Production administration</small></span></div>
-        <div class="abs-exec-signature">BUILDING A SMARTER<br>TRADING TOMORROW <em>v15.1.5</em></div>
+        <div class="abs-exec-signature">BUILDING A SMARTER<br>TRADING TOMORROW <em>v15.1.6</em></div>
     </div>
 </aside>
 

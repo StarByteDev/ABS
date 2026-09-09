@@ -1,7 +1,7 @@
-ABS V15.1.5 — Free Signal Entry Watch Fallback — BUILD MANIFEST
+ABS V15.1.6 — Live Deployment Intelligence & Mobile API Final — BUILD MANIFEST
 Release package contents
 Release date: 2026-09-09
-Files listed: 525
+Files listed: 537
 
 BYTES	PATH
 431744	ABS_V14_9_2_CREATE_MISSING_TABLES_OR_COLUMNS_ONLY.sql
@@ -9,6 +9,7 @@ BYTES	PATH
 13136	ABS_V15_1_1_APPLY_FINAL_DIRECT_USDT_REWARDED_NEWS.sql
 1029	ABS_V15_1_2_APPLY_USABILITY_FIXES.sql
 378	ABS_V15_1_3_NO_DATABASE_CHANGES.txt
+3752	ABS_V15_1_6_APPLY_LIVE_INTELLIGENCE_ANALYTICS.sql
 1120	app/Console/Commands/CacheMarketSnapshot.php
 3360	app/Http/Controllers/Admin/AdminBackupController.php
 6613	app/Http/Controllers/Admin/AdminContentController.php
@@ -16,15 +17,15 @@ BYTES	PATH
 5502	app/Http/Controllers/Admin/AdminDashboardReportController.php
 24480	app/Http/Controllers/Admin/AdminEnterpriseController.php
 9771	app/Http/Controllers/Admin/AdminMaintenanceController.php
-1686	app/Http/Controllers/Admin/AdminMarketDataController.php
+3355	app/Http/Controllers/Admin/AdminMarketDataController.php
 2473	app/Http/Controllers/Admin/AdminPortfolioController.php
-63204	app/Http/Controllers/Admin/AdminPulseController.php
+65004	app/Http/Controllers/Admin/AdminPulseController.php
 5276	app/Http/Controllers/Admin/AdminReleaseController.php
 4727	app/Http/Controllers/Admin/AdminRewardedSignalController.php
 18063	app/Http/Controllers/Admin/AdminUserController.php
 6163	app/Http/Controllers/Api/V1/AccountController.php
 20867	app/Http/Controllers/Api/V1/AdminPulseController.php
-3375	app/Http/Controllers/Api/V1/AppController.php
+3616	app/Http/Controllers/Api/V1/AppController.php
 6949	app/Http/Controllers/Api/V1/AuthController.php
 1458	app/Http/Controllers/Api/V1/ContactController.php
 5993	app/Http/Controllers/Api/V1/ContentController.php
@@ -32,7 +33,8 @@ BYTES	PATH
 1259	app/Http/Controllers/Api/V1/MarketController.php
 1196	app/Http/Controllers/Api/V1/NewsletterController.php
 567	app/Http/Controllers/Api/V1/PrivatePortalController.php
-49320	app/Http/Controllers/Api/V1/PulseController.php
+3971	app/Http/Controllers/Api/V1/PublicRewardedSignalController.php
+52098	app/Http/Controllers/Api/V1/PulseController.php
 852	app/Http/Controllers/Api/V1/WatchlistController.php
 16318	app/Http/Controllers/AuthController.php
 120	app/Http/Controllers/Controller.php
@@ -99,10 +101,10 @@ BYTES	PATH
 792	app/Models/PulsePublicSignalUnlock.php
 999	app/Models/PulseScannerRun.php
 2186	app/Models/PulseSignal.php
-444	app/Models/PulseSignalDailyMetric.php
+665	app/Models/PulseSignalDailyMetric.php
 1261	app/Models/PulseSignalValidation.php
 800	app/Models/PulseStrategy.php
-470	app/Models/PulseStrategyDailyMetric.php
+691	app/Models/PulseStrategyDailyMetric.php
 563	app/Models/PulseStrategyLearningState.php
 785	app/Models/PulseSystemSetting.php
 1464	app/Models/PulseTrade.php
@@ -132,7 +134,7 @@ BYTES	PATH
 3165	app/Services/PulseAiExplanationService.php
 1115	app/Services/PulseAuditService.php
 5797	app/Services/PulseAutomationService.php
-10945	app/Services/PulseLearningService.php
+13016	app/Services/PulseLearningService.php
 17313	app/Services/PulseMarketDataService.php
 14065	app/Services/PulseMembershipService.php
 55328	app/Services/PulsePageDataService.php
@@ -143,17 +145,18 @@ BYTES	PATH
 950	app/Services/PulseShareService.php
 1111	app/Services/PulseSignalThresholdService.php
 7739	app/Services/PulseSignalValidationService.php
-35637	app/Services/PulseTradeService.php
+9884	app/Services/PulseStrategyAnalyticsService.php
+38982	app/Services/PulseTradeService.php
 728	app/Services/PulseUsageService.php
 51968	app/Support/AbsSchemaRepair.php
 3579	app/Support/LegacyMigrationBaseline.php
-60332	app/Support/PulseSchemaRepair.php
+62152	app/Support/PulseSchemaRepair.php
 1731	app/Support/RecoveryKey.php
 339	artisan
 1586	bootstrap/app.php
 64	bootstrap/providers.php
-55	BUILD_VERSION.txt
-6831	CHANGELOG.md
+70	BUILD_VERSION.txt
+8033	CHANGELOG.md
 2743	cleanup-legacy-migrations.php
 2129	composer.json
 766	config/app.php
@@ -204,6 +207,7 @@ BYTES	PATH
 9412	database/migrations/2026_09_09_151000_restore_direct_usdt_and_add_public_rewarded_signals.php
 1555	database/migrations/2026_09_09_170500_add_macro_intelligence_to_economic_events.php
 1307	database/migrations/2026_09_09_181200_v1512_premium_usability_polish.php
+1619	database/migrations/2026_09_09_204800_add_pulse_strategy_profitability_metrics.php
 32022	database/seeders/DatabaseSeeder.php
 10397	database/sql/ABS_V15_1_0_APPLY_DIRECT_USDT_PUBLIC_REWARDED_SIGNALS.sql
 1625	docs/ABS_V14_1_LOGIN_PAGE.md
@@ -281,7 +285,8 @@ BYTES	PATH
 5706	docs/ABS_V15_1_3_FINAL_VALIDATION_REPORT.md
 2323	docs/ABS_V15_1_4_FINAL_VALIDATION_REPORT.md
 3914	docs/ABS_V15_1_5_FINAL_VALIDATION_REPORT.md
-2047	docs/API_GUIDE.md
+7369	docs/ABS_V15_1_6_FINAL_VALIDATION_REPORT.md
+1940	docs/API_GUIDE.md
 2841	docs/BACKUP_RESTORE_V14_7_1.md
 2081	docs/BUILD_VALIDATION_V14_7.md
 3593	docs/EMAIL_ALERT_MATRIX_V14_7.md
@@ -316,8 +321,9 @@ BYTES	PATH
 281	docs/MOBILE_API_V14_8_9.md
 2785	docs/MOBILE_API_V14_9_2.md
 1519	docs/MOBILE_API_V15_1_1.md
+4570	docs/MOBILE_API_V15_1_6.md
 2805	docs/MYSQL_SETUP_GUIDE.md
-33886	docs/openapi.yaml
+35976	docs/openapi.yaml
 10175	docs/PULSE_FEATURES.md
 386787	docs/reference/pulse-v1478/ABS_V14_7_8_APPROVED_MARKET_SCANNER_REFERENCE.jpeg
 410837	docs/reference/pulse-v1478/ABS_V14_7_8_APPROVED_SIGNALS_REFERENCE.jpeg
@@ -332,9 +338,10 @@ BYTES	PATH
 946	docs/V14_7_3_PREMIUM_ADMIN_EMAIL_ACTIVATION_GUIDE.md
 847	docs/V14_7_6_SUBSCRIPTION_DECISION_WORKFLOW.md
 1039	docs/V14_FOCUSED_SCOPE.md
-2140	package.json
+2214	package.json
 953	phpunit.xml
 575	public/.htaccess
+23050	public/apple-touch-icon.png
 146338	public/assets/brand/abs-logo-512.png
 2334405	public/assets/brand/abs-logo-master.png
 282487	public/assets/css/abs-app.css
@@ -346,6 +353,7 @@ BYTES	PATH
 11109	public/assets/css/admin-executive-v1508.css
 19181	public/assets/css/admin-executive-v1509.css
 1543	public/assets/css/admin-executive-v1510.css
+1504	public/assets/css/admin-executive-v1516.css
 29605	public/assets/css/admin-institutional-v1506.css
 47215	public/assets/css/admin-premium-v1505.css
 4240	public/assets/css/admin-rewarded-signal-v1510.css
@@ -369,11 +377,14 @@ BYTES	PATH
 11624	public/assets/js/pulse-premium.js
 21154	public/assets/js/pulse-public-signal-v1514.js
 23937	public/assets/js/pulse-public-signal-v1515.js
-419	public/favicon.svg
+612	public/favicon-16x16.png
+1444	public/favicon-32x32.png
+4694	public/favicon.ico
+195251	public/favicon.svg
 324	public/index.php
 59	public/robots.txt
 1530	README_RECOVERY_V4_IMPORTANT.txt
-14364	README.md
+17082	README.md
 377	repair-existing-database.bat
 201	repair-existing-database.sh
 240158	resources/css/abs-app.css
@@ -397,12 +408,12 @@ BYTES	PATH
 4207	resources/views/admin/enterprise/newsletters.blade.php
 2012	resources/views/admin/enterprise/settings.blade.php
 8528	resources/views/admin/enterprise/updates.blade.php
-7420	resources/views/admin/layout.blade.php
-3967	resources/views/admin/market-data.blade.php
+7741	resources/views/admin/layout.blade.php
+5934	resources/views/admin/market-data.blade.php
 3302	resources/views/admin/portfolios.blade.php
 3679	resources/views/admin/pulse/access.blade.php
 5384	resources/views/admin/pulse/dashboard.blade.php
-17001	resources/views/admin/pulse/intelligence.blade.php
+25247	resources/views/admin/pulse/intelligence.blade.php
 4523	resources/views/admin/pulse/logs.blade.php
 7537	resources/views/admin/pulse/memberships.blade.php
 5368	resources/views/admin/pulse/pairs.blade.php
@@ -427,11 +438,11 @@ BYTES	PATH
 5683	resources/views/emails/branded.blade.php
 1522	resources/views/errors/500.blade.php
 1382	resources/views/errors/503.blade.php
-8630	resources/views/errors/recovery.blade.php
-10398	resources/views/errors/setup-required.blade.php
+8718	resources/views/errors/recovery.blade.php
+10486	resources/views/errors/setup-required.blade.php
 25112	resources/views/home.blade.php
-1812	resources/views/layouts/app.blade.php
-4991	resources/views/layouts/auth.blade.php
+1790	resources/views/layouts/app.blade.php
+4969	resources/views/layouts/auth.blade.php
 1966	resources/views/legal/page.blade.php
 7618	resources/views/news/index.blade.php
 1285	resources/views/news/show.blade.php
@@ -452,7 +463,7 @@ BYTES	PATH
 17756	resources/views/pulse/dashboard.blade.php
 15699	resources/views/pulse/execution.blade.php
 6413	resources/views/pulse/gateway.blade.php
-19044	resources/views/pulse/layout.blade.php
+19022	resources/views/pulse/layout.blade.php
 3027	resources/views/pulse/membership/checkout.blade.php
 3738	resources/views/pulse/membership/index.blade.php
 5047	resources/views/pulse/orders.blade.php
@@ -476,8 +487,8 @@ BYTES	PATH
 1622	resources/views/search.blade.php
 1482	resources/views/vendor/pagination/abs-admin.blade.php
 632	REUSABLE_SLIM_BUILD.txt
-12722	routes/api.php
-38309	routes/console.php
+13432	routes/api.php
+43389	routes/console.php
 23650	routes/web.php
 300	RUN-ABS-LARAGON.bat
 2362	scripts/generate-release-manifests.mjs
@@ -521,11 +532,12 @@ BYTES	PATH
 3141	tests/Release/verify-v1512-usability-binance-calendar.mjs
 5188	tests/Release/verify-v1513-free-signal-share-experience.mjs
 3044	tests/Release/verify-v1515-entry-watch-fallback.mjs
+5439	tests/Release/verify-v1516-live-deployment.mjs
 774	tests/TestCase.php
 1952	tests/Unit/PublicHomepageProviderTest.php
 29366	tests/Visual/generate-premium-previews.mjs
 11388	tests/Visual/verify-premium-contract.mjs
 3106	tests/Visual/verify-v1478-authenticated-experience.mjs
 3800	tests/Visual/verify-v1479-logged-in-shell.mjs
-12	VERSION.txt
+7	VERSION.txt
 298	vite.config.js

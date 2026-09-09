@@ -1,1 +1,1 @@
-ABS V15.1.5 — Free Signal Entry Watch Fallback Build
+ABS V15.1.6 — Live Deployment Intelligence & Mobile API Final Build

@@ -26,6 +26,7 @@ use App\Services\BrandedMailService;
 use App\Services\PulseAuditService;
 use App\Services\PulseMembershipService;
 use App\Services\PulseMarketDataService;
+use App\Services\PulseStrategyAnalyticsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -51,7 +52,7 @@ class AdminPulseController extends Controller
         ]);
     }
 
-    public function intelligence(Request $request, PulseMarketDataService $market)
+    public function intelligence(Request $request, PulseMarketDataService $market, PulseStrategyAnalyticsService $analytics)
     {
         $data = $request->validate([
             'from' => ['nullable', 'date'],
@@ -158,6 +159,14 @@ class AdminPulseController extends Controller
             $allDecisive = $allWins + $allLosses;
             $periodWinRate = $decisive > 0 ? ($wins / $decisive) * 100 : null;
             $allTimeWinRate = $allDecisive > 0 ? ($allWins / $allDecisive) * 100 : null;
+            $modelTrades = (int) $metrics->sum('model_trades');
+            $modelNetR = (float) $metrics->sum('model_net_r');
+            $modelGrossProfitR = (float) $metrics->sum('model_gross_profit_r');
+            $modelGrossLossR = (float) $metrics->sum('model_gross_loss_r');
+            $modelReturnPct = (float) $metrics->sum('model_return_pct');
+            $allModelTrades = (int) $allMetrics->sum('model_trades');
+            $allModelNetR = (float) $allMetrics->sum('model_net_r');
+            $allModelReturnPct = (float) $allMetrics->sum('model_return_pct');
             $learningWeight = max(0, (int) $learning->sum('sample_size'));
             $reliability = $learning->isEmpty() ? null : ($learningWeight > 0
                 ? $learning->sum(fn ($row) => (float) $row->reliability_score * max(0, (int) $row->sample_size)) / $learningWeight
@@ -178,6 +187,11 @@ class AdminPulseController extends Controller
                 'ambiguous' => $ambiguous,
                 'avg_mfe_r' => $weighted($metrics, 'avg_mfe_r', 'entries'),
                 'avg_mae_r' => $weighted($metrics, 'avg_mae_r', 'entries'),
+                'model_trades' => $modelTrades,
+                'model_net_r' => $modelNetR,
+                'model_expectancy_r' => $modelTrades > 0 ? $modelNetR / $modelTrades : null,
+                'model_profit_factor' => $modelGrossLossR > 0 ? $modelGrossProfitR / $modelGrossLossR : null,
+                'model_return_pct' => $modelReturnPct,
                 'reliability' => $reliability,
                 // Pulse confidence uses 75% technical score + 25% learned reliability.
                 'confidence_impact' => $reliability === null ? null : ($reliability - 50.0) * 0.25,
@@ -187,6 +201,10 @@ class AdminPulseController extends Controller
                 'all_time_losses' => $allLosses,
                 'all_time_ambiguous' => $allAmbiguous,
                 'all_time_win_rate' => $allTimeWinRate,
+                'all_time_model_trades' => $allModelTrades,
+                'all_time_model_net_r' => $allModelNetR,
+                'all_time_model_expectancy_r' => $allModelTrades > 0 ? $allModelNetR / $allModelTrades : null,
+                'all_time_model_return_pct' => $allModelReturnPct,
                 // Reporting comparison only: how the selected period's decisive outcome rate
                 // differs from all-time evidence after the model's 25% reliability weight.
                 'range_confidence_delta' => $periodWinRate === null || $allTimeWinRate === null ? null : ($periodWinRate - $allTimeWinRate) * 0.25,
@@ -224,6 +242,11 @@ class AdminPulseController extends Controller
             $pendingValidations = $pendingQuery->count();
         }
 
+        $simulation = $analytics->simulation($from, $to, $filters);
+        $simulationTrend = $analytics->dailySimulationTrend($from, $to, $filters);
+        $strategyProfitability = $analytics->strategyProfitability($from, $to, $filters);
+        $execution = $analytics->actualExecution($from, $to);
+
         return view('admin.pulse.intelligence', [
             'from'=>$from,'to'=>$to,'filters'=>$filters,'strategyCatalog'=>$catalog,'marketHealth'=>$market->health(),
             'summary'=>[
@@ -243,6 +266,10 @@ class AdminPulseController extends Controller
             'learningStates'=>$learningRows->sortByDesc('sample_size')->take(100)->values(),
             'learningUpdatedAt'=>$learningRows->max('calculated_at'),
             'recentValidations'=>$recentValidations,
+            'simulation'=>$simulation,
+            'simulationTrend'=>$simulationTrend,
+            'strategyProfitability'=>$strategyProfitability,
+            'execution'=>$execution,
             'marketRuns'=>Schema::hasTable('pulse_market_data_runs') ? PulseMarketDataRun::query()->latest('id')->limit(20)->get() : collect(),
         ]);
     }

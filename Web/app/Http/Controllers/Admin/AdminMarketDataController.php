@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\PulseMarketDataRun;
 use App\Models\PulseMarketPrice;
+use App\Models\PulseTrade;
+use App\Models\PulseSignalValidation;
 use App\Services\PulseAuditService;
 use App\Services\PulseMarketDataService;
 use Illuminate\Http\Request;
@@ -22,6 +24,20 @@ class AdminMarketDataController extends Controller
             'prices' => Schema::hasTable('pulse_market_prices')
                 ? PulseMarketPrice::query()->orderByDesc('observed_at')->limit(30)->get()
                 : collect(),
+            'executionHealth' => Schema::hasTable('pulse_trades') ? [
+                'active_trades' => PulseTrade::query()->whereIn('status',['submitting','pending','open','closing','protection_failed'])->count(),
+                'last_trade_sync_at' => PulseTrade::query()->max('last_synced_at'),
+                'stale_active_trades' => PulseTrade::query()->whereIn('status',['open','closing','protection_failed'])->where(fn($q)=>$q->whereNull('last_synced_at')->orWhere('last_synced_at','<',now()->subMinutes(3)))->count(),
+                'closed_24h' => PulseTrade::query()->where('status','closed')->where('closed_at','>=',now()->subDay())->count(),
+                'realized_pnl_24h' => (float) PulseTrade::query()->where('status','closed')->where('closed_at','>=',now()->subDay())->sum('realized_pnl'),
+                'tp_hits_24h' => PulseTrade::query()->where('status','closed')->where('closed_at','>=',now()->subDay())->where('close_reason','take_profit')->count(),
+                'sl_hits_24h' => PulseTrade::query()->where('status','closed')->where('closed_at','>=',now()->subDay())->where('close_reason','stop_loss')->count(),
+            ] : [],
+            'validationHealth' => Schema::hasTable('pulse_signal_validations') ? [
+                'pending' => PulseSignalValidation::query()->whereNull('resolved_at')->count(),
+                'last_checked_at' => PulseSignalValidation::query()->max('last_checked_at'),
+                'resolved_24h' => PulseSignalValidation::query()->whereNotNull('resolved_at')->where('resolved_at','>=',now()->subDay())->count(),
+            ] : [],
         ]);
     }
 

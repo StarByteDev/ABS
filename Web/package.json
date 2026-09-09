@@ -28,7 +28,8 @@
     "audit:v1510": "node tests/Release/verify-v1510-direct-usdt-public-rewarded-signal.mjs",
     "audit:visual-contract": "node tests/Visual/verify-premium-contract.mjs",
     "audit:v1511": "node tests/Release/verify-v1511-news-legal-email.mjs",
-    "audit:v1513": "node tests/Release/verify-v1513-free-signal-share-experience.mjs"
+    "audit:v1513": "node tests/Release/verify-v1513-free-signal-share-experience.mjs",
+    "audit:v1516": "node tests/Release/verify-v1516-live-deployment.mjs"
   },
   "devDependencies": {
     "axios": "^1.11.0",

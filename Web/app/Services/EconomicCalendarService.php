@@ -35,7 +35,7 @@ class EconomicCalendarService
         $to ??= CarbonImmutable::now(config('app.timezone'))->addDays(45)->endOfDay();
 
         $response = Http::acceptJson()
-            ->withHeaders(['User-Agent' => 'AlphaBlockSolutions-EconomicCalendar/15.1.5'])
+            ->withHeaders(['User-Agent' => 'AlphaBlockSolutions-EconomicCalendar/15.1.6'])
             ->withOptions(['verify' => config('services.market.ssl_verify', true)])
             ->connectTimeout(4)->timeout(12)
             ->get((string) config('services.fmp.economic_calendar_url', 'https://financialmodelingprep.com/stable/economic-calendar'), [

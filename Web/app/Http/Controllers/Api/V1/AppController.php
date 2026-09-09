@@ -21,8 +21,8 @@ class AppController extends Controller
                 'name' => config('app.name', 'Alpha Block Solutions'),
                 'environment' => config('app.env'),
                 'api_version' => 'v1',
-                'build' => '15.1.5',
-                'release' => 'Direct USDT + Rewarded Free Signal + Entry Watch Fallback + Social Sharing + ABS News Macro Intelligence',
+                'build' => '15.1.6',
+                'release' => 'Live Deployment Intelligence + Mobile API + Strategy Profitability Simulation + Direct USDT + Rewarded Free Signal + ABS News',
                 'mobile_api_ready' => true,
                 'market_data_source' => 'ABS central database (Binance Futures upstream)',
                 'market_refresh_seconds' => (int) config('pulse.market_data.target_price_refresh_seconds', 60),
@@ -36,7 +36,7 @@ class AppController extends Controller
                     'authentication', 'account', 'dashboard', 'market', 'watchlist', 'news', 'research', 'learning',
                     'economic_calendar', 'pulse_packages', 'pulse_free_signal', 'pulse_scanner', 'pulse_signals',
                     'binance_connections', 'execution_readiness', 'positions', 'orders', 'trades', 'reports',
-                    'signal_sharing', 'ai_signal_explanations', 'alerts', 'notifications', 'devices', 'private_member_portal', 'contact', 'newsletter',
+                    'signal_sharing', 'ai_signal_explanations', 'strategy_profitability', 'what_if_simulation', 'market_feed_health', 'alerts', 'notifications', 'devices', 'private_member_portal', 'contact', 'newsletter',
                 ],
             ],
             'settings' => $settings,
@@ -46,6 +46,8 @@ class AppController extends Controller
                 'terms' => route('legal.terms'),
                 'risk_disclosure' => route('legal.risk'),
                 'market_disclaimer' => route('legal.disclaimer'),
+                'free_signal_web' => route('pulse.free-signal'),
+                'free_signal_api_status' => url('/api/v1/pulse/free-signal/status'),
             ],
         ]]);
     }

@@ -4,8 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#07111f">
-    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
-    <title>ABS Database Recovery</title>
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
+<title>ABS Database Recovery</title>
     <style>
         :root{color-scheme:dark;--bg:#050916;--panel:#0b1226;--line:#26325b;--text:#f7f9ff;--muted:#aeb8d2;--gold:#e8b337;--cyan:#58c8ff;--green:#7ee787;--red:#ff6b74}
         *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 78% 8%,#15264d 0,transparent 34%),radial-gradient(circle at 12% 85%,#092b55 0,transparent 30%),var(--bg);font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--text);padding:34px}

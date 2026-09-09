@@ -29,8 +29,8 @@ class PulseSchemaRepair
         'pulse_market_candles' => ['id','symbol','timeframe','open_time_ms','close_time_ms','open','high','low','close','volume','is_closed','source','created_at','updated_at'],
         'pulse_market_data_runs' => ['id','status','prices_updated','candle_symbols_updated','validation_symbols_updated','summary','error_message','started_at','completed_at','created_at','updated_at'],
         'pulse_signal_validations' => ['id','signal_id','user_id','signal_fingerprint','symbol','timeframe','direction','strategy_version','strategy_snapshot','entry_price','stop_loss','take_profit_levels','technical_score','reliability_score','confidence_score','state','outcome','generated_at','entry_hit_at','resolved_at','last_checked_at','entry_observed_price','mfe_price','mae_price','mfe_r','mae_r','duration_seconds','highest_tp_level_hit','market_regime','context','meta','created_at','updated_at'],
-        'pulse_signal_daily_metrics' => ['id','metric_date','user_id','timeframe','direction','signals','entries','wins','losses','ambiguous','expired_no_entry','expired_after_entry','avg_mfe_r','avg_mae_r','avg_duration_seconds','created_at','updated_at'],
-        'pulse_strategy_daily_metrics' => ['id','metric_date','strategy_slug','strategy_version','timeframe','direction','market_regime','sample_count','entries','wins','losses','ambiguous','expired_no_entry','avg_mfe_r','avg_mae_r','avg_duration_seconds','created_at','updated_at'],
+        'pulse_signal_daily_metrics' => ['id','metric_date','user_id','timeframe','direction','signals','entries','wins','losses','ambiguous','expired_no_entry','expired_after_entry','avg_mfe_r','avg_mae_r','avg_duration_seconds','model_trades','model_net_r','model_gross_profit_r','model_gross_loss_r','model_return_pct','created_at','updated_at'],
+        'pulse_strategy_daily_metrics' => ['id','metric_date','strategy_slug','strategy_version','timeframe','direction','market_regime','sample_count','entries','wins','losses','ambiguous','expired_no_entry','avg_mfe_r','avg_mae_r','avg_duration_seconds','model_trades','model_net_r','model_gross_profit_r','model_gross_loss_r','model_return_pct','created_at','updated_at'],
         'pulse_strategy_learning_states' => ['id','strategy_slug','strategy_version','timeframe','direction','market_regime','sample_size','win_rate','ambiguous_rate','reliability_score','recency_weighted_score','evidence_level','meta','calculated_at','created_at','updated_at'],
         'pulse_promotion_redemptions' => ['id','promotion_code_id','user_id','pulse_plan_id','membership_request_id','discount_amount','redeemed_at','created_at','updated_at'],
         'pulse_public_signal_unlocks' => ['id','visitor_hash','provider','provider_reference','ad_unit','signal_id','signal_snapshot','status','claimed_at','view_expires_at','next_available_at','meta','created_at','updated_at'],
@@ -671,7 +671,7 @@ class PulseSchemaRepair
             Schema::create('pulse_signal_daily_metrics', function (Blueprint $t): void {
                 $t->id(); $t->date('metric_date')->index(); $t->unsignedBigInteger('user_id')->nullable()->index(); $t->string('timeframe',8)->index(); $t->string('direction',12)->index();
                 $t->unsignedInteger('signals')->default(0); $t->unsignedInteger('entries')->default(0); $t->unsignedInteger('wins')->default(0); $t->unsignedInteger('losses')->default(0); $t->unsignedInteger('ambiguous')->default(0);
-                $t->unsignedInteger('expired_no_entry')->default(0); $t->unsignedInteger('expired_after_entry')->default(0); $t->decimal('avg_mfe_r',12,6)->nullable(); $t->decimal('avg_mae_r',12,6)->nullable(); $t->unsignedInteger('avg_duration_seconds')->nullable(); $t->timestamps();
+                $t->unsignedInteger('expired_no_entry')->default(0); $t->unsignedInteger('expired_after_entry')->default(0); $t->decimal('avg_mfe_r',12,6)->nullable(); $t->decimal('avg_mae_r',12,6)->nullable(); $t->unsignedInteger('avg_duration_seconds')->nullable(); $t->unsignedInteger('model_trades')->default(0); $t->decimal('model_net_r',16,6)->default(0); $t->decimal('model_gross_profit_r',16,6)->default(0); $t->decimal('model_gross_loss_r',16,6)->default(0); $t->decimal('model_return_pct',18,8)->default(0); $t->timestamps();
                 $t->unique(['metric_date','user_id','timeframe','direction'],'pulse_signal_daily_user_tf_dir_unique');
             });
         }
@@ -679,7 +679,7 @@ class PulseSchemaRepair
             Schema::create('pulse_strategy_daily_metrics', function (Blueprint $t): void {
                 $t->id(); $t->date('metric_date')->index(); $t->string('strategy_slug',100)->index(); $t->string('strategy_version',40)->default('1.0')->index(); $t->string('timeframe',8)->index(); $t->string('direction',12)->index();
                 $t->string('market_regime',30)->default('ALL')->index(); $t->unsignedInteger('sample_count')->default(0); $t->unsignedInteger('entries')->default(0); $t->unsignedInteger('wins')->default(0); $t->unsignedInteger('losses')->default(0); $t->unsignedInteger('ambiguous')->default(0);
-                $t->unsignedInteger('expired_no_entry')->default(0); $t->decimal('avg_mfe_r',12,6)->nullable(); $t->decimal('avg_mae_r',12,6)->nullable(); $t->unsignedInteger('avg_duration_seconds')->nullable(); $t->timestamps();
+                $t->unsignedInteger('expired_no_entry')->default(0); $t->decimal('avg_mfe_r',12,6)->nullable(); $t->decimal('avg_mae_r',12,6)->nullable(); $t->unsignedInteger('avg_duration_seconds')->nullable(); $t->unsignedInteger('model_trades')->default(0); $t->decimal('model_net_r',16,6)->default(0); $t->decimal('model_gross_profit_r',16,6)->default(0); $t->decimal('model_gross_loss_r',16,6)->default(0); $t->decimal('model_return_pct',18,8)->default(0); $t->timestamps();
                 $t->unique(['metric_date','strategy_slug','strategy_version','timeframe','direction','market_regime'],'pulse_strategy_daily_metric_unique');
             });
         }
@@ -692,7 +692,21 @@ class PulseSchemaRepair
             });
         }
 
-        self::addMissing('pulse_strategy_daily_metrics', ['entries' => fn (Blueprint $t) => $t->unsignedInteger('entries')->default(0)]);
+        self::addMissing('pulse_signal_daily_metrics', [
+            'model_trades' => fn (Blueprint $t) => $t->unsignedInteger('model_trades')->default(0),
+            'model_net_r' => fn (Blueprint $t) => $t->decimal('model_net_r',16,6)->default(0),
+            'model_gross_profit_r' => fn (Blueprint $t) => $t->decimal('model_gross_profit_r',16,6)->default(0),
+            'model_gross_loss_r' => fn (Blueprint $t) => $t->decimal('model_gross_loss_r',16,6)->default(0),
+            'model_return_pct' => fn (Blueprint $t) => $t->decimal('model_return_pct',18,8)->default(0),
+        ]);
+        self::addMissing('pulse_strategy_daily_metrics', [
+            'entries' => fn (Blueprint $t) => $t->unsignedInteger('entries')->default(0),
+            'model_trades' => fn (Blueprint $t) => $t->unsignedInteger('model_trades')->default(0),
+            'model_net_r' => fn (Blueprint $t) => $t->decimal('model_net_r',16,6)->default(0),
+            'model_gross_profit_r' => fn (Blueprint $t) => $t->decimal('model_gross_profit_r',16,6)->default(0),
+            'model_gross_loss_r' => fn (Blueprint $t) => $t->decimal('model_gross_loss_r',16,6)->default(0),
+            'model_return_pct' => fn (Blueprint $t) => $t->decimal('model_return_pct',18,8)->default(0),
+        ]);
 
         self::addMissing('pulse_strategies', ['version' => fn (Blueprint $t) => $t->string('version',40)->default('1.0')]);
         self::addMissing('pulse_signals', [

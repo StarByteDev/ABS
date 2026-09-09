@@ -1,3 +1,37 @@
+# ABS V15.1.6 — Live Deployment Intelligence & Mobile API Final Build
+
+This is the final Laravel website/backend release prepared for live deployment before the separate Flutter mobile-app implementation. It preserves the V15.1.5 Free Signal/ENTRY WATCH, direct-USDT commerce, ABS News, premium emails, Binance precision guards and no-Sparks architecture.
+
+## V15.1.6 final-review additions
+
+- Replaced the incorrect favicon with favicon/Apple-touch assets generated from the **existing production ABS cube logo**; the source production logo is unchanged.
+- Added Admin **strategy profitability / robot-readiness research intelligence**: modeled trades, net R, expectancy, profit factor, unlevered model-return sum, cumulative what-if path and per-strategy profitability.
+- Added a separate **actual Binance execution** view: realized P&L, fees, profitable/losing trades and conservatively identified exchange protective TP/SL exits.
+- Kept the live confidence model at **75% technical score + 25% learned reliability** with Bayesian/evidence/recency protection.
+- Added Admin market-data **scheduler → validation → execution health** so stale active trade reconciliation is visible.
+- Added `abs:pulse-execution-check` and `abs:pulse-analytics-backfill --days=7` operational commands.
+- Expanded `/api/v1` for the future mobile app with guest Free Signal status/session/claim, strategy reporting and research simulation endpoints.
+- Added `docs/MOBILE_API_V15_1_6.md` and updated OpenAPI to cover all current API routes.
+- Added a non-destructive migration plus phpMyAdmin SQL fallback for the new analytics columns.
+
+### Research simulation boundary
+The what-if model uses only resolved TP/SL validations after entry was observed. TP uses the frozen final target and SL is -1R. Ambiguous and unresolved results are excluded. The model does **not** assume leverage, fees, funding, slippage or compounding. This is research/diagnostic information for evaluating strategy behavior and possible future automation—not a forecast or guaranteed robot-trading result.
+
+### Deployment boundary
+Static/source/release validation cannot execute your real HostGator cron, Google rewarded inventory, Binance Testnet/Live account, SMTP, FMP or USDT environment. Run the production commands documented below using the real credentials after deployment.
+
+## Upgrade from V15.1.5
+
+1. Back up files and database.
+2. Preserve production `.env`.
+3. Replace application files.
+4. Run `php artisan migrate --force` (or the included V15.1.6 phpMyAdmin SQL fallback).
+5. Run `php artisan optimize:clear`.
+6. Run `php artisan abs:pulse-analytics-backfill --days=7`.
+7. Run `php artisan abs:production-check --email=YOUR_EMAIL`.
+
+---
+
 # ABS V15.1.5 — Free Signal Entry Watch Fallback Build
 
 ## What changed in V15.1.5
@@ -40,7 +74,7 @@ No database migration is required. Back up the site/database, preserve `.env`, r
 
 **Branded Free Signal Teaser + Page-Session Signal Reveal + Social Sharing**
 
-ABS V15.1.3 is the current Laravel website/backend release. It keeps the V15.1.2 direct-USDT, ABS News, rewarded-ad and Binance execution architecture, and upgrades the public Free Signal experience to the approved ABS Pulse design. The production Alpha Block Solutions logo and global branding are preserved.
+ABS V15.1.3 was an earlier Laravel website/backend release. It keeps the V15.1.2 direct-USDT, ABS News, rewarded-ad and Binance execution architecture, and upgrades the public Free Signal experience to the approved ABS Pulse design. The production Alpha Block Solutions logo and global branding are preserved.
 
 ## What changed in V15.1.3
 
@@ -84,7 +118,7 @@ Real Google rewarded-ad fill, FMP calendar responses, SMTP, MySQL/HostGator cron
 
 **Premium Admin Usability + Binance Precision Guard + ABS News Calendar History + Simplified Free Signal**
 
-ABS V15.1.2 is the current Laravel website/backend release. It keeps the approved V15.1.1 architecture — direct USDT packages, anonymous rewarded Free Signal, ABS News macro intelligence, premium emails and no active Sparks/points economy — and fixes the usability/runtime issues found during local testing.
+ABS V15.1.2 was an earlier Laravel website/backend release. It keeps the approved V15.1.1 architecture — direct USDT packages, anonymous rewarded Free Signal, ABS News macro intelligence, premium emails and no active Sparks/points economy — and fixes the usability/runtime issues found during local testing.
 
 ## What changed in V15.1.2
 

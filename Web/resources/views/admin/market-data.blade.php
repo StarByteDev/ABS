@@ -19,6 +19,18 @@ $age = $health['price_age_seconds'] ?? null;
     <div><small>Cron profile</small><strong>{{ $health['scheduler_profile'] ?? 'standard' }}</strong></div>
     <div><small>Cron interval</small><strong>{{ (int)($health['scheduler_cron_minutes'] ?? 1) }} min</strong></div>
 </section>
+<section class="enterprise-surface">
+<div class="enterprise-section-head"><div><h2>Scheduler → validation → execution health</h2><p>These checks confirm that the one-minute central feed is not only storing prices, but that signal validation and Binance trade reconciliation are also moving forward.</p></div><a href="{{ route('admin.pulse.intelligence') }}">Open Strategy Intelligence →</a></div>
+<div class="enterprise-mini-kpis">
+    <div><small>Pending validations</small><strong>{{ number_format((int)($validationHealth['pending'] ?? 0)) }}</strong></div>
+    <div><small>Validation last checked</small><strong>{{ !empty($validationHealth['last_checked_at']) ? \Illuminate\Support\Carbon::parse($validationHealth['last_checked_at'])->diffForHumans() : 'Waiting' }}</strong></div>
+    <div><small>Active trade records</small><strong>{{ number_format((int)($executionHealth['active_trades'] ?? 0)) }}</strong></div>
+    <div><small>Trade sync last seen</small><strong>{{ !empty($executionHealth['last_trade_sync_at']) ? \Illuminate\Support\Carbon::parse($executionHealth['last_trade_sync_at'])->diffForHumans() : 'No trade sync yet' }}</strong></div>
+    <div><small>Stale active trades</small><strong class="{{ ($executionHealth['stale_active_trades'] ?? 0)>0?'danger-text':'' }}">{{ number_format((int)($executionHealth['stale_active_trades'] ?? 0)) }}</strong></div>
+    <div><small>24H TP / SL exits</small><strong>{{ number_format((int)($executionHealth['tp_hits_24h'] ?? 0)) }} / {{ number_format((int)($executionHealth['sl_hits_24h'] ?? 0)) }}</strong></div>
+</div>
+@if(($executionHealth['stale_active_trades'] ?? 0)>0)<div class="strategy-health-banner danger"><div><b>Trade reconciliation attention required</b><span>One or more active Pulse trades have not been synchronized for more than three minutes. Confirm the host cron is running once per minute and review Binance connectivity.</span></div><strong>CHECK CRON</strong></div>@endif
+</section>
 @if(($health['stale_for_scanning'] ?? true))
 <div class="flash flash-error"><b>Scanner protection active.</b> Central prices are stale/offline. Do not create new trading decisions from old market data until the feed is healthy.</div>
 @elseif($status === 'delayed')

@@ -146,16 +146,19 @@ class PulseLearningService
     private function upsertSignalDaily(Carbon $date, ?int $userId, string $tf, string $dir, Collection $group): void
     {
         $entries = $group->whereNotNull('entry_hit_at')->count();
+        $simulation = $this->simulationMetrics($group);
         PulseSignalDailyMetric::query()->updateOrCreate(['metric_date'=>$date->toDateString(),'user_id'=>$userId,'timeframe'=>$tf,'direction'=>$dir], [
             'signals'=>$group->count(),'entries'=>$entries,'wins'=>$group->where('outcome','tp')->count(),'losses'=>$group->where('outcome','sl')->count(),
             'ambiguous'=>$group->where('outcome','ambiguous')->count(),'expired_no_entry'=>$group->where('outcome','expired_no_entry')->count(),
             'expired_after_entry'=>$group->where('outcome','expired_after_entry')->count(),'avg_mfe_r'=>$group->whereNotNull('mfe_r')->avg('mfe_r'),
             'avg_mae_r'=>$group->whereNotNull('mae_r')->avg('mae_r'),'avg_duration_seconds'=>(int) round((float) $group->whereNotNull('duration_seconds')->avg('duration_seconds')),
+            ...$simulation,
         ]);
     }
 
     private function upsertStrategyDaily(Carbon $date, string $slug, string $version, string $tf, string $dir, string $regime, Collection $group): void
     {
+        $simulation = $this->simulationMetrics($group);
         PulseStrategyDailyMetric::query()->updateOrCreate([
             'metric_date'=>$date->toDateString(),'strategy_slug'=>$slug,'strategy_version'=>$version,'timeframe'=>$tf,'direction'=>$dir,'market_regime'=>$regime,
         ], [
@@ -163,6 +166,58 @@ class PulseLearningService
             'ambiguous'=>$group->where('outcome','ambiguous')->count(),'expired_no_entry'=>$group->where('outcome','expired_no_entry')->count(),
             'avg_mfe_r'=>$group->whereNotNull('mfe_r')->avg('mfe_r'),'avg_mae_r'=>$group->whereNotNull('mae_r')->avg('mae_r'),
             'avg_duration_seconds'=>(int) round((float) $group->whereNotNull('duration_seconds')->avg('duration_seconds')),
+            ...$simulation,
         ]);
+    }
+
+    /**
+     * Equal-risk / equal-notional research model for resolved TP/SL outcomes.
+     * It intentionally excludes ambiguous and unresolved/expired-after-entry records.
+     * No leverage, fees, funding, slippage or compounding are assumed.
+     */
+    private function simulationMetrics(Collection $group): array
+    {
+        $trades = 0;
+        $netR = 0.0;
+        $grossProfitR = 0.0;
+        $grossLossR = 0.0;
+        $returnPct = 0.0;
+
+        foreach ($group as $validation) {
+            if (! in_array((string) $validation->outcome, ['tp','sl'], true) || ! $validation->entry_hit_at) continue;
+            $entry = (float) $validation->entry_price;
+            $stop = (float) $validation->stop_loss;
+            if ($entry <= 0 || $stop <= 0) continue;
+            $risk = abs($entry - $stop);
+            if ($risk <= 0) continue;
+
+            $trades++;
+            if ($validation->outcome === 'sl') {
+                $netR -= 1.0;
+                $grossLossR += 1.0;
+                $returnPct -= (abs($entry - $stop) / $entry) * 100;
+                continue;
+            }
+
+            $levels = array_values(array_filter(array_map('floatval', (array) $validation->take_profit_levels), fn ($value) => $value > 0));
+            $target = $levels !== [] ? (float) end($levels) : 0.0;
+            if ($target <= 0) {
+                $trades--;
+                continue;
+            }
+            $reward = abs($target - $entry);
+            $r = $reward / $risk;
+            $netR += $r;
+            $grossProfitR += $r;
+            $returnPct += ($reward / $entry) * 100;
+        }
+
+        return [
+            'model_trades' => $trades,
+            'model_net_r' => round($netR, 6),
+            'model_gross_profit_r' => round($grossProfitR, 6),
+            'model_gross_loss_r' => round($grossLossR, 6),
+            'model_return_pct' => round($returnPct, 8),
+        ];
     }
 }

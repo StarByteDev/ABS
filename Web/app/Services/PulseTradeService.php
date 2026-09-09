@@ -242,7 +242,10 @@ class PulseTradeService
 
     public function sync(User $user): array
     {
-        $this->access->assertActive($user);
+        // Reconciliation is a safety operation, not a new trading entitlement.
+        // Existing pending/open trades must continue to synchronize and receive
+        // exchange-side protection even if the customer's Pulse package expires
+        // while a trade is still live. New execution remains access-gated in execute().
         $summary = ['synced' => 0, 'opened' => 0, 'closed' => 0, 'protected' => 0, 'errors' => []];
 
         $trades = PulseTrade::query()->where('user_id', $user->id)
@@ -369,9 +372,14 @@ class PulseTradeService
         }
 
         if (in_array($trade->status, ['open', 'closing', 'protection_failed'], true) && abs($amount) <= 0.0000000001) {
+            $exitEvidence = $this->protectionExitEvidence($trade, $connection);
             $updates['status'] = 'closed';
             $updates['closed_at'] = $trade->closed_at ?: now();
-            $updates['close_reason'] = $trade->close_reason ?: 'exchange_position_closed';
+            $updates['close_reason'] = $trade->close_reason && ! in_array($trade->close_reason, ['exchange_position_closed',''], true)
+                ? $trade->close_reason
+                : ($exitEvidence['reason'] ?? 'exchange_position_closed');
+            if (! empty($exitEvidence['order_id'])) $updates['exchange_close_order_id'] = (string) $exitEvidence['order_id'];
+            if (! empty($exitEvidence['meta'])) $updates['meta'] = array_merge((array) ($updates['meta'] ?? $trade->meta ?? []), ['protection_exit' => $exitEvidence['meta']]);
             $updates['protection_status'] = 'not_required';
             $summary['closed']++;
         }
@@ -455,6 +463,59 @@ class PulseTradeService
         } catch (\Throwable $e) {
             $trade->update(['protection_status' => 'review_required', 'meta' => array_merge($trade->meta ?: [], ['protection_sync_error' => $e->getMessage()])]);
         }
+    }
+
+    /**
+     * Identify whether an exchange-side protective TP or SL closed the position.
+     * Binance algo responses can vary between environments, so ABS checks both
+     * the algo state and any resulting child order before assigning a TP/SL label.
+     */
+    private function protectionExitEvidence(PulseTrade $trade, BinanceConnection $connection): array
+    {
+        $candidates = [
+            'take_profit' => $trade->exchange_tp_order_id,
+            'stop_loss' => $trade->exchange_sl_order_id,
+        ];
+        $evidence = [];
+
+        foreach ($candidates as $reason => $algoId) {
+            if (! $algoId) continue;
+            try {
+                $algo = $this->binance->queryAlgoOrder($connection, $algoId);
+                $algoStatus = strtoupper((string) ($algo['algoStatus'] ?? $algo['status'] ?? ''));
+                $childOrderId = $algo['actualOrderId'] ?? $algo['orderId'] ?? $algo['actualOrderID'] ?? null;
+                $childStatus = '';
+                $child = null;
+                if ($childOrderId) {
+                    try {
+                        $child = $this->binance->queryOrder($connection, $trade->symbol, $childOrderId);
+                        $childStatus = strtoupper((string) ($child['status'] ?? ''));
+                    } catch (\Throwable) {
+                        $child = null;
+                    }
+                }
+
+                // Assign an exact TP/SL close reason only when the resulting exchange
+                // order itself is confirmed FILLED. An algo reaching a terminal state alone
+                // is not sufficient evidence because canceled/expired conditional orders can
+                // also leave terminal algo records.
+                $filled = $childStatus === 'FILLED';
+                $evidence[$reason] = [
+                    'algo_id' => (string) $algoId,
+                    'algo_status' => $algoStatus,
+                    'order_id' => $childOrderId ? (string) $childOrderId : null,
+                    'order_status' => $childStatus ?: null,
+                    'filled' => $filled,
+                ];
+                if ($filled) {
+                    return ['reason' => $reason, 'order_id' => $childOrderId, 'meta' => $evidence];
+                }
+            } catch (\Throwable $e) {
+                $evidence[$reason] = ['algo_id' => (string) $algoId, 'error' => $e->getMessage(), 'filled' => false];
+            }
+        }
+
+        return ['reason' => null, 'order_id' => null, 'meta' => $evidence];
     }
 
     private function refreshFinancials(PulseTrade $trade, BinanceConnection $connection): void

@@ -1,31 +1,31 @@
-# Alpha Block Solutions API Guide — V15.1.0
+# Alpha Block Solutions API Guide — V15.1.6
 
-## Commerce model
+ABS exposes the Laravel backend at `/api/v1` for the website and the upcoming mobile app. See `docs/openapi.yaml` for the complete operation list and `docs/MOBILE_API_V15_1_6.md` for the mobile handoff.
 
-Pulse paid access uses **direct USDT payment verification**. A registered member selects an Admin-enabled package, transfers the exact USDT amount to the configured wallet/network, and submits the transaction reference plus optional proof. An administrator reviews the payment and activates the package. There is no account credit wallet and there is no per-signal charge for an active package.
+## Commerce
+Paid Pulse access uses **direct USDT → transaction reference/proof → Admin verification → package activation**. There is no active customer Sparks/points wallet and no per-signal points charge.
 
-Key authenticated API endpoints:
+## Anonymous rewarded Free Signal
+The public website remains available at `/pulse/free-signal`. V15.1.6 also exposes a guest API protocol:
 
-| Method | Endpoint | Purpose |
-|---|---|---|
-| GET | `/pulse/plans` | List direct-USDT Pulse packages and capabilities |
-| GET | `/pulse/membership` | Current access and payment-request history |
-| POST | `/pulse/membership/quote` | Quote a package/promotion |
-| POST | `/pulse/membership/requests` | Submit USDT transaction reference/proof for Admin verification |
-| PATCH | `/pulse/membership/requests/{membershipRequest}` | Cancel an owned open request |
-| POST | `/pulse/scanner/run` | Run the Admin-controlled Best Signal scan with active package access |
-| GET | `/pulse/signals` | Member signals |
-| GET | `/pulse/usage` | Active-package compatibility/usage summary |
+- `GET /api/v1/pulse/free-signal/status`
+- `POST /api/v1/pulse/free-signal/session`
+- `POST /api/v1/pulse/free-signal/claim`
 
-## Public rewarded Free Signal
+A qualified public/system signal is preferred. If no setup reaches the qualification threshold, ABS may return the highest-scoring evaluated LONG/SHORT setup as **ENTRY WATCH**, explicitly not a qualified signal. If neither exists, no ad/cooldown should be consumed.
 
-The no-registration Free Signal is intentionally a **web route**, not an authenticated mobile API economy:
+The current deployed rewarded creative uses Google Ad Manager rewarded web inventory. Native Flutter rewarded-ad SDK/SSV wiring is part of the upcoming mobile-client implementation; the Laravel data/claim protocol is ready for that integration.
 
-- `GET /pulse/free-signal`
-- `POST /pulse/free-signal/ad-session`
-- `POST /pulse/free-signal/claim`
-- `GET /pulse/free-signal/status`
+## Pulse mobile reporting
+Authenticated members with report capability can use:
 
-A visitor explicitly opts in to Google rewarded web advertising. After the browser receives Google's rewarded-slot grant event, ABS reveals one random qualified Pulse setup in the current page session and applies the configured browser cooldown (default 30 minutes). The signal remains visible until the visitor refreshes or leaves the page; refreshing does not bypass the cooldown and the prior signal is not re-exposed by the server. The public UI and Google Ad Manager unit are controlled from **Admin → Rewarded Signal Ads**.
+- `/pulse/reports`
+- `/pulse/reports/signals`
+- `/pulse/reports/strategies`
+- `/pulse/reports/learning`
+- `/pulse/reports/simulation`
 
-See `docs/openapi.yaml` for the authenticated `/api/v1` contract.
+The V15.1.6 simulation is a research-only equal-risk/equal-notional model based on resolved validated signals. It is not a forecast, a guaranteed robot result or an account backtest.
+
+## Operations
+The central one-minute pipeline is: market data → signal validation → Binance trade reconciliation. Strategy learning is rebuilt daily. Use `php artisan abs:pulse-execution-check` and `php artisan abs:production-check` before/after deployment to verify live environment health.

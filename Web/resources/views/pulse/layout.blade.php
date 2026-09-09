@@ -6,9 +6,9 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="description" content="Pulse trading intelligence inside Alpha Block Solutions.">
     <title>@yield('title','Pulse Trading Intelligence')</title>
-    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
-    <link rel="alternate icon" type="image/png" href="{{ asset('assets/brand/abs-logo-512.png') }}">
-    <link rel="apple-touch-icon" href="{{ asset('assets/brand/abs-logo-512.png') }}">
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
+<link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/abs-app.css') }}?v={{ @filemtime(public_path('assets/css/abs-app.css')) ?: '14.8.11' }}">
     <link rel="stylesheet" href="{{ asset('assets/css/pulse-app.css') }}?v={{ @filemtime(public_path('assets/css/pulse-app.css')) ?: '14.8.11' }}">
     <link rel="stylesheet" href="{{ asset('assets/css/pulse-premium.css') }}?v={{ @filemtime(public_path('assets/css/pulse-premium.css')) ?: '14.8.11' }}">

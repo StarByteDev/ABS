@@ -1,12 +1,15 @@
 openapi: 3.1.0
 info:
   title: Alpha Block Solutions API
-  version: 15.1.5
+  version: 15.1.6
   description: >-
-    Production API contract for Alpha Block Solutions V15.1.5. Paid Pulse package
-    access uses direct USDT payment requests verified by an administrator. The public
-    rewarded Free Signal experience is a guest web flow at /pulse/free-signal and is
-    intentionally outside the authenticated mobile API. ABS News includes live headlines and an economic calendar API with previous, forecast and actual values plus simplified crypto-impact context.
+    Production API contract for Alpha Block Solutions V15.1.6. Paid Pulse package
+    access uses direct USDT payment requests verified by an administrator. Public rewarded
+    Free Signal now has a guest API protocol (status, session and claim) for future mobile
+    clients while the current deployed rewarded creative remains Google Ad Manager web inventory.
+    ABS News includes live headlines and an economic calendar API with previous, forecast and
+    actual values plus simplified crypto-impact context. Authenticated Pulse reporting includes
+    strategy profitability, learning evidence and research-only what-if signal simulation.
 servers:
   - url: https://YOUR-DOMAIN.COM/api/v1
     description: Production
@@ -1232,3 +1235,47 @@ paths:
           description: Created
         '422':
           description: Validation or business-rule error
+
+  /pulse/free-signal/status:
+    get:
+      operationId: get_pulse_free_signal_status
+      summary: Get anonymous rewarded Free Signal availability and cooldown state
+      responses:
+        '200':
+          description: Availability, visitor token, cooldown and Free Signal page metadata
+  /pulse/free-signal/session:
+    post:
+      operationId: post_pulse_free_signal_session
+      summary: Reserve a public qualified signal or Entry Watch and create a rewarded-ad claim session
+      responses:
+        '200':
+          description: Reward session and one-time claim token
+        '422':
+          description: No market setup is currently available or rewarded access is unavailable
+  /pulse/free-signal/claim:
+    post:
+      operationId: post_pulse_free_signal_claim
+      summary: Claim the reserved Free Signal result after the rewarded-ad grant
+      responses:
+        '200':
+          description: Qualified signal or clearly labelled Entry Watch plus cooldown state
+        '422':
+          description: Invalid, premature, expired or already-consumed reward claim
+  /pulse/reports/strategies:
+    get:
+      operationId: get_pulse_reports_strategies
+      summary: Authenticated strategy performance, profitability and learned-confidence evidence
+      responses:
+        '200':
+          description: Strategy metrics for the current Pulse member
+        '403':
+          description: Pulse report capability is not available for the active package
+  /pulse/reports/simulation:
+    get:
+      operationId: get_pulse_reports_simulation
+      summary: Research-only what-if performance for validated signals followed under the ABS model
+      responses:
+        '200':
+          description: Model R-multiple summary and cumulative daily trend; not an account backtest or forecast
+        '403':
+          description: Pulse report capability is not available for the active package

@@ -34,6 +34,7 @@ use App\Services\PulsePageDataService;
 use App\Services\PulsePairAccessService;
 use App\Services\PulsePairSelectionLockService;
 use App\Services\PulseUsageService;
+use App\Services\PulseStrategyAnalyticsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -494,13 +495,22 @@ class PulseController extends Controller
     {
         $from = $request->date('from') ?: now()->subDays(30)->startOfDay();
         $to = $request->date('to') ?: now()->endOfDay();
-        $base = PulseTrade::query()->where('user_id', $request->user()->id)->whereBetween('created_at', [$from, $to]);
+        $createdTrades = PulseTrade::query()->where('user_id', $request->user()->id)->whereBetween('created_at', [$from, $to]);
+        $closedTrades = PulseTrade::query()->where('user_id', $request->user()->id)->where('status', 'closed')->whereBetween('closed_at', [$from, $to]);
         $signalMetrics = Schema::hasTable('pulse_signal_daily_metrics')
             ? PulseSignalDailyMetric::query()->where('user_id',$request->user()->id)->whereBetween('metric_date',[$from->toDateString(),$to->toDateString()])->get()
             : collect();
         $wins=(int)$signalMetrics->sum('wins'); $losses=(int)$signalMetrics->sum('losses'); $ambiguous=(int)$signalMetrics->sum('ambiguous');
-        $tradingSummary = ['trades' => (clone $base)->count(), 'closed' => (clone $base)->where('status', 'closed')->count(),
-            'realized_pnl' => (float) (clone $base)->sum('realized_pnl'), 'fees' => (float) (clone $base)->sum('fees')];
+        $tradingSummary = [
+            'trades' => (clone $createdTrades)->count(),
+            'trades_created' => (clone $createdTrades)->count(),
+            'closed' => (clone $closedTrades)->count(),
+            'open_now' => PulseTrade::query()->where('user_id', $request->user()->id)->whereIn('status', ['submitting','pending','open','closing','protection_failed'])->count(),
+            'realized_pnl' => (float) (clone $closedTrades)->sum('realized_pnl'),
+            'fees' => (float) (clone $closedTrades)->sum('fees'),
+            'tp_exits' => (clone $closedTrades)->where('close_reason', 'take_profit')->count(),
+            'sl_exits' => (clone $closedTrades)->where('close_reason', 'stop_loss')->count(),
+        ];
         return response()->json(['data' => [
             'period' => ['from' => $from, 'to' => $to],
             // Backward compatibility: existing mobile clients used `summary` before
@@ -513,8 +523,11 @@ class PulseController extends Controller
                 'decisive_win_rate'=>($wins+$losses)>0?round(($wins/($wins+$losses))*100,2):null,
                 'avg_mfe_r'=>$this->weightedMetric($signalMetrics,'avg_mfe_r','entries'),
                 'avg_mae_r'=>$this->weightedMetric($signalMetrics,'avg_mae_r','entries'),
+                'model_trades'=>(int)$signalMetrics->sum('model_trades'),
+                'model_net_r'=>(float)$signalMetrics->sum('model_net_r'),
+                'model_return_pct'=>(float)$signalMetrics->sum('model_return_pct'),
             ],
-            'by_symbol' => (clone $base)->select('symbol', DB::raw('COUNT(*) as trades'), DB::raw('SUM(realized_pnl) as realized_pnl'), DB::raw('SUM(fees) as fees'))->groupBy('symbol')->get(),
+            'by_symbol' => (clone $closedTrades)->select('symbol', DB::raw('COUNT(*) as trades'), DB::raw('SUM(realized_pnl) as realized_pnl'), DB::raw('SUM(fees) as fees'))->groupBy('symbol')->get(),
         ]]);
     }
 
@@ -560,7 +573,8 @@ class PulseController extends Controller
             'period'=>['from'=>$from,'to'=>$to],
             'summary'=>['signals'=>(int)$rows->sum('signals'),'entries'=>(int)$rows->sum('entries'),'wins'=>$wins,'losses'=>$losses,'ambiguous'=>(int)$rows->sum('ambiguous'),
                 'expired_no_entry'=>(int)$rows->sum('expired_no_entry'),'expired_after_entry'=>(int)$rows->sum('expired_after_entry'),'decisive_win_rate'=>($wins+$losses)>0?round($wins/($wins+$losses)*100,2):null,
-                'avg_mfe_r'=>$this->weightedMetric($rows,'avg_mfe_r','entries'),'avg_mae_r'=>$this->weightedMetric($rows,'avg_mae_r','entries')],
+                'avg_mfe_r'=>$this->weightedMetric($rows,'avg_mfe_r','entries'),'avg_mae_r'=>$this->weightedMetric($rows,'avg_mae_r','entries'),
+                'model_trades'=>(int)$rows->sum('model_trades'),'model_net_r'=>(float)$rows->sum('model_net_r'),'model_return_pct'=>(float)$rows->sum('model_return_pct')],
             'daily'=>$rows,'recent_detailed_validations'=>$recent,
         ],'meta'=>['schema_ready'=>Schema::hasTable('pulse_signal_daily_metrics') && Schema::hasTable('pulse_signal_validations'),'detailed_validation_retention_days'=>(int)config('pulse.validation.detailed_retention_days',7)]]);
     }
@@ -575,10 +589,34 @@ class PulseController extends Controller
             : collect();
         $groups=$rows->groupBy(fn($r)=>$r->strategy_slug.'|'.$r->strategy_version.'|'.$r->timeframe.'|'.$r->direction)->map(function($g,$key){
             [$slug,$version,$tf,$dir]=explode('|',$key,4); $wins=(int)$g->sum('wins');$losses=(int)$g->sum('losses');$samples=(int)$g->sum('sample_count');
+            $modelTrades=(int)$g->sum('model_trades'); $netR=(float)$g->sum('model_net_r'); $grossProfitR=(float)$g->sum('model_gross_profit_r'); $grossLossR=(float)$g->sum('model_gross_loss_r');
             return ['strategy_slug'=>$slug,'strategy_version'=>$version,'timeframe'=>$tf,'direction'=>$dir,'samples'=>$samples,'wins'=>$wins,'losses'=>$losses,'ambiguous'=>(int)$g->sum('ambiguous'),
-                'win_rate'=>($wins+$losses)>0?round($wins/($wins+$losses)*100,2):null,'avg_mfe_r'=>$this->weightedMetric($g,'avg_mfe_r','entries'),'avg_mae_r'=>$this->weightedMetric($g,'avg_mae_r','entries')];
+                'win_rate'=>($wins+$losses)>0?round($wins/($wins+$losses)*100,2):null,'avg_mfe_r'=>$this->weightedMetric($g,'avg_mfe_r','entries'),'avg_mae_r'=>$this->weightedMetric($g,'avg_mae_r','entries'),
+                'model_trades'=>$modelTrades,'model_net_r'=>round($netR,6),'model_expectancy_r'=>$modelTrades>0?round($netR/$modelTrades,6):null,'model_profit_factor'=>$grossLossR>0?round($grossProfitR/$grossLossR,4):null,'model_return_pct'=>(float)$g->sum('model_return_pct')];
         })->values();
         return response()->json(['data'=>$groups,'meta'=>['schema_ready'=>Schema::hasTable('pulse_strategy_daily_metrics'),'period'=>['from'=>$from,'to'=>$to],'learning_scope'=>'strategy+version+timeframe+direction']]);
+    }
+
+    public function simulationReport(Request $request, PulseStrategyAnalyticsService $analytics)
+    {
+        $from = $request->date('from') ?: now()->subDays(30)->startOfDay();
+        $to = $request->date('to') ?: now()->endOfDay();
+        $filters = [
+            'timeframe' => strtolower(trim((string) $request->query('timeframe', ''))),
+            'direction' => strtoupper(trim((string) $request->query('direction', ''))),
+        ];
+        if (! in_array($filters['timeframe'], ['', '15m', '4h'], true)) $filters['timeframe'] = '';
+        if (! in_array($filters['direction'], ['', 'LONG', 'SHORT'], true)) $filters['direction'] = '';
+        return response()->json(['data' => [
+            'period' => ['from' => $from, 'to' => $to],
+            'summary' => $analytics->simulation($from, $to, $filters, $request->user()->id),
+            'daily' => $analytics->dailySimulationTrend($from, $to, $filters, $request->user()->id),
+        ], 'meta' => [
+            'research_only' => true,
+            'not_financial_advice' => true,
+            'not_a_live_account_backtest' => true,
+            'live_execution_pnl_is_available_from' => '/api/v1/pulse/reports',
+        ]]);
     }
 
     public function learningInsights(Request $request)

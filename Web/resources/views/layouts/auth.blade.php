@@ -6,9 +6,9 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="description" content="Secure Alpha Block Solutions member access for Pulse market intelligence and private reporting.">
     <meta name="theme-color" content="#020711">
-    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
-    <link rel="alternate icon" type="image/png" href="{{ asset('assets/brand/abs-logo-512.png') }}">
-    <link rel="apple-touch-icon" href="{{ asset('assets/brand/abs-logo-512.png') }}">
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
+<link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
     <title>@yield('title', 'Member Portal — Alpha Block Solutions')</title>
     <link rel="stylesheet" href="{{ asset('assets/css/abs-auth.css') }}?v={{ @filemtime(public_path('assets/css/abs-auth.css')) ?: '14.3' }}">
     @stack('head')

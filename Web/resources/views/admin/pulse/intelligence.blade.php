@@ -67,6 +67,62 @@
     <article class="admin-chart-card"><div class="admin-chart-head"><div><h2>Outcome composition</h2><p>Ambiguous and expired signals stay outside decisive win rate.</p></div></div><div class="admin-chart" data-admin-chart data-chart-source="#intelligence-outcomes" data-chart-type="donut"></div></article>
 </section>
 
+<script type="application/json" id="simulation-trend">{!! json_encode([
+    'ariaLabel'=>'Research simulation cumulative R and unlevered model return over the selected period',
+    'labels'=>$simulationTrend->pluck('label')->all(),
+    'series'=>[
+        ['name'=>'Cumulative R','color'=>'#e6b74a','fillColor'=>'rgba(230,183,74,.10)','values'=>$simulationTrend->pluck('cumulative_r')->all()],
+        ['name'=>'Model return %','color'=>'#25b8cb','fill'=>false,'values'=>$simulationTrend->pluck('cumulative_return_pct')->all()],
+    ],
+], JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT) !!}</script>
+
+<section class="enterprise-command-bar compact robot-readiness-bar">
+    <div><span class="strategy-eyebrow">ROBOT READINESS · RESEARCH SIMULATION</span><h2>If every resolved Pulse setup were followed consistently</h2><p>This is a controlled research model for evaluating strategy behavior before any future robot-trading decision. It is not an account return forecast and it is kept separate from real Binance execution P&amp;L.</p></div>
+    <span class="report-period-chip">{{ strtoupper($selectedLabel) }}</span>
+</section>
+
+<section class="admin-report-kpis signal-kpi-grid" aria-label="Research simulation and real execution">
+    <article class="featured"><span class="report-kpi-icon gold">R</span><div><small>Model net result</small><strong>{{ ($simulation['model_net_r']??0)>=0?'+':'' }}{{ number_format((float)($simulation['model_net_r']??0),2) }}R</strong><em>{{ number_format((int)($simulation['model_trades']??0)) }} decisive modeled trades</em></div></article>
+    <article><span class="report-kpi-icon cyan">E</span><div><small>Expectancy / modeled trade</small><strong>{{ ($simulation['model_expectancy_r']??null)===null?'—':(($simulation['model_expectancy_r']>=0?'+':'').number_format((float)$simulation['model_expectancy_r'],2).'R') }}</strong><em>Resolved TP/SL only</em></div></article>
+    <article><span class="report-kpi-icon blue">%</span><div><small>Unlevered move sum</small><strong>{{ ($simulation['model_return_pct']??0)>=0?'+':'' }}{{ number_format((float)($simulation['model_return_pct']??0),2) }}%</strong><em>Equal-notional, non-compounded research measure</em></div></article>
+    <article><span class="report-kpi-icon green">$</span><div><small>Actual realized Binance P&amp;L</small><strong>{{ ($execution['realized_pnl']??0)>=0?'+':'' }}{{ number_format((float)($execution['realized_pnl']??0),2) }}</strong><em>{{ number_format((int)($execution['closed_trades']??0)) }} closed Pulse trades · fees {{ number_format((float)($execution['fees']??0),2) }}</em></div></article>
+    <article><span class="report-kpi-icon green">TP</span><div><small>Confirmed protection TP</small><strong>{{ number_format((int)($execution['tp_hits']??0)) }}</strong><em>Exchange-side protective exits identified</em></div></article>
+    <article><span class="report-kpi-icon red">SL</span><div><small>Confirmed protection SL</small><strong>{{ number_format((int)($execution['sl_hits']??0)) }}</strong><em>{{ ($execution['tp_hit_ratio']??null)===null?'Waiting for exact TP/SL exits':number_format((float)$execution['tp_hit_ratio'],1).'% TP share of TP+SL' }}</em></div></article>
+</section>
+
+<section class="admin-purpose-card">
+    <div><span class="purpose-label">HOW THE WHAT-IF MODEL WORKS</span><h2>Signal quality and actual trading are measured separately</h2><p>{{ $simulation['methodology'] ?? 'Resolved TP/SL outcomes only.' }} Historical days created before V15.1.6 may not have model-return fields until they are rebuilt from still-retained detailed validations.</p></div>
+    <div class="admin-purpose-list"><div><i>R</i><span>Risk-normalized result: SL = −1R; TP uses frozen reward/risk distance</span></div><div><i>$</i><span>Actual Binance P&amp;L comes only from synchronized exchange fills</span></div><div><i>AI</i><span>Use this evidence to judge automation readiness, never as a guaranteed future result</span></div></div>
+</section>
+
+<section class="admin-chart-grid">
+    <article class="admin-chart-card"><div class="admin-chart-head"><div><h2>What-if performance path</h2><p>Cumulative modeled R and simple unlevered price-return sum for the selected report period.</p></div></div><div class="admin-chart" data-admin-chart data-chart-source="#simulation-trend" data-chart-type="line"></div></article>
+    <article class="admin-chart-card"><div class="admin-chart-head"><div><h2>Real execution reconciliation</h2><p>Actual Pulse trades synchronized from Binance. TP/SL classification is assigned only when ABS can identify the protective exit.</p></div></div>
+        <div class="admin-purpose-list execution-mini-list">
+            <div><i>↗</i><span><b>{{ number_format((int)($execution['trades_created']??0)) }}</b> trades created in period</span></div>
+            <div><i>✓</i><span><b>{{ number_format((int)($execution['profitable_trades']??0)) }}</b> profitable closed trades</span></div>
+            <div><i>×</i><span><b>{{ number_format((int)($execution['losing_trades']??0)) }}</b> losing closed trades</span></div>
+            <div><i>?</i><span><b>{{ number_format((int)($execution['other_exits']??0)) }}</b> other/manual/unclassified exits</span></div>
+        </div>
+    </article>
+</section>
+
+<section class="enterprise-surface no-pad strategy-results-surface">
+    <div class="enterprise-section-head padded"><div><h2>Strategy profitability research view</h2><p>Which strategy families contributed the strongest resolved what-if results in this period. Net R is the primary comparable measure.</p></div><span class="report-period-chip">MODEL · NOT A FORECAST</span></div>
+    <div class="enterprise-table-wrap"><table class="enterprise-table"><thead><tr><th>Strategy</th><th>Signals / entries</th><th>TP / SL / ambiguous</th><th>Win rate</th><th>Modeled trades</th><th>Net R</th><th>Expectancy</th><th>Profit factor</th><th>Unlevered move sum</th></tr></thead><tbody>
+    @forelse($strategyProfitability as $row)
+        <tr><td><b>{{ ucwords(str_replace('-',' ',$row['strategy_slug'])) }}</b></td><td>{{ number_format($row['samples']) }} / {{ number_format($row['entries']) }}</td><td>{{ number_format($row['wins']) }} / {{ number_format($row['losses']) }} / {{ number_format($row['ambiguous']) }}</td><td>{{ $row['win_rate']===null?'—':number_format($row['win_rate'],1).'%' }}</td><td>{{ number_format($row['model_trades']) }}</td><td><b class="{{ $row['model_net_r']>=0?'positive':'negative' }}">{{ $row['model_net_r']>=0?'+':'' }}{{ number_format($row['model_net_r'],2) }}R</b></td><td>{{ $row['model_expectancy_r']===null?'—':(($row['model_expectancy_r']>=0?'+':'').number_format($row['model_expectancy_r'],2).'R') }}</td><td>{{ $row['model_profit_factor']===null?'—':number_format($row['model_profit_factor'],2) }}</td><td>{{ $row['model_return_pct']>=0?'+':'' }}{{ number_format($row['model_return_pct'],2) }}%</td></tr>
+    @empty<tr><td colspan="9">No profitability metrics are available yet. New resolved TP/SL validations will populate this view automatically.</td></tr>@endforelse
+    </tbody></table></div>
+</section>
+
+@if(($execution['strategy_attribution']??collect())->isNotEmpty())
+<section class="enterprise-surface no-pad">
+    <div class="enterprise-section-head padded"><div><h2>Actual Binance P&amp;L attributed to signal strategies</h2><p>{{ $execution['strategy_attribution_note'] }}</p></div></div>
+    <div class="enterprise-table-wrap"><table class="enterprise-table"><thead><tr><th>Strategy</th><th>Closed trades</th><th>Profitable</th><th>Losing</th><th>Profitability rate</th><th>Attributed realized P&amp;L</th><th>Fees</th></tr></thead><tbody>@foreach($execution['strategy_attribution'] as $row)<tr><td><b>{{ ucwords(str_replace('-',' ',$row['strategy_slug'])) }}</b></td><td>{{ $row['closed_trades'] }}</td><td>{{ $row['profitable_trades'] }}</td><td>{{ $row['losing_trades'] }}</td><td>{{ $row['profitability_rate']===null?'—':number_format($row['profitability_rate'],1).'%' }}</td><td class="{{ $row['realized_pnl']>=0?'positive':'negative' }}">{{ $row['realized_pnl']>=0?'+':'' }}{{ number_format($row['realized_pnl'],4) }}</td><td>{{ number_format($row['fees'],4) }}</td></tr>@endforeach</tbody></table></div>
+</section>
+@endif
+
 <section class="enterprise-surface strategy-score-explainer">
     <div><span class="strategy-eyebrow">LIVE CONFIDENCE MODEL</span><h2>75% technical score + 25% learned reliability</h2><p>Evidence can move final confidence by up to ±12.5 percentage points around a neutral 50% reliability baseline. Sparse evidence falls back to broader qualified context.</p></div>
     <div class="strategy-formula"><b>Final confidence</b><strong>0.75 × Technical</strong><i>+</i><strong>0.25 × Reliability</strong></div>

@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\NewsletterController;
 use App\Http\Controllers\Api\V1\PrivatePortalController;
 use App\Http\Controllers\Api\V1\WatchlistController;
 use App\Http\Controllers\Api\V1\PulseController;
+use App\Http\Controllers\Api\V1\PublicRewardedSignalController;
 use App\Http\Controllers\Api\V1\AdminPulseController;
 use App\Http\Controllers\RecoveryController;
 use Illuminate\Support\Facades\Route;
@@ -30,6 +31,9 @@ Route::prefix('v1')->group(function () {
     Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:6,1');
     Route::post('/auth/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:6,1');
     Route::get('/bootstrap', [AppController::class, 'bootstrap']);
+    Route::get('/pulse/free-signal/status', [PublicRewardedSignalController::class, 'status'])->middleware('throttle:30,1');
+    Route::post('/pulse/free-signal/session', [PublicRewardedSignalController::class, 'session'])->middleware('throttle:10,1');
+    Route::post('/pulse/free-signal/claim', [PublicRewardedSignalController::class, 'claim'])->middleware('throttle:10,1');
 
     Route::get('/market/overview', [MarketController::class, 'overview']);
     Route::get('/market/movers', [MarketController::class, 'movers']);
@@ -107,6 +111,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/orders', [PulseController::class, 'orders'])->middleware('pulse.capability:orders');
             Route::get('/reports', [PulseController::class, 'reports'])->middleware('pulse.capability:reports');
             Route::get('/reports/signals', [PulseController::class, 'signalPerformance'])->middleware('pulse.capability:reports');
+            Route::get('/reports/strategies', [PulseController::class, 'strategyPerformance'])->middleware('pulse.capability:reports');
+            Route::get('/reports/simulation', [PulseController::class, 'simulationReport'])->middleware('pulse.capability:reports');
             Route::get('/reports/learning', [PulseController::class, 'learningInsights'])->middleware('pulse.capability:reports');
             Route::get('/market-data/health', [PulseController::class, 'marketDataHealth'])->middleware('pulse.capability:scanner');
             Route::get('/market-data/prices', [PulseController::class, 'marketPrices'])->middleware('pulse.capability:scanner');
