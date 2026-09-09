@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\UserServiceAccess;
 use App\Services\BinanceFuturesService;
 use App\Services\BrandedMailService;
+use App\Services\EconomicCalendarService;
 use App\Services\MarketDataService;
 use App\Services\PulseAutomationService;
 use App\Services\PulseMarketDataService;
@@ -21,7 +22,7 @@ use Illuminate\Support\Facades\Schedule;
 use Symfony\Component\Console\Command\Command;
 
 Artisan::command('abs:about', function (): void {
-    $this->info('Alpha Block Solutions V14.9.2 — Mobile/Web Backend Parity & Admin Event Notifications Build');
+    $this->info('Alpha Block Solutions V15.0.9 — Investor Analytics & Premium Admin Build');
     $this->line('ABS API contract: /api/v1');
     $this->line('Pulse entry: /pulse');
     $this->line('Database repair mode: direct, non-destructive schema reconciliation');
@@ -31,7 +32,7 @@ Artisan::command('abs:about', function (): void {
 })->purpose('Display ABS and Pulse build information');
 
 Artisan::command('abs:doctor', function (): int {
-    $this->info('ABS V14.9.2 environment, MySQL database and Pulse doctor');
+    $this->info('ABS V15.1.2 environment, MySQL database and Pulse doctor');
     $this->newLine();
 
     $checks = [
@@ -102,11 +103,11 @@ Artisan::command('abs:repair {--seed : Insert or refresh the reviewed ABS and Pu
     $fresh = (bool) $this->option('fresh');
     $seed = (bool) $this->option('seed');
 
-    $this->info('ABS V14.9.2 MySQL database repair');
+    $this->info('ABS V15.0.9 MySQL database repair');
     $this->line('Target database: '.($database ?: '(not configured)'));
 
     if (config('database.default') !== 'mysql') {
-        $this->error('ABS V14.9.2 is a MySQL-first runtime build. Set DB_CONNECTION=mysql in .env and clear configuration cache.');
+        $this->error('ABS V15.0.9 is a MySQL-first runtime build. Set DB_CONNECTION=mysql in .env and clear configuration cache.');
         return Command::FAILURE;
     }
 
@@ -188,7 +189,7 @@ Artisan::command('abs:repair {--seed : Insert or refresh the reviewed ABS and Pu
 })->purpose('Non-destructively reconcile the ABS + Pulse schema without running conflicting legacy migrations');
 
 Artisan::command('abs:market-test', function (MarketDataService $market): int {
-    $this->info('ABS V14.9.2 public website market connectivity test');
+    $this->info('ABS V15.0.9 public website market connectivity test');
     $this->line('Binance hosts: '.implode(', ', (array) config('services.binance.base_urls')));
     $this->line('SSL verification: '.(config('services.market.ssl_verify') ? 'enabled' : 'disabled for local development'));
 
@@ -246,7 +247,7 @@ Artisan::command('abs:pulse-test {--environment=testnet : Public Binance Futures
         return Command::INVALID;
     }
 
-    $this->info('ABS V14.9.2 Pulse public Binance Futures connectivity test');
+    $this->info('ABS V15.0.9 Pulse public Binance Futures connectivity test');
     $this->line('Environment: '.$environment);
     $this->line('Base URL: '.config("pulse.binance.{$environment}_base_url"));
     $this->line('This command does not require or use any user API key.');
@@ -295,7 +296,7 @@ Artisan::command('abs:pulse-pairs {--environment=live : Source exchange environm
 })->purpose('Synchronize Binance USD-M Futures pair precision and minimum filters');
 
 Artisan::command('abs:test-doctor', function (): int {
-    $this->info('ABS V14.9.2 PHPUnit and migration doctor');
+    $this->info('ABS V15.0.9 PHPUnit and migration doctor');
     $migrationFiles = glob(database_path('migrations/*.php')) ?: [];
     $userCreators = [];
     $legacySignatures = [];
@@ -428,13 +429,18 @@ Artisan::command('abs:expiry-reminders', function (BrandedMailService $mail): in
     $skipped = 0;
     $failed = 0;
     $today = now()->startOfDay();
+    $configuredDays = PulseSystemSetting::value('expiry_reminder_days', [7, 3, 1, 0]);
+    if (! is_array($configuredDays)) $configuredDays = explode(',', (string) $configuredDays);
+    $reminderDays = collect($configuredDays)->map(fn ($day) => (int) $day)->filter(fn ($day) => $day >= 0 && $day <= 90)->unique()->values()->all();
+    if ($reminderDays === []) $reminderDays = [7, 3, 1, 0];
+    $maximumReminderDay = max($reminderDays);
 
     UserServiceAccess::query()
         ->with(['user.pulseSettings', 'plan'])
         ->where('service', 'pulse')
         ->whereNotNull('ends_at')
-        ->whereBetween('ends_at', [$today->copy()->subDay(), $today->copy()->addDays(8)->endOfDay()])
-        ->chunkById(100, function ($accesses) use ($mail, &$sent, &$skipped, &$failed, $today): void {
+        ->whereBetween('ends_at', [$today->copy()->subDay(), $today->copy()->addDays($maximumReminderDay + 1)->endOfDay()])
+        ->chunkById(100, function ($accesses) use ($mail, &$sent, &$skipped, &$failed, $today, $reminderDays): void {
             foreach ($accesses as $access) {
                 $user = $access->user;
                 if (! $user || $user->status !== 'active' || ! $user->email_verified_at) {
@@ -443,7 +449,7 @@ Artisan::command('abs:expiry-reminders', function (BrandedMailService $mail): in
                 }
 
                 $daysLeft = (int) $today->diffInDays($access->ends_at->copy()->startOfDay(), false);
-                if ($daysLeft >= 0 && in_array($daysLeft, [7, 3, 1, 0], true)) {
+                if ($daysLeft >= 0 && in_array($daysLeft, $reminderDays, true)) {
                     $event = 'plan_expiry_'.$daysLeft.'d';
                     $already = EmailDeliveryLog::query()
                         ->where('user_id', $user->id)
@@ -476,7 +482,7 @@ Artisan::command('abs:expiry-reminders', function (BrandedMailService $mail): in
 
     $this->info("Expiry communications complete: {$sent} sent; {$skipped} skipped; {$failed} failed.");
     return $failed > 0 ? Command::FAILURE : Command::SUCCESS;
-})->purpose('Send deduplicated 7/3/1/0-day Pulse plan expiry reminders and expired-access notices');
+})->purpose('Send Admin-configured, deduplicated Pulse plan expiry reminders and expired-access notices');
 
 Artisan::command('abs:daily-market-brief', function (BrandedMailService $mail, MarketDataService $market): int {
     if (! (bool) PulseSystemSetting::value('daily_market_brief_enabled', false)) {
@@ -607,6 +613,21 @@ Artisan::command('abs:pulse-learning {--date=}', function (PulseLearningService 
     }
 })->purpose('Rebuild permanent daily strategy aggregates and evidence-protected learning state');
 
+Artisan::command('abs:sync-economic-calendar', function (EconomicCalendarService $calendar): int {
+    if (! $calendar->configured()) {
+        $this->warn('Economic Calendar sync skipped: no FMP API key configured. Manual CMS remains available.');
+        return Command::SUCCESS;
+    }
+    try {
+        $result = $calendar->sync();
+        $this->info('Economic Calendar synced: '.$result['created'].' new; '.$result['updated'].' updated; '.$result['skipped'].' skipped.');
+        return Command::SUCCESS;
+    } catch (Throwable $e) {
+        $this->error('Economic Calendar sync failed: '.$e->getMessage());
+        return Command::FAILURE;
+    }
+})->purpose('Sync CPI, PPI, FOMC, jobs, GDP and other macro events with previous, forecast, actual and crypto context');
+
 // V14.9.0: HostGator shared hosting now follows the confirmed once-per-minute cron.
 // Market prices, signal validation and exchange reconciliation run from that single
 // server scheduler; individual ABS users never create their own Binance price polling.
@@ -617,6 +638,7 @@ if ((bool) config('pulse.scheduler.hostgator_shared', false)) {
     Schedule::command('abs:pulse-automation')->everyFiveMinutes()->withoutOverlapping(5);
     Schedule::command('abs:pulse-maintenance')->everyFiveMinutes()->withoutOverlapping(10);
     Schedule::command('abs:cache-market')->everyFiveMinutes()->withoutOverlapping(5);
+    Schedule::command('abs:sync-economic-calendar')->everyFifteenMinutes()->withoutOverlapping(10)->when(fn () => app(EconomicCalendarService::class)->autoSyncEnabled());
     Schedule::command('abs:pulse-learning')->dailyAt('00:30')->withoutOverlapping(60);
     Schedule::command('abs:expiry-reminders')->dailyAt('08:00')->withoutOverlapping(60);
     Schedule::command('abs:daily-market-brief')->dailyAt('08:15')->withoutOverlapping(60);
@@ -626,6 +648,7 @@ if ((bool) config('pulse.scheduler.hostgator_shared', false)) {
     Schedule::command('abs:pulse-validate-signals')->everyMinute()->withoutOverlapping(5);
     Schedule::command('abs:pulse-learning')->dailyAt('00:20')->withoutOverlapping(60);
     Schedule::command('abs:cache-market')->everyMinute()->withoutOverlapping(5);
+    Schedule::command('abs:sync-economic-calendar')->everyFifteenMinutes()->withoutOverlapping(10)->when(fn () => app(EconomicCalendarService::class)->autoSyncEnabled());
     Schedule::command('abs:expiry-reminders')->dailyAt('08:00')->withoutOverlapping(60);
     Schedule::command('abs:daily-market-brief')->dailyAt('08:15')->withoutOverlapping(60);
     Schedule::command('abs:pulse-maintenance')->everyFiveMinutes()->withoutOverlapping(10);
@@ -635,7 +658,7 @@ if ((bool) config('pulse.scheduler.hostgator_shared', false)) {
 }
 
 Artisan::command('abs:view-audit', function (): int {
-    $this->info('ABS V14.9.2 Blade view and named-route audit');
+    $this->info('ABS V15.1.2 Blade view and named-route audit');
 
     $viewRoot = resource_path('views');
     $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($viewRoot, FilesystemIterator::SKIP_DOTS));

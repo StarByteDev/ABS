@@ -112,6 +112,16 @@ class User extends Authenticatable implements MustVerifyEmailContract
         return $this->hasMany(MobileDevice::class);
     }
 
+
+
+
+
+    public function pulseMissionProgress(): HasMany
+    {
+        return $this->hasMany(PulseUserMission::class);
+    }
+
+
     public function emailDeliveryLogs(): HasMany
     {
         return $this->hasMany(EmailDeliveryLog::class);

@@ -10,7 +10,7 @@ class PulseScannerRun extends Model
 {
     protected $fillable = [
         'user_id', 'status', 'timeframe', 'pairs_scanned', 'signals_created',
-        'started_at', 'completed_at', 'summary', 'error_message',
+        'started_at', 'completed_at', 'summary', 'error_message', 'best_signal_id',
     ];
 
     protected function casts(): array
@@ -19,12 +19,19 @@ class PulseScannerRun extends Model
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
             'summary' => 'array',
+            'best_signal_id' => 'integer',
         ];
     }
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+
+    public function bestSignal(): BelongsTo
+    {
+        return $this->belongsTo(PulseSignal::class, 'best_signal_id');
     }
 
     public function signals(): HasMany

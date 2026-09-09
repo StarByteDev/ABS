@@ -1,0 +1,211 @@
+/* ABS V15.0.9 — Premium Admin Consistency & Dashboard Polish
+   Loaded last. This layer intentionally normalizes every Admin page onto the
+   approved ABS navy / orange-gold / cyan system and removes remaining light
+   legacy surfaces. */
+.abs-admin-v1509{
+  --abs-bg:#020d18;--abs-bg2:#031421;--abs-panel:#031827;--abs-panel2:#051d2f;--abs-panel3:#082238;
+  --abs-gold:#df8b2d;--abs-gold-bright:#f0aa4b;--abs-gold-line:rgba(224,137,43,.62);
+  --abs-cyan:#16c5ed;--abs-cyan-soft:#7eddf3;--abs-green:#2bdb91;--abs-red:#f05e69;--abs-yellow:#f1bd4b;
+  --abs-text:#edf6fb;--abs-copy:#c3d2dc;--abs-muted:#8ea7b9;--abs-dim:#627d91;
+  --a-bg:#020d18!important;--a-panel:#031827!important;--a-ink:#edf6fb!important;--a-muted:#8ea7b9!important;
+  --a-line:#28445a!important;--a-line-soft:#173147!important;--a-blue:#16c5ed!important;--a-gold:#df8b2d!important;
+  background:#020d18!important;color:var(--abs-text)!important;
+}
+.abs-admin-v1509 .abs-exec-main{background:linear-gradient(180deg,#020d18 0%,#03111d 100%)!important}
+
+/* One brand mark only: the sidebar owns the corporate logo. */
+.abs-admin-v1509 .abs-exec-product-strip{min-height:72px!important;grid-template-columns:minmax(270px,.65fr) minmax(340px,1fr)!important;padding:10px 18px!important;margin:9px 0 10px!important}
+.abs-admin-v1509 .abs-exec-product-identity img,.abs-admin-v1509 .abs-exec-parent-brand{display:none!important}
+.abs-admin-v1509 .abs-exec-product-identity{gap:0!important}
+.abs-admin-v1509 .abs-exec-product-identity b{font-size:28px!important;line-height:1!important}
+.abs-admin-v1509 .abs-exec-product-identity small{margin-top:6px!important;font-size:7.5px!important}
+.abs-admin-v1509 .abs-exec-product-message{display:block!important;text-align:right!important;white-space:nowrap!important}
+.abs-admin-v1509 .abs-exec-product-strip:after{left:23%!important;right:2%!important;top:7px!important;height:58px!important}
+
+/* Shell / top bar alignment. */
+.abs-admin-v1509 .abs-exec-topbar{height:58px!important;gap:12px!important}
+.abs-admin-v1509 .abs-exec-search{height:35px!important;width:min(610px,44vw)!important}
+.abs-admin-v1509 .abs-exec-top-actions{min-width:0!important;gap:8px!important}
+.abs-admin-v1509 .abs-exec-page-actions{min-width:0!important}
+.abs-admin-v1509 .abs-exec-date-form{gap:5px!important;white-space:nowrap!important}
+.abs-admin-v1509 .abs-exec-date-form label{height:35px!important;padding:0 7px!important}
+.abs-admin-v1509 .abs-exec-date-form label input{width:92px!important;font-size:8px!important}
+.abs-admin-v1509 .abs-exec-date-form select{height:35px!important;min-height:35px!important;min-width:76px!important}
+.abs-admin-v1509 .abs-exec-date-form button{height:35px!important;padding:0 10px!important}
+.abs-admin-v1509 .abs-exec-date-form button.report{padding:0 12px!important}
+.abs-admin-v1509 .abs-exec-heading{padding:12px 2px 12px!important;border-bottom:1px solid rgba(223,139,45,.12)}
+.abs-admin-v1509 .abs-exec-heading h1{font-size:22px!important}
+
+/* Dashboard layout — consistent heights, no overlaps, no cramped legends. */
+.abs-admin-v1509 .abs-exec-dashboard{gap:8px!important}
+.abs-admin-v1509 .abs-exec-kpis{gap:7px!important}
+.abs-admin-v1509 .abs-exec-kpi{min-height:108px!important;padding:12px 11px!important;align-items:center!important}
+.abs-admin-v1509 .abs-exec-kpi small{line-height:1.2!important;min-height:20px!important;display:flex!important;align-items:flex-end!important}
+.abs-admin-v1509 .abs-exec-kpi strong{font-size:20px!important;line-height:1.05!important}
+.abs-admin-v1509 .abs-exec-primary-grid,.abs-admin-v1509 .abs-exec-secondary-grid,.abs-admin-v1509 .abs-exec-bottom-grid{align-items:stretch!important;gap:7px!important}
+.abs-admin-v1509 .abs-exec-card{min-width:0!important;overflow:hidden!important}
+.abs-admin-v1509 .abs-exec-card>header{min-height:52px!important;padding:10px 12px 8px!important;align-items:flex-start!important}
+.abs-admin-v1509 .abs-exec-card>header h2{font-size:13px!important;line-height:1.18!important}
+.abs-admin-v1509 .abs-exec-card>header p{font-size:7.8px!important;line-height:1.35!important;margin-top:3px!important}
+.abs-admin-v1509 .abs-exec-chart{height:226px!important;padding:4px 8px 0!important;overflow:hidden!important}
+.abs-admin-v1509 .abs-exec-chart svg{width:100%!important;height:100%!important;max-height:226px!important;display:block!important}
+.abs-admin-v1509 .chart-grid-line{stroke:rgba(117,151,174,.21)!important}
+.abs-admin-v1509 .chart-axis-label{fill:#718da1!important;font-size:8px!important}
+.abs-admin-v1509 .chart-point{stroke:#041522!important;stroke-width:1.5!important;r:2.4px}
+.abs-admin-v1509 .abs-exec-intelligence-footer{min-height:58px!important}
+.abs-admin-v1509 .abs-exec-intelligence-footer>div{min-height:58px!important;padding:7px 8px!important}
+.abs-admin-v1509 .abs-exec-oversight-body{grid-template-columns:minmax(150px,.76fr) minmax(180px,1fr)!important;gap:10px!important;padding:8px 10px 10px!important;align-items:center!important;min-height:277px!important}
+.abs-admin-v1509 .abs-exec-donut{height:205px!important;display:grid!important;place-items:center!important;min-width:0!important}
+.abs-admin-v1509 .abs-exec-donut .admin-donut-layout{display:block!important;min-height:0!important;width:100%!important}
+.abs-admin-v1509 .abs-exec-donut .admin-donut-layout svg{display:block!important;width:min(100%,205px)!important;height:auto!important;margin:auto!important;max-height:205px!important}
+.abs-admin-v1509 .abs-exec-donut .admin-chart-legend{display:none!important}
+.abs-admin-v1509 .chart-donut-total{fill:#eef7fb!important;font-size:22px!important}
+.abs-admin-v1509 .chart-donut-caption{fill:#718b9e!important;font-size:7px!important}
+.abs-admin-v1509 .abs-exec-status-list{min-width:0!important;gap:0!important}
+.abs-admin-v1509 .abs-exec-status-list>div{min-height:27px!important;padding:4px 0!important;border-bottom:1px solid rgba(112,141,162,.12)!important;grid-template-columns:8px minmax(0,1fr) auto!important}
+.abs-admin-v1509 .abs-exec-actions{padding-bottom:8px!important}
+.abs-admin-v1509 .abs-exec-actions>a{min-height:39px!important;margin:7px 8px 0!important}
+.abs-admin-v1509 .abs-exec-secondary-grid>.abs-exec-card{min-height:254px!important}
+.abs-admin-v1509 .abs-exec-growth .abs-exec-chart.small{height:172px!important}
+.abs-admin-v1509 .abs-exec-growth .abs-exec-chart.small svg{max-height:172px!important}
+.abs-admin-v1509 .abs-exec-bottom-grid>.abs-exec-card{min-height:198px!important}
+.abs-admin-v1509 .abs-exec-expiry-list>div{grid-template-columns:minmax(130px,1.35fr) 82px 64px 42px!important}
+.abs-admin-v1509 .abs-exec-healthbar{margin-top:0!important}
+
+/* Global Admin surfaces: remove every remaining light/white legacy block. */
+.abs-admin-v1509 :is(.enterprise-surface,.enterprise-filter-surface,.enterprise-command-bar,.enterprise-kpi,.panel,.admin-form,.admin-table-wrap,.portfolio-admin-card,.admin-chart-card,.admin-purpose-card,.admin-insight-band,.report-toolbar,.admin-dashboard-welcome,.enterprise-user-hero,.admin-market-mode-card,.strategy-health-banner,.admin-page-intro,.backup-action-card,.release-step-card,.enterprise-check-card,.enterprise-plan-editor,.admin-callout,.expiry-alert-panel){
+  color:var(--abs-copy)!important;background:linear-gradient(145deg,#041a2b,#031522)!important;border-color:rgba(223,139,45,.40)!important;box-shadow:0 12px 32px rgba(0,0,0,.12)!important;
+}
+.abs-admin-v1509 :is(.enterprise-section-head,.enterprise-section-head.padded,.filter-surface-head,.report-toolbar-head){background:#041725!important;border-color:rgba(223,139,45,.22)!important}
+.abs-admin-v1509 :is(.enterprise-section-head h2,.panel h2,.enterprise-command-bar h2,.filter-surface-head h2,.report-toolbar-head h2,.admin-chart-head h2,.admin-purpose-card h2,.admin-page-intro h2,.strategy-health-banner h2){color:var(--abs-text)!important}
+.abs-admin-v1509 :is(.enterprise-section-head p,.panel>p,.enterprise-command-bar p,.filter-surface-head p,.report-toolbar-head p,.admin-chart-head p,.admin-purpose-card p,.admin-page-intro p,.strategy-health-banner p){color:var(--abs-muted)!important}
+.abs-admin-v1509 :is(.admin-report-eyebrow,.purpose-label,.strategy-eyebrow,.admin-kicker,.release-eyebrow){color:var(--abs-gold-bright)!important}
+.abs-admin-v1509 a{color:var(--abs-cyan-soft)}
+.abs-admin-v1509 :is(.enterprise-section-head>a,.table-user-link,.enterprise-row-action,.admin-row-actions a,.admin-inline-action){color:#55d7f2!important}
+
+/* KPI/report cards used by non-dashboard Admin pages. */
+.abs-admin-v1509 :is(.admin-report-kpis>article,.admin-kpi-grid>article,.enterprise-kpi,.enterprise-mini-kpis>div,.support-kpis>article,.cms-kpis>article,.signal-kpi-grid>article,.trade-kpis>article){
+  background:linear-gradient(145deg,#061d2f,#041522)!important;border-color:rgba(223,139,45,.34)!important;color:var(--abs-copy)!important;box-shadow:none!important;
+}
+.abs-admin-v1509 :is(.admin-report-kpis strong,.admin-kpi-grid strong,.enterprise-kpi strong,.enterprise-mini-kpis strong){color:var(--abs-text)!important}
+.abs-admin-v1509 :is(.admin-report-kpis small,.admin-kpi-grid small,.enterprise-kpi small,.enterprise-kpi span,.enterprise-mini-kpis small){color:#8299aa!important}
+.abs-admin-v1509 .report-kpi-icon{background:rgba(22,197,237,.10)!important;color:#42d5f3!important}
+.abs-admin-v1509 .report-kpi-icon.green{background:rgba(43,219,145,.10)!important;color:#58e8aa!important}
+.abs-admin-v1509 .report-kpi-icon.red{background:rgba(240,94,105,.11)!important;color:#ff7c86!important}
+.abs-admin-v1509 .report-kpi-icon.gold,.abs-admin-v1509 .report-kpi-icon.amber{background:rgba(223,139,45,.13)!important;color:#f0b05b!important}
+.abs-admin-v1509 .report-kpi-icon.violet{background:rgba(139,108,255,.12)!important;color:#a997ff!important}
+
+/* Forms / filters. */
+.abs-admin-v1509 :is(.enterprise-filter-grid label,.admin-form-grid label,.enterprise-form-grid label,.admin-form label,.admin-row-control label,.check-label){color:#91a9ba!important}
+.abs-admin-v1509 :is(input,select,textarea){background:#031522!important;border-color:#35536a!important;color:#e1edf3!important;box-shadow:none!important;color-scheme:dark}
+.abs-admin-v1509 :is(input,select,textarea)::placeholder{color:#5f7a8f!important}
+.abs-admin-v1509 :is(input,select,textarea):focus{outline:2px solid rgba(22,197,237,.13)!important;border-color:#159bc0!important;box-shadow:0 0 0 1px rgba(22,197,237,.10)!important}
+.abs-admin-v1509 select option{background:#061827!important;color:#dce8ef!important}
+.abs-admin-v1509 .button-ghost{background:#071b2d!important;border-color:rgba(223,139,45,.48)!important;color:#d7e6ee!important;box-shadow:none!important}
+.abs-admin-v1509 .button-primary{background:linear-gradient(180deg,#20c9ed,#078eb6)!important;border-color:#24d4f4!important;color:#02121c!important;box-shadow:none!important}
+.abs-admin-v1509 .admin-range-tabs{background:#031522!important;border-color:#2b485d!important}
+.abs-admin-v1509 .admin-range-tabs a{color:#91a9ba!important}
+.abs-admin-v1509 .admin-range-tabs a.active,.abs-admin-v1509 .admin-range-tabs a:hover{background:#0b6e94!important;color:#effbff!important}
+
+/* Tables / grids — explicitly override the old #fff cell backgrounds. */
+.abs-admin-v1509 .enterprise-table{color:var(--abs-copy)!important;background:#031522!important}
+.abs-admin-v1509 .enterprise-table thead th,.abs-admin-v1509 :is(.market-table,.admin-news-table) .table-head{
+  background:#061827!important;color:#7895aa!important;border-color:rgba(223,139,45,.18)!important;
+}
+.abs-admin-v1509 .enterprise-table tbody td{
+  background:#041725!important;color:#b9cad5!important;border-color:rgba(112,141,162,.14)!important;
+}
+.abs-admin-v1509 .enterprise-table tbody tr:nth-child(even) td{background:#041a2a!important}
+.abs-admin-v1509 .enterprise-table tbody tr:hover td{background:#08243a!important}
+.abs-admin-v1509 .enterprise-table td>b,.abs-admin-v1509 .enterprise-table td>a>b,.abs-admin-v1509 .enterprise-table strong{color:#eef6fa!important}
+.abs-admin-v1509 .enterprise-table td small{color:#7891a4!important}
+.abs-admin-v1509 :is(.market-table,.admin-news-table) .table-row{background:#041725!important;color:#b6c8d4!important;border-color:rgba(112,141,162,.14)!important}
+.abs-admin-v1509 :is(.market-table,.admin-news-table) .table-row:nth-child(odd){background:#041a2a!important}
+.abs-admin-v1509 :is(.market-table,.admin-news-table) .table-row:hover{background:#08243a!important}
+.abs-admin-v1509 :is(.market-table,.admin-news-table) .table-row small{color:#748da1!important}
+.abs-admin-v1509 .enterprise-pagination,.abs-admin-v1509 .admin-market-pagination{background:#031522!important;border-color:rgba(223,139,45,.25)!important}
+.abs-admin-v1509 .abs-pagination-links>a,.abs-admin-v1509 .abs-pagination-links>span,.abs-admin-v1509 .pagination .page-link{background:#061827!important;border-color:#2d4b62!important;color:#9eb4c3!important}
+.abs-admin-v1509 .abs-pagination-links>span.current,.abs-admin-v1509 .pagination .page-item.active .page-link{background:#0c7399!important;border-color:#17b9dd!important;color:#effbff!important}
+
+/* Statuses, insight strips and list rows. */
+.abs-admin-v1509 .admin-insight-band>div{border-color:rgba(223,139,45,.18)!important}
+.abs-admin-v1509 .admin-insight-band b{color:#e9f3f8!important}
+.abs-admin-v1509 .admin-insight-band small{color:#7891a4!important}
+.abs-admin-v1509 .admin-status{background:#102638!important;color:#9fb2c1!important;border:1px solid rgba(137,165,185,.14)!important}
+.abs-admin-v1509 .admin-status.good,.abs-admin-v1509 .status-published,.abs-admin-v1509 .status-live,.abs-admin-v1509 .status-featured{background:rgba(43,219,145,.11)!important;color:#58e7aa!important;border-color:rgba(43,219,145,.25)!important}
+.abs-admin-v1509 .admin-status.danger{background:rgba(240,94,105,.11)!important;color:#ff7e88!important;border-color:rgba(240,94,105,.25)!important}
+.abs-admin-v1509 .admin-status.warn{background:rgba(223,139,45,.13)!important;color:#f0b25e!important;border-color:rgba(223,139,45,.28)!important}
+.abs-admin-v1509 .admin-status.info{background:rgba(22,197,237,.10)!important;color:#52d9f4!important;border-color:rgba(22,197,237,.25)!important}
+.abs-admin-v1509 .status-pill{background:#102638!important;color:#9fb2c1!important}
+.abs-admin-v1509 .enterprise-user-list>a,.abs-admin-v1509 :is(.renewal-priority-list>a,.content-health-list>a){border-color:rgba(112,141,162,.14)!important;color:#d9e7ef!important;background:transparent!important}
+.abs-admin-v1509 .enterprise-user-list>a:hover,.abs-admin-v1509 :is(.renewal-priority-list>a,.content-health-list>a):hover{background:#08243a!important}
+.abs-admin-v1509 .portfolio-admin-grid form{background:#041725!important;border-color:rgba(223,139,45,.28)!important}
+
+/* Chart cards across intelligence/report pages. */
+.abs-admin-v1509 .admin-chart-empty{background:#041725!important;border-color:#28475e!important;color:#7f98aa!important}
+.abs-admin-v1509 .admin-chart-empty span{color:#5d7c92!important}
+.abs-admin-v1509 .admin-chart-legend>div{border-color:#1d3549!important;color:#94a8b9!important}
+.abs-admin-v1509 .admin-chart-legend b{color:#e7f1f6!important}
+.abs-admin-v1509 .chart-donut-total{fill:#eaf4f9!important}
+
+/* Flash messages remain readable on the dark shell. */
+.abs-admin-v1509 .flash{border:1px solid #315069!important;background:#071c2e!important;color:#c8d9e4!important}
+.abs-admin-v1509 .flash-success{border-color:rgba(43,219,145,.35)!important;background:rgba(43,219,145,.08)!important;color:#8af0bd!important}
+.abs-admin-v1509 .flash-warning{border-color:rgba(223,139,45,.40)!important;background:rgba(223,139,45,.09)!important;color:#f3c47c!important}
+.abs-admin-v1509 .flash-error{border-color:rgba(240,94,105,.42)!important;background:rgba(240,94,105,.09)!important;color:#ff9ba3!important}
+
+/* Responsive tuning. */
+@media(max-width:1500px){
+  .abs-admin-v1509 .abs-exec-product-strip{grid-template-columns:1fr!important}
+  .abs-admin-v1509 .abs-exec-product-message{display:none!important}
+  .abs-admin-v1509 .abs-exec-date-form label input{width:86px!important}
+}
+@media(max-width:1200px){
+  .abs-admin-v1509 .abs-exec-topbar{padding-left:52px!important}
+  .abs-admin-v1509 .abs-exec-search{width:34vw!important}
+  .abs-admin-v1509 .abs-exec-date-form .report{display:none!important}
+}
+@media(max-width:1000px){
+  .abs-admin-v1509 .abs-exec-search{display:none!important}
+  .abs-admin-v1509 .abs-exec-top-actions{margin-left:auto!important}
+  .abs-admin-v1509 .abs-exec-product-strip{min-height:66px!important}
+}
+@media(max-width:650px){
+  .abs-admin-v1509 .abs-exec-product-strip{min-height:62px!important;padding:9px 12px!important}
+  .abs-admin-v1509 .abs-exec-product-identity b{font-size:21px!important}
+  .abs-admin-v1509 .abs-exec-oversight-body{grid-template-columns:1fr!important}
+  .abs-admin-v1509 .abs-exec-status-list{padding:0 8px 7px!important}
+}
+
+/* Remaining legacy components that previously carried light backgrounds. */
+.abs-admin-v1509 .admin-control-status>a,
+.abs-admin-v1509 .enterprise-quick-links,
+.abs-admin-v1509 .enterprise-quick-links>a,
+.abs-admin-v1509 .admin-reference-list>summary,
+.abs-admin-v1509 .admin-row-control>form,
+.abs-admin-v1509 .admin-reference-list[open]>pre,
+.abs-admin-v1509 .expiry-audience>div,
+.abs-admin-v1509 .renewal-priority-list em,
+.abs-admin-v1509 .user-level-grid,
+.abs-admin-v1509 .user-level-grid>article{
+  background:#041725!important;border-color:rgba(223,139,45,.26)!important;color:#c3d2dc!important;box-shadow:none!important;
+}
+.abs-admin-v1509 .enterprise-quick-links>a:hover{background:#08243a!important;color:#eff9fd!important}
+.abs-admin-v1509 .admin-control-status>a:hover{background:#08243a!important}
+.abs-admin-v1509 .admin-control-status :is(b,strong){color:#edf6fb!important}
+.abs-admin-v1509 .admin-control-status :is(small,em){color:#7892a5!important}
+.abs-admin-v1509 .admin-reference-list[open]>pre{color:#b9cbd6!important}
+.abs-admin-v1509 .admin-purpose-list>div{color:#9eb2c1!important}
+.abs-admin-v1509 .admin-purpose-list i{background:rgba(22,197,237,.10)!important;color:#4fd8f4!important}
+.abs-admin-v1509 .expiry-audience :is(b,strong){color:#eef6fa!important}
+.abs-admin-v1509 .expiry-audience small{color:#7892a5!important}
+.abs-admin-v1509 .admin-callout{background:#062137!important;color:#9eb4c3!important;border-color:rgba(22,197,237,.25)!important}
+.abs-admin-v1509 .admin-callout b{color:#dff6fc!important}
+.abs-admin-v1509 .renewal-priority-list em{color:#d9a457!important}
+.abs-admin-v1509 .renewal-priority-list em.urgent{background:rgba(240,94,105,.11)!important;color:#ff818b!important}
+.abs-admin-v1509 .user-level-grid>article{border-right-color:rgba(223,139,45,.18)!important}
+.abs-admin-v1509 .user-level-grid :is(strong,b){color:#edf6fb!important}
+.abs-admin-v1509 .user-level-grid :is(small,p){color:#7f97a8!important}
+.abs-admin-v1509 .admin-environment-chip,.abs-admin-v1509 .admin-account-chip{background:#041725!important;border-color:#2d4c62!important;box-shadow:none!important}
+.abs-admin-v1509 .admin-account-chip b{color:#edf6fb!important}
+.abs-admin-v1509 .admin-environment-chip small,.abs-admin-v1509 .admin-account-chip small{color:#7892a5!important}

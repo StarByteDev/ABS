@@ -69,8 +69,6 @@ class AdminUserManagementTest extends TestCase
             'description' => 'Administrator-managed plan.',
             'monthly_price' => 25,
             'currency' => 'USDT',
-            'scanner_runs_per_day' => 20,
-            'signals_per_day' => 20,
             'manual_trades_per_day' => 0,
             'auto_trades_per_day' => 0,
             'max_open_trades' => 2,

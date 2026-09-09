@@ -3,6 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#07111f">
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     <title>ABS Database Self-Repair</title>
     <style>
         :root{color-scheme:dark;--bg:#04101a;--panel:#071826;--panel2:#0a1f30;--line:#214055;--line2:#315971;--text:#f5f8fb;--muted:#9fb2c0;--cyan:#12c7de;--gold:#e7a822;--green:#6be675;--red:#ff6f79}
@@ -63,7 +65,7 @@
             </div>
 
             @if(!$recoveryEnabled)
-                <div class="warn" style="margin-top:16px;margin-bottom:0"><strong>Recovery key not detected.</strong> Add <code>ABS_RECOVERY_KEY=your-long-private-key</code> to <code>Laravel_ABS/.env</code>. On shared hosting, ABS V14.9.2 can read this key directly from the private .env even when Laravel configuration was previously cached.</div>
+                <div class="warn" style="margin-top:16px;margin-bottom:0"><strong>Recovery key not detected.</strong> Add <code>ABS_RECOVERY_KEY=your-long-private-key</code> to <code>Laravel_ABS/.env</code>. On shared hosting, ABS V15.0.9 can read this key directly from the private .env even when Laravel configuration was previously cached.</div>
             @endif
 
             <form class="form" method="post" action="/api/recovery/repair">
@@ -94,7 +96,7 @@
         @endif
 
         <div class="footer">
-            <span>ABS V14.9.2 protected database self-repair</span>
+            <span>ABS V15.0.9 protected database self-repair</span>
             <a href="/api/recovery">Advanced recovery / restore backup →</a>
         </div>
     </div>

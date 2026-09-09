@@ -6,15 +6,12 @@
     $capabilityEnabled = fn (string $key) => (bool) data_get($capabilities ?? [], $key.'.enabled', false);
     $canAlerts = $capabilityEnabled('alerts');
     $canExecute = ($manualAllowed ?? false) || ($automaticAllowed ?? false);
-    $pairLocked = (bool) data_get($pairSelectionLock ?? [], 'locked', false);
-    $pairLockHours = (int) data_get($pairSelectionLock ?? [], 'lock_hours', 50);
-    $eligibleSelectedPairs = array_values(array_intersect((array) ($settings->selected_pairs ?? []), $pairs->pluck('symbol')->all()));
 @endphp
 <div class="pulse-page-hero">
     <div>
         <span>TRADING SETUP</span>
         <h1>Set up Pulse in one place</h1>
-        <p>Follow the steps below from practice/live mode through Binance, risk and markets. Advanced controls remain available for professional traders without making the normal setup difficult.</p>
+        <p>Follow the steps below from practice/live mode through Binance and risk controls. ABS manages the signal market universe, strategies, timeframes and qualification threshold automatically.</p>
     </div>
     <div class="pulse-actions"><?php if ($plan): ?><a class="pulse-button secondary" href="{{ route('pulse.plans') }}">{{ $plan->name }}</a><?php endif; ?><a class="pulse-button secondary" href="{{ route('pulse.risk.index') }}">Risk Controls</a></div>
 </div>
@@ -76,7 +73,6 @@
                 <div class="pulse-field full"><label>Sizing mode</label><select name="sizing_mode"><option value="fixed_notional" @selected($settings->sizing_mode==='fixed_notional')>Fixed USDT notional</option><option value="fixed_quantity" @selected($settings->sizing_mode==='fixed_quantity')>Fixed asset quantity</option></select></div>
                 <div class="pulse-field" data-sizing="fixed_notional"><label>Fixed notional (USDT)</label><input type="number" name="fixed_notional" min="1" step="0.01" value="{{ $settings->fixed_notional }}"></div>
                 <div class="pulse-field" data-sizing="fixed_quantity"><label>Fixed quantity</label><input type="number" name="fixed_quantity" min="0" step="0.00000001" value="{{ $settings->fixed_quantity }}"></div>
-                <div class="pulse-field"><label>Minimum signal score</label><input type="number" name="minimum_signal_score" min="0" max="100" step="0.1" value="{{ $settings->minimum_signal_score }}"></div>
                 <div class="pulse-field"><label>Maximum open positions</label><?php if ((int)($plan?->max_open_trades ?? 0) > 0): ?><input type="number" name="max_open_positions" min="1" max="{{ (int)$plan->max_open_trades }}" value="{{ min((int)$settings->max_open_positions,(int)$plan->max_open_trades) }}"><?php else: ?><input type="hidden" name="max_open_positions" value="1"><input value="Not included in this plan" disabled><?php endif; ?></div>
             </div>
             <p class="pulse-legal-note">Plan maximum open positions: <b>{{ (int)($plan?->max_open_trades ?? 0) > 0 ? $plan->max_open_trades : 'Not included' }}</b>.</p>
@@ -95,37 +91,16 @@
             <div class="pulse-warning"><b>Exchange-side protection</b><span>When execution is enabled and an entry fills, Pulse attempts to place protection orders. If protection cannot be confirmed, Pulse records the failure and can trigger its emergency-close workflow.</span></div>
         </article>
 
-        <article class="pulse-panel pulse-market-selector {{ $pairLocked ? 'is-selection-locked' : '' }}" id="selected-markets" data-market-selector data-limit="{{ (int)($plan?->max_selected_pairs ?? 5) }}" data-locked="{{ $pairLocked ? '1' : '0' }}">
-            <div class="pulse-market-selector-head">
-                <div><span class="pulse-kicker">BINANCE USD-M FUTURES</span><h2>Trading Markets</h2><p>Search the Binance Futures catalog and choose the markets you want Pulse to monitor and scan. Your package controls availability and the maximum number you can save.</p></div>
-                <div class="pulse-market-count"><strong data-market-selected-count>{{ count($eligibleSelectedPairs) }}</strong><span>/ {{ (int)($plan?->max_selected_pairs ?? 5) }} selected</span></div>
-            </div>
-            <div class="pulse-market-toolbar">
-                <label class="pulse-market-search">@include('pulse.partials.icon',['name'=>'search'])<input type="search" placeholder="Search BTC, ETH, SOL..." autocomplete="off" data-market-search></label>
-                <div class="pulse-market-quotes" data-market-quotes><button type="button" class="active" data-quote="all">All</button>@foreach(collect($pairs)->pluck('quote_asset')->filter()->unique()->sort() as $quote)<button type="button" data-quote="{{ $quote }}">{{ $quote }}</button>@endforeach</div>
-                <div class="pulse-market-actions"><button type="button" class="pulse-button secondary" data-market-select-all @disabled($pairLocked)>Select All</button><button type="button" class="pulse-button secondary" data-market-clear @disabled($pairLocked)>Clear All</button><button type="button" class="pulse-button secondary" data-market-popular @disabled($pairLocked)>Popular</button></div>
-            </div>
-            @if($pairLocked)
-                <div class="pulse-market-lock-notice">
-                    @include('pulse.partials.icon',['name'=>'lock'])
-                    <div><b>Market selection locked</b><span>Your saved pairs stay fixed for {{ $pairLockHours }} hours. You can change them again in {{ data_get($pairSelectionLock,'remaining_human','the remaining lock period') }} @if($settings->pair_selection_locked_until) ({{ $settings->pair_selection_locked_until->format('d M Y, H:i') }}) @endif.</span></div>
-                </div>
-                @foreach($eligibleSelectedPairs as $selectedSymbol)<input type="hidden" name="selected_pairs[]" value="{{ $selectedSymbol }}">@endforeach
-            @endif
-            <div class="pulse-market-feedback {{ $pairLocked ? 'locked' : '' }}" data-market-feedback>{{ $pairLocked ? 'You can search and review markets now; selection changes unlock automatically after the cooldown.' : 'Choose up to '.(int)($plan?->max_selected_pairs ?? 5).' execution/watch markets included in '.($plan?->name ?? 'your plan').'. Run Market Scan evaluates these selected markets. Saving a changed selection locks it for '.$pairLockHours.' hours.' }}</div>
-            <div class="pulse-market-grid">
-                <?php foreach ($pairs as $pair): $isSelected = in_array($pair->symbol,$settings->selected_pairs ?? []); ?>
-                <label class="pulse-market-option" data-market-option data-symbol="{{ strtoupper($pair->symbol) }}" data-base="{{ strtoupper($pair->base_asset) }}" data-quote="{{ strtoupper($pair->quote_asset) }}">
-                    <input type="checkbox" @if(! $pairLocked) name="selected_pairs[]" @endif value="{{ $pair->symbol }}" @checked($isSelected) @disabled($pairLocked)>
-                    <span class="pulse-market-check">✓</span>
-                    <span class="pulse-market-asset"><b>{{ $pair->base_asset }}</b><small>/ {{ $pair->quote_asset }}</small></span>
-                    <span class="pulse-market-symbol">{{ $pair->symbol }}</span>
-                </label>
-                <?php endforeach; ?>
-            </div>
-            <div class="pulse-market-footer"><span><b>{{ number_format($pairs->count()) }}</b> plan-eligible Binance Futures markets available.</span><span>{{ $pairLocked ? 'Selection is protected by the 50-hour change cooldown.' : 'Catalog is synchronized from Binance exchange information by Admin.' }}</span></div>
-        </article>
-    </div>
+        <article class="pulse-panel" id="selected-markets">
+        <div class="pulse-panel-head"><div><span>AUTOMATIC INTELLIGENCE</span><h2>Markets, strategies &amp; thresholds</h2></div><b>Admin controlled</b></div>
+        <p class="pulse-legal-note">ABS V15 automatically scans every market included in your Pulse package across 15M and 4H. Strategy selection, weighting and the minimum qualification score are managed by Admin so signal quality cannot be changed by user settings.</p>
+        <div class="pulse-availability-list">
+            <span><b>Package market universe</b><em>{{ number_format($pairs->count()) }} markets</em></span>
+            <span><b>Timeframes</b><em>15M + 4H automatic</em></span>
+            <span><b>Strategies</b><em>Plan/Admin controlled</em></span>
+            <span><b>Signal qualification</b><em>Admin quality rules</em></span>
+        </div>
+    </article>
 
     <article class="pulse-panel">
         <div class="pulse-grid pulse-grid-two" style="margin:0">

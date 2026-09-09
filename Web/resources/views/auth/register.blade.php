@@ -98,7 +98,7 @@
     <label class="auth-checkbox auth-registration-consent" for="terms">
         <input id="terms" type="checkbox" name="terms" value="1" required @checked(old('terms'))>
         <span aria-hidden="true"></span>
-        <b>I agree to the <a href="{{ route('legal.terms') }}" target="_blank" rel="noopener">Terms &amp; Conditions</a> and <a href="{{ route('legal.privacy') }}" target="_blank" rel="noopener">Privacy Policy</a>.</b>
+        <b>I agree to the <a href="{{ route('legal.terms') }}" target="_blank" rel="noopener">Terms &amp; Conditions</a> and <a href="{{ route('legal.privacy') }}" target="_blank" rel="noopener">Privacy Policy</a>, and acknowledge the <a href="{{ route('legal.risk') }}" target="_blank" rel="noopener">Risk Disclosure</a> and <a href="{{ route('legal.disclaimer') }}" target="_blank" rel="noopener">Market Disclaimer</a>.</b>
     </label>
 
     <button class="auth-submit" type="submit" data-busy-label="Creating your secure account…">

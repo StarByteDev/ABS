@@ -51,11 +51,11 @@ class HomeController extends Controller
                 ->orderBy('sort_order')
                 ->orderBy('name')
                 ->take(4)
-                ->get(['name', 'timeframe', 'minimum_score']),
+                ->get(['name', 'timeframe']),
             'plans' => PulsePlan::where('is_active', true)
                 ->orderBy('sort_order')
                 ->orderBy('name')
-                ->get(['id', 'name', 'slug', 'description', 'monthly_price', 'currency', 'access_days', 'badge', 'is_featured', 'is_trial', 'is_public', 'request_enabled']),
+                ->get(['id', 'name', 'slug', 'description', 'monthly_price', 'currency', 'request_enabled', 'requires_payment', 'access_days', 'max_selected_pairs', 'badge', 'is_featured', 'is_trial', 'is_public']),
         ]);
     }
 }

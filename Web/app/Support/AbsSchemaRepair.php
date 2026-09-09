@@ -33,7 +33,7 @@ class AbsSchemaRepair
         'news_articles' => ['id', 'title', 'slug', 'excerpt', 'body', 'category', 'image_url', 'source_name', 'source_url', 'author_name', 'status', 'is_featured', 'published_at', 'created_at', 'updated_at', 'deleted_at'],
         'research_reports' => ['id', 'title', 'slug', 'summary', 'body', 'category', 'asset_symbol', 'risk_level', 'image_url', 'status', 'is_featured', 'published_at', 'created_at', 'updated_at', 'deleted_at'],
         'learning_articles' => ['id', 'title', 'slug', 'excerpt', 'body', 'category', 'level', 'duration_minutes', 'status', 'is_featured', 'published_at', 'created_at', 'updated_at', 'deleted_at'],
-        'economic_events' => ['id', 'title', 'country', 'currency', 'impact', 'event_at', 'previous_value', 'forecast_value', 'actual_value', 'source', 'created_at', 'updated_at'],
+        'economic_events' => ['id', 'title', 'country', 'currency', 'impact', 'event_at', 'previous_value', 'forecast_value', 'actual_value', 'source', 'provider_event_id', 'source_url', 'crypto_impact', 'easy_explanation', 'crypto_impact_summary', 'is_crypto_relevant', 'synced_at', 'created_at', 'updated_at'],
         'site_settings' => ['id', 'key', 'value', 'type', 'group'],
         'community_posts' => ['id', 'user_id', 'title', 'body', 'category', 'sentiment', 'status', 'is_pinned', 'created_at', 'updated_at', 'deleted_at'],
         'community_comments' => ['id', 'community_post_id', 'user_id', 'body', 'status', 'created_at', 'updated_at'],
@@ -461,6 +461,13 @@ class AbsSchemaRepair
                 $table->string('forecast_value')->nullable();
                 $table->string('actual_value')->nullable();
                 $table->string('source')->nullable();
+                $table->string('provider_event_id', 190)->nullable()->index();
+                $table->string('source_url', 500)->nullable();
+                $table->string('crypto_impact', 20)->nullable()->index();
+                $table->text('easy_explanation')->nullable();
+                $table->text('crypto_impact_summary')->nullable();
+                $table->boolean('is_crypto_relevant')->default(true)->index();
+                $table->timestamp('synced_at')->nullable()->index();
                 $table->timestamps();
             });
         } else {
@@ -474,6 +481,13 @@ class AbsSchemaRepair
                 'forecast_value' => fn (Blueprint $t) => $t->string('forecast_value')->nullable(),
                 'actual_value' => fn (Blueprint $t) => $t->string('actual_value')->nullable(),
                 'source' => fn (Blueprint $t) => $t->string('source')->nullable(),
+                'provider_event_id' => fn (Blueprint $t) => $t->string('provider_event_id', 190)->nullable(),
+                'source_url' => fn (Blueprint $t) => $t->string('source_url', 500)->nullable(),
+                'crypto_impact' => fn (Blueprint $t) => $t->string('crypto_impact', 20)->nullable(),
+                'easy_explanation' => fn (Blueprint $t) => $t->text('easy_explanation')->nullable(),
+                'crypto_impact_summary' => fn (Blueprint $t) => $t->text('crypto_impact_summary')->nullable(),
+                'is_crypto_relevant' => fn (Blueprint $t) => $t->boolean('is_crypto_relevant')->default(true),
+                'synced_at' => fn (Blueprint $t) => $t->timestamp('synced_at')->nullable(),
                 'created_at' => fn (Blueprint $t) => $t->timestamp('created_at')->nullable(),
                 'updated_at' => fn (Blueprint $t) => $t->timestamp('updated_at')->nullable(),
             ]);

@@ -82,8 +82,6 @@ Route::prefix('v1')->group(function () {
             Route::get('/dashboard', [PulseController::class, 'dashboard']);
             Route::get('/usage', [PulseController::class, 'usage']);
             Route::get('/pairs', [PulseController::class, 'pairs']);
-            Route::get('/strategies', [PulseController::class, 'strategies'])->middleware('pulse.capability:signals');
-            Route::get('/strategies/overview', [PulseController::class, 'strategiesOverview'])->middleware('pulse.capability:signals');
             Route::get('/execution/readiness', [PulseController::class, 'executionReadiness'])->middleware('pulse.capability:signals');
             Route::get('/execution/ticket', [PulseController::class, 'executionTicket'])->middleware('pulse.capability:signals');
             Route::get('/positions', [PulseController::class, 'positions'])->middleware('pulse.capability:orders');
@@ -98,6 +96,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/signals/overview', [PulseController::class, 'signalsOverview'])->middleware('pulse.capability:signals');
             Route::patch('/signals/{signal}/dismiss', [PulseController::class, 'dismissSignal'])->middleware('pulse.capability:signals');
             Route::post('/signals/{signal}/execute', [PulseController::class, 'executeSignal'])->middleware(['pulse.capability:signals', 'pulse.capability:manual_trading']);
+            Route::post('/signals/{signal}/share', [PulseController::class, 'shareSignal'])->middleware('pulse.capability:signals');
+            Route::post('/signals/{signal}/explain', [PulseController::class, 'explainSignal'])->middleware('pulse.capability:signals');
             Route::get('/signals/{signal}', [PulseController::class, 'signal'])->middleware('pulse.capability:signals');
             Route::get('/trades', [PulseController::class, 'trades'])->middleware('pulse.capability:trades');
             Route::get('/trades/{trade}', [PulseController::class, 'trade'])->middleware('pulse.capability:trades');
@@ -107,7 +107,6 @@ Route::prefix('v1')->group(function () {
             Route::get('/orders', [PulseController::class, 'orders'])->middleware('pulse.capability:orders');
             Route::get('/reports', [PulseController::class, 'reports'])->middleware('pulse.capability:reports');
             Route::get('/reports/signals', [PulseController::class, 'signalPerformance'])->middleware('pulse.capability:reports');
-            Route::get('/reports/strategies', [PulseController::class, 'strategyPerformance'])->middleware('pulse.capability:reports');
             Route::get('/reports/learning', [PulseController::class, 'learningInsights'])->middleware('pulse.capability:reports');
             Route::get('/market-data/health', [PulseController::class, 'marketDataHealth'])->middleware('pulse.capability:scanner');
             Route::get('/market-data/prices', [PulseController::class, 'marketPrices'])->middleware('pulse.capability:scanner');

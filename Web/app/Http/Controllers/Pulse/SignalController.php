@@ -14,9 +14,7 @@ class SignalController extends Controller
     public function index(Request $request, PulsePageDataService $pages)
     {
         return view('pulse.signals.index', [
-            'page' => $pages->signals($request->user(), $request->only([
-                'status', 'direction', 'symbol', 'timeframe', 'strategy', 'min_score', 'selected',
-            ])),
+            'page' => $pages->signals($request->user(), $request->only(['status','selected'])),
         ]);
     }
 

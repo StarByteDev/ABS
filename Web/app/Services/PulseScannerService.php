@@ -7,9 +7,12 @@ use App\Models\PulsePair;
 use App\Models\PulseScannerRun;
 use App\Models\PulseSignal;
 use App\Models\PulseStrategy;
+use App\Models\PulseSystemSetting;
 use App\Models\PulseUserSetting;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use RuntimeException;
 
 class PulseScannerService
@@ -23,11 +26,29 @@ class PulseScannerService
         private readonly PulseAccessService $access,
         private readonly PulsePairAccessService $pairAccess,
         private readonly PulseSignalThresholdService $thresholds,
-        private readonly PulseUsageService $usage,
         private readonly BrandedMailService $mail,
     ) {}
 
     public function run(?User $user = null, ?array $symbols = null, ?string $timeframe = null): PulseScannerRun
+    {
+        if (! $user) {
+            return $this->executeRun($user, $symbols, $timeframe);
+        }
+
+        $ttlSeconds = max(360, ((int) config('pulse.scanner.stale_run_minutes', 15) * 60) + 120);
+        $lock = Cache::lock('pulse:best-signal:user:'.$user->id, $ttlSeconds);
+        if (! $lock->get()) {
+            throw new RuntimeException('A Find Best Signal request is already running for this account. Please wait for it to finish.');
+        }
+
+        try {
+            return $this->executeRun($user, $symbols, $timeframe);
+        } finally {
+            try { $lock->release(); } catch (\Throwable) {}
+        }
+    }
+
+    private function executeRun(?User $user = null, ?array $symbols = null, ?string $timeframe = null): PulseScannerRun
     {
         if ($user) {
             $this->access->assertActive($user);
@@ -36,6 +57,10 @@ class PulseScannerService
             }
         }
 
+        // ABS V15: the user-facing scanner is one-click. Users do not select
+        // pair, strategy, timeframe, threshold or technical filters. The
+        // existing engine still evaluates its unchanged 15m/4h logic internally.
+        if ($user) $timeframe = 'all';
         $timeframe ??= (string) config('pulse.scanner.timeframe', '15m');
         $timeframe = strtolower(trim($timeframe));
         // Protect upgrades from legacy .env values such as 1h: V14.8.17 scanner architecture is 15m/4h only.
@@ -47,7 +72,7 @@ class PulseScannerService
         $staleMinutes = max(5, (int) config('pulse.scanner.stale_run_minutes', 15));
         $safetyMax = max(1000, (int) config('pulse.scanner.max_pairs_per_run', 1000), (int) ($plan?->max_selected_pairs ?? 0));
 
-        // Interrupted AJAX requests must never hold a user's daily quota forever.
+        // Release interrupted/stale scanner runs so they cannot block a future Best Signal request.
         PulseScannerRun::query()
             ->where('status', 'running')
             ->where('created_at', '<', now()->subMinutes($staleMinutes))
@@ -64,12 +89,7 @@ class PulseScannerService
                 ->where('created_at', '>=', now()->subMinutes($staleMinutes))
                 ->exists();
             if ($alreadyRunning) {
-                throw new RuntimeException('A market scan is already running for this account. Please wait for it to finish.');
-            }
-
-            $todayUsage = $this->usage->today($user);
-            if (! data_get($todayUsage, 'scans.unlimited', false) && (int) data_get($todayUsage, 'scans.remaining', 0) <= 0) {
-                throw new RuntimeException('The daily Pulse scanner limit has been reached for the current plan.');
+                throw new RuntimeException('A Find Best Signal request is already running for this account. Please wait for it to finish.');
             }
         }
 
@@ -80,7 +100,9 @@ class PulseScannerService
             ->where('expires_at', '<=', now())
             ->update(['status' => 'expired']);
 
-        $explicitSymbols = is_array($symbols) && $symbols !== [];
+        // Targeted symbols remain available only to internal/system scans. A
+        // signed-in user always scans the complete Admin/package-defined universe.
+        $explicitSymbols = ! $user && is_array($symbols) && $symbols !== [];
         $requestedSymbols = $explicitSymbols
             ? array_values(array_unique(array_filter(array_map(fn ($symbol) => strtoupper(trim((string) $symbol)), $symbols))))
             : [];
@@ -93,30 +115,9 @@ class PulseScannerService
             $allowed = $this->pairAccess->allowedPairs($user)->values();
             $allowedSymbols = $allowed->pluck('symbol')->map(fn ($symbol) => strtoupper((string) $symbol))->all();
 
-            if ($explicitSymbols) {
-                $notAllowed = array_values(array_diff($requestedSymbols, $allowedSymbols));
-                if ($notAllowed !== []) {
-                    throw new RuntimeException('One or more requested pairs are not included in the current Pulse plan.');
-                }
-                $pairs = $allowed->whereIn('symbol', $requestedSymbols)->values();
-            } else {
-                // V14.8.7: a normal user scan follows the markets the user actually
-                // selected in Pulse Settings, while the package controls which markets
-                // may be selected and the maximum selection size.
-                $selectedSymbols = collect($settings?->selected_pairs ?? [])
-                    ->map(fn ($symbol) => strtoupper(trim((string) $symbol)))
-                    ->filter()
-                    ->unique()
-                    ->intersect($allowedSymbols)
-                    ->values()
-                    ->all();
-
-                if ($selectedSymbols === []) {
-                    throw new RuntimeException('No trading markets are selected. Open Pulse Settings → Selected Markets, choose at least one package-approved pair, save it, then run the scan again.');
-                }
-
-                $pairs = $allowed->whereIn('symbol', $selectedSymbols)->values();
-            }
+            // ABS V15: Admin/package market access is authoritative. No user
+            // market selection is consulted by the scanner.
+            $pairs = $allowed->values();
         } else {
             $query = PulsePair::query()->where('is_enabled', true)->orderBy('sort_order')->orderBy('symbol');
             if ($explicitSymbols) $query->whereIn('symbol', $requestedSymbols);
@@ -127,7 +128,7 @@ class PulseScannerService
             throw new RuntimeException("The selected market set contains {$pairs->count()} markets, above the scanner safety ceiling of {$safetyMax}. Reduce the selected markets or raise the server ceiling.");
         }
         if ($pairs->isEmpty()) {
-            throw new RuntimeException('No selected package-approved Pulse pairs are available for scanning.');
+            throw new RuntimeException('No Admin/package-approved Pulse markets are available for scanning.');
         }
 
         $strategies = $this->strategiesFor($user);
@@ -150,13 +151,11 @@ class PulseScannerService
         $results = [];
         $created = 0;
         $available = 0;
+        $qualifiedCandidates = [];
+        $bestSignal = null;
         $batchSize = max(1, min(100, (int) config('pulse.scanner.batch_concurrency', 25)));
         $candleLimit = (int) config('pulse.scanner.candle_limit', 120);
         $threshold = $this->thresholds->score($user, $settings);
-        $signalLimit = max(0, (int) ($plan?->signals_per_day ?? 0));
-        $signalsUsedToday = ($user && $signalLimit > 0)
-            ? (int) data_get($this->usage->today($user), 'signals.used', 0)
-            : 0;
 
         // V14.8.17: scanner reads the shared central market snapshot. It does not
         // call Binance per user. The minute scheduler owns upstream market I/O.
@@ -209,7 +208,12 @@ class PulseScannerService
                             $analysis['change_percent'] = $ticker && is_numeric($ticker->change_percent_24h ?? null)
                                 ? (float) $ticker->change_percent_24h
                                 : null;
-                            $results[] = $analysis;
+                            // User-facing scanner-run summaries must never expose
+                            // unpaid technical entries/SL/TP or strategy evidence. Internal
+                            // system scans retain the legacy full analysis payload.
+                            $results[] = $user
+                                ? ['symbol' => $symbol, 'timeframe' => $scanTimeframe, 'status' => 'evaluated']
+                                : $analysis;
                             $available++;
 
                             if ($analysis['direction'] === 'NEUTRAL' || $analysis['score'] < $threshold) {
@@ -218,18 +222,6 @@ class PulseScannerService
 
                             $key = $symbol.'|'.strtoupper((string) $analysis['direction']).'|'.$scanTimeframe;
                             $existingSignal = $activeSignals->get($key);
-                            if ($existingSignal instanceof PulseSignal) {
-                                // Price architecture rule: a generated signal is immutable. A later
-                                // scan may discover the same setup, but must not rewrite its frozen
-                                // entry/SL/TP, strategy version, score, reliability or confidence.
-                                continue;
-                            }
-
-                            // Reaching the daily signal allowance stops new signal
-                            // creation only; it must not stop evaluation of selected markets.
-                            if ($signalLimit > 0 && ($signalsUsedToday + $created) >= $signalLimit) {
-                                continue;
-                            }
 
                             $generatedAt = now();
                             $strategySnapshot = array_values((array) ($analysis['strategies'] ?? []));
@@ -239,52 +231,28 @@ class PulseScannerService
                             $reliability = (float) ($learning['score'] ?? 50);
                             $confidence = round(((float) $analysis['score'] * 0.75) + ($reliability * 0.25), 2);
                             $tpLevels = $this->takeProfitLevels($pair, $analysis);
-                            $fingerprint = hash('sha256', implode('|', [
-                                $symbol, $scanTimeframe, $analysis['direction'], $analysis['entry_price'], $analysis['stop_loss'],
-                                implode(',', $tpLevels), $strategyVersion, $generatedAt->format('Y-m-d H:i'),
-                            ]));
                             $analysis['market_regime'] = $marketRegime;
                             $analysis['learning_evidence'] = $learning;
 
-                            $signal = PulseSignal::create([
-                                'user_id' => $user?->id,
-                                'scanner_run_id' => $run->id,
+                            // Keep every technical evaluation internal, then rank the
+                            // qualified candidates. Only the single strongest result is
+                            // converted into a user-facing Best Signal after all markets
+                            // and both timeframes have been evaluated.
+                            $qualifiedCandidates[] = [
+                                'pair' => $pair,
                                 'symbol' => $symbol,
                                 'timeframe' => $scanTimeframe,
-                                'direction' => $analysis['direction'],
-                                'entry_price' => $analysis['entry_price'],
-                                'stop_loss' => $analysis['stop_loss'],
-                                'take_profit' => $analysis['take_profit'],
-                                'take_profit_levels' => $tpLevels,
-                                'score' => $analysis['score'],
-                                'technical_score' => $analysis['score'],
-                                'reliability_score' => $reliability,
-                                'confidence_score' => $confidence,
-                                'confidence_label' => $this->confidenceLabel($confidence),
-                                'status' => 'active',
-                                'strategy_breakdown' => $this->signalBreakdown($analysis),
+                                'analysis' => $analysis,
                                 'strategy_snapshot' => $strategySnapshot,
                                 'strategy_version' => $strategyVersion,
-                                'signal_fingerprint' => $fingerprint,
+                                'market_regime' => $marketRegime,
+                                'learning' => $learning,
+                                'reliability' => $reliability,
+                                'confidence' => $confidence,
+                                'tp_levels' => $tpLevels,
+                                'existing_signal' => $existingSignal instanceof PulseSignal ? $existingSignal : null,
                                 'generated_at' => $generatedAt,
-                                'expires_at' => $generatedAt->copy()->addMinutes((int) config('pulse.scanner.signal_expiry_minutes', 90)),
-                            ]);
-                            $this->validations->ensureValidation($signal);
-                            $created++;
-                            $activeSignals->put($key, $signal);
-
-                            if ($user && ($settings?->notification_preferences['signals'] ?? true)) {
-                                PulseAlert::create([
-                                    'user_id' => $user->id,
-                                    'type' => 'signal',
-                                    'title' => "{$signal->direction} {$signal->timeframe} setup detected",
-                                    'message' => "{$signal->symbol} {$signal->timeframe} qualified with a {$signal->score} strategy score. Review the setup before execution.",
-                                    'severity' => 'info',
-                                    'action_url' => route('pulse.signals.show', $signal),
-                                    'data' => ['signal_id' => $signal->id, 'symbol' => $signal->symbol, 'timeframe' => $signal->timeframe],
-                                ]);
-                                $this->mail->qualifiedSignal($user, $signal);
-                            }
+                            ];
                         } catch (\Throwable $e) {
                             $results[] = [
                                 'symbol' => $symbol,
@@ -299,13 +267,89 @@ class PulseScannerService
             }
 
             if ($available === 0) {
-                throw new RuntimeException("Central candle buffers could not be evaluated for any of the {$pairs->count()} selected markets. This failed run was not counted against the daily scan allowance.");
+                throw new RuntimeException("Central candle buffers could not be evaluated for any of the {$pairs->count()} Admin/package markets. No signal was created.");
+            }
+
+            if ($qualifiedCandidates !== []) {
+                usort($qualifiedCandidates, static function (array $a, array $b): int {
+                    $byConfidence = ((float) $b['confidence']) <=> ((float) $a['confidence']);
+                    if ($byConfidence !== 0) return $byConfidence;
+                    $byTechnical = ((float) data_get($b, 'analysis.score', 0)) <=> ((float) data_get($a, 'analysis.score', 0));
+                    if ($byTechnical !== 0) return $byTechnical;
+                    return ((float) $b['reliability']) <=> ((float) $a['reliability']);
+                });
+
+                $winner = $qualifiedCandidates[0];
+                $existing = $winner['existing_signal'];
+                if ($existing instanceof PulseSignal) {
+                    $bestSignal = $existing;
+                    if (! $bestSignal->unlocked_at) {
+                        $bestSignal->forceFill(['unlocked_at' => now()])->save();
+                    }
+                } else {
+                    // V15.1 direct-USDT architecture: Best Signal is included with an active package.
+                    $bestSignal = DB::transaction(function () use ($winner, $user, $run): PulseSignal {
+                        $analysis = $winner['analysis'];
+                        $generatedAt = $winner['generated_at'];
+                        $fingerprint = hash('sha256', implode('|', [
+                            $winner['symbol'], $winner['timeframe'], $analysis['direction'], $analysis['entry_price'], $analysis['stop_loss'],
+                            implode(',', $winner['tp_levels']), $winner['strategy_version'], $generatedAt->format('Y-m-d H:i'),
+                        ]));
+
+                        $signal = PulseSignal::create([
+                            'user_id' => $user?->id,
+                            'scanner_run_id' => $run->id,
+                            'symbol' => $winner['symbol'],
+                            'timeframe' => $winner['timeframe'],
+                            'direction' => $analysis['direction'],
+                            'entry_price' => $analysis['entry_price'],
+                            'stop_loss' => $analysis['stop_loss'],
+                            'take_profit' => $analysis['take_profit'],
+                            'take_profit_levels' => $winner['tp_levels'],
+                            'score' => $analysis['score'],
+                            'technical_score' => $analysis['score'],
+                            'reliability_score' => $winner['reliability'],
+                            'confidence_score' => $winner['confidence'],
+                            'confidence_label' => $this->confidenceLabel($winner['confidence']),
+                            'status' => 'active',
+                            'strategy_breakdown' => $this->signalBreakdown($analysis),
+                            'strategy_snapshot' => $winner['strategy_snapshot'],
+                            'strategy_version' => $winner['strategy_version'],
+                            'signal_fingerprint' => $fingerprint,
+                            'generated_at' => $generatedAt,
+                            'expires_at' => $generatedAt->copy()->addMinutes((int) config('pulse.scanner.signal_expiry_minutes', 90)),
+                            'unlocked_at' => now(),
+                        ]);
+                        $this->validations->ensureValidation($signal);
+                        return $signal;
+                    }, 5);
+
+                    $created = 1;
+
+                    if ($user && ($settings?->notification_preferences['signals'] ?? true)) {
+                        try {
+                            PulseAlert::create([
+                                'user_id' => $user->id,
+                                'type' => 'signal',
+                                'title' => "Best Signal: {$bestSignal->direction} {$bestSignal->symbol}",
+                                'message' => "ABS reviewed the Admin-defined market universe across 15M and 4H. {$bestSignal->symbol} {$bestSignal->timeframe} ranked highest with {$bestSignal->confidence_score} confidence.",
+                                'severity' => 'info',
+                                'action_url' => route('pulse.signals.show', $bestSignal),
+                                'data' => ['signal_id' => $bestSignal->id, 'symbol' => $bestSignal->symbol, 'timeframe' => $bestSignal->timeframe, 'access_model' => 'active_package'],
+                            ]);
+                            $this->mail->qualifiedSignal($user, $bestSignal);
+                        } catch (\Throwable $sideEffectError) {
+                            $results[] = ['type' => 'warning', 'scope' => 'notification', 'message' => $sideEffectError->getMessage()];
+                        }
+                    }
+                }
             }
 
             $run->update([
                 'status' => 'completed',
                 'pairs_scanned' => $pairs->count(),
                 'signals_created' => $created,
+                'best_signal_id' => $bestSignal?->id,
                 'completed_at' => now(),
                 'summary' => $results,
                 'error_message' => null,
@@ -316,18 +360,54 @@ class PulseScannerService
                 'market_timeframes_evaluated' => $available,
                 'market_timeframes_unavailable' => max(0, ($pairs->count() * count($scanTimeframes)) - $available),
                 'signals_created' => $created,
+                'qualified_candidates' => count($qualifiedCandidates),
+                'best_signal_id' => $bestSignal?->id,
                 'timeframe' => $runTimeframe,
                 'timeframes' => $scanTimeframes,
-                'selected_market_scan' => ! $explicitSymbols,
+                'admin_universe_scan' => (bool) $user,
                 'effective_minimum_score' => $threshold,
             ]);
 
-            return $run->fresh('signals');
+            return $run->fresh(['signals', 'bestSignal']);
         } catch (\Throwable $e) {
+            // If the Best Signal transaction already committed, preserve it as a
+            // successful unlock. Never tell the client to retry a completed action.
+            if ($bestSignal instanceof PulseSignal) {
+                $created = max(1, $created);
+                try {
+                    $run->update([
+                        'status' => 'completed',
+                        'signals_created' => $created,
+                        'best_signal_id' => $bestSignal->id,
+                        'completed_at' => now(),
+                        'summary' => array_merge($results, [[
+                            'type' => 'warning',
+                            'scope' => 'post_unlock',
+                            'message' => $e->getMessage(),
+                        ]]),
+                        'error_message' => null,
+                    ]);
+                } catch (\Throwable) {
+                    // The committed signal remains authoritative.
+                }
+
+                try {
+                    $this->audit->record('scanner.completed_with_warning', $user, 'PulseScannerRun', $run->id, $settings?->environment, [
+                        'best_signal_id' => $bestSignal->id,
+                        'warning' => $e->getMessage(),
+                    ]);
+                } catch (\Throwable) {
+                    // Audit persistence must not invalidate a committed signal unlock.
+                }
+
+                return $run->fresh(['signals', 'bestSignal']);
+            }
+
             $run->update([
                 'status' => 'failed',
                 'pairs_scanned' => count($results),
                 'signals_created' => $created,
+                'best_signal_id' => null,
                 'completed_at' => now(),
                 'summary' => $results,
                 'error_message' => $e->getMessage(),

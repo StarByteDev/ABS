@@ -13,8 +13,13 @@ class PulsePairAccessService
         $plan = $user->pulsePlan();
         $query = PulsePair::query()->where('is_enabled', true)->orderBy('sort_order')->orderBy('symbol');
 
-        if (! $plan || ($plan->pair_access_mode ?: 'all') === 'all') {
+        if (! $plan) {
             return $query->get();
+        }
+
+        $marketLimit = max(1, (int) ($plan->max_selected_pairs ?: 1));
+        if (($plan->pair_access_mode ?: 'all') === 'all') {
+            return $query->limit($marketLimit)->get();
         }
 
         $ids = $plan->pairs()->wherePivot('is_enabled', true)->pluck('pulse_pairs.id');
@@ -22,7 +27,7 @@ class PulsePairAccessService
             return new Collection();
         }
 
-        return $query->whereIn('id', $ids)->get();
+        return $query->whereIn('id', $ids)->limit($marketLimit)->get();
     }
 
     public function allowedSymbols(User $user): array
@@ -42,7 +47,7 @@ class PulsePairAccessService
         $pairs = $this->allowedPairs($user);
 
         return [
-            'plan' => $plan?->only(['id','name','slug','max_selected_pairs','pair_access_mode','minimum_signal_score']),
+            'plan' => $plan?->only(['id','name','slug','max_selected_pairs','pair_access_mode']),
             'limit' => max(1, (int) ($plan?->max_selected_pairs ?: 5)),
             'total_available' => $pairs->count(),
             'selected_count' => count(array_intersect($selected, $pairs->pluck('symbol')->all())),

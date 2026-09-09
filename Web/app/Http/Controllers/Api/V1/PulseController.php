@@ -18,10 +18,13 @@ use App\Models\PulseStrategyLearningState;
 use App\Models\PulseStrategy;
 use App\Models\PulseTrade;
 use App\Models\PulseUserSetting;
+use App\Models\UserServiceAccess;
 use App\Services\BinanceFuturesService;
 use App\Services\BrandedMailService;
 use App\Services\PulseAccessService;
 use App\Services\PulseAuditService;
+use App\Services\PulseAiExplanationService;
+use App\Services\PulseShareService;
 use App\Services\PulseScannerService;
 use App\Services\PulseSignalThresholdService;
 use App\Services\PulseTradeService;
@@ -34,33 +37,42 @@ use App\Services\PulseUsageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
 
 class PulseController extends Controller
 {
     public function access(Request $request, PulseAccessService $accessService, PulseMembershipService $membership)
     {
-        $access = $request->user()->pulseAccess()->with('plan.strategies')->first();
+        $access = $request->user()->pulseAccess()->with('plan')->first();
         return response()->json([
             'has_access' => $request->user()->hasPulseAccess(),
-            'access' => $access,
-            'plan' => $access?->plan,
-            'next_upgrade_plan' => $membership->nextUpgradePlan($access),
+            'access' => $this->publicAccessPayload($access, $membership),
+            'plan' => $access?->plan ? $membership->mobilePlanPayload($access->plan, $access) : null,
+            'next_upgrade_plan' => $this->publicPlanPayload($membership->nextUpgradePlan($access), $access, $membership),
             'effective_capabilities' => $accessService->capabilityMatrix($request->user()),
+            'commerce_model' => 'direct_usdt_admin_verification',
+            'commerce_label' => 'Direct USDT · Admin verified',
         ]);
     }
 
-    public function dashboard(Request $request, PulseAccessService $accessService, PulsePageDataService $pages, PulseUsageService $usage)
+    public function dashboard(Request $request, PulseAccessService $accessService, PulsePageDataService $pages, PulseUsageService $usage, PulseMembershipService $membership)
     {
         $user = $request->user();
+        $settings = PulseUserSetting::firstOrCreate(['user_id' => $user->id], $this->defaults($user));
+        $access = $user->pulseAccess()->with('plan')->first();
         $trades = PulseTrade::query()->where('user_id', $user->id);
         $summary = $pages->dashboard($user, (string) $request->query('period', '30d'));
+        $signals = PulseSignal::query()->where('user_id', $user->id)->where('status', 'active')
+            ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+            ->latest('generated_at')->limit(10)->get()->map(fn (PulseSignal $signal) => $this->publicSignalPayload($signal));
+
         return response()->json([
-            'settings' => PulseUserSetting::firstOrCreate(['user_id' => $user->id], $this->defaults($user)),
-            'access' => $user->pulseAccess()->with('plan')->first(),
-            'active_signals' => PulseSignal::query()->where('user_id', $user->id)->where('status', 'active')
-                ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))->latest('generated_at')->limit(10)->get(),
+            'settings' => $this->publicTradingSettings($settings),
+            'access' => $this->publicAccessPayload($access, $membership),
+            'active_signals' => $signals,
             'recent_trades' => (clone $trades)->latest()->limit(10)->get(),
             'open_trades' => (clone $trades)->whereIn('status', ['submitting', 'pending', 'open', 'closing', 'protection_failed'])->count(),
             'realized_pnl' => (float) (clone $trades)->sum('realized_pnl'),
@@ -76,80 +88,75 @@ class PulseController extends Controller
     {
         $access = $request->user()->pulseAccess()->with('plan')->first();
         $plans = $membership->upgradePathPlans($access)->map(fn (PulsePlan $plan) => $membership->mobilePlanPayload($plan, $access));
-        return response()->json(['data' => $plans, 'next_upgrade_plan' => $membership->nextUpgradePlan($access)]);
+        return response()->json([
+            'data' => $plans,
+            'next_upgrade_plan' => $this->publicPlanPayload($membership->nextUpgradePlan($access), $access, $membership),
+            'commerce_model' => 'direct_usdt_admin_verification',
+            'commerce_label' => 'Direct USDT · Admin verified',
+        ]);
     }
     public function membership(Request $request, PulseMembershipService $membership)
     {
-        $commerce=$membership->settings();
-        $access=$request->user()->pulseAccess()->with('plan')->first();
-        return response()->json(['data'=>[
-            'access'=>$access,
-            'next_upgrade_plan'=>$membership->nextUpgradePlan($access),
-            'plans'=>$membership->upgradePathPlans($access)->map(fn(PulsePlan $plan)=>$membership->mobilePlanPayload($plan,$access)),
-            'requests'=>PulseMembershipRequest::query()->where('user_id',$request->user()->id)->with(['plan','promotion'])->latest()->limit(20)->get(),
-            'assigned_promotions'=>PulsePromotionCode::query()->where('assigned_user_id',$request->user()->id)->where('is_active',true)
-                ->where(fn($q)=>$q->whereNull('valid_from')->orWhere('valid_from','<=',now()))
-                ->where(fn($q)=>$q->whereNull('valid_until')->orWhere('valid_until','>',now()))
-                ->with('plan')->latest()->get()->map(fn(PulsePromotionCode $promo)=>[
-                    'code'=>$promo->code,'label'=>$promo->label,'type'=>$promo->type,'benefit'=>$promo->displayBenefit(),
-                    'applicable_plan_id'=>$promo->applicable_plan_id,'plan'=>$promo->plan?->only(['id','name','slug']),'access_days'=>$promo->access_days,'valid_until'=>$promo->valid_until,
-                ]),
-            'commerce'=>[
-                'requests_enabled'=>$commerce['requests_enabled'],
-                'promotions_enabled'=>$commerce['promotions_enabled'],
-                'wallet_address'=>$commerce['wallet_address'],
-                'network'=>$commerce['network'],
-                'payment_instructions'=>$commerce['payment_instructions'],
-                'proof_required'=>$commerce['proof_required'],
-            ],
+        $user = $request->user();
+        $commerce = $membership->settings();
+        $access = $user->pulseAccess()->with('plan')->first();
+        return response()->json(['data' => [
+            'commerce_model' => 'direct_usdt_admin_verification',
+            'commerce_label' => 'Direct USDT · Admin verified',
+            'access' => $this->publicAccessPayload($access, $membership),
+            'next_upgrade_plan' => $this->publicPlanPayload($membership->nextUpgradePlan($access), $access, $membership),
+            'plans' => $membership->upgradePathPlans($access)->map(fn (PulsePlan $plan) => $membership->mobilePlanPayload($plan, $access)),
+            'payment_requests_enabled' => (bool) $commerce['requests_enabled'],
+            'wallet_address' => $commerce['wallet_address'],
+            'network' => $commerce['network'],
+            'payment_instructions' => $commerce['payment_instructions'],
+            'proof_required' => (bool) $commerce['proof_required'],
+            'requests' => PulseMembershipRequest::query()->where('user_id', $user->id)->with('plan')->latest()->limit(20)->get()->map(fn (PulseMembershipRequest $item) => [
+                'id' => $item->id, 'plan_name' => $item->plan?->name, 'amount' => (float)$item->final_amount, 'currency' => $item->currency,
+                'payment_reference' => $item->payment_reference, 'status' => $item->status, 'submitted_at' => $item->created_at, 'reviewed_at' => $item->reviewed_at,
+            ]),
         ]]);
     }
 
     public function membershipQuote(Request $request, PulseMembershipService $membership)
     {
-        $data=$request->validate(['pulse_plan_id'=>['required','integer','exists:pulse_plans,id'],'promotion_code'=>['nullable','string','max:80']]);
-        $plan=PulsePlan::query()->findOrFail((int)$data['pulse_plan_id']);
-        abort_unless($plan->is_active && $plan->is_public && ! $plan->is_trial && $plan->request_enabled,404);
-        $commerce=$membership->settings();
-        if(!$commerce['requests_enabled']) throw ValidationException::withMessages(['membership'=>'New Pulse plan requests are temporarily unavailable.']);
-        $promotion=$membership->resolvePromotion($data['promotion_code']??null,$request->user(),$plan);
-        $quote=$membership->quote($plan,$promotion);
-        return response()->json(['data'=>['plan'=>$plan,'promotion'=>$promotion?->only(['id','code','label','type','discount_type','discount_value','access_days']),'quote'=>$quote,'payment'=>[
-            'wallet_address'=>$commerce['wallet_address'],'network'=>$commerce['network'],'instructions'=>$commerce['payment_instructions'],'proof_required'=>$commerce['proof_required'],
-        ]]]);
+        $data = $request->validate(['pulse_plan_id' => ['required','integer','exists:pulse_plans,id']]);
+        $plan = PulsePlan::query()->findOrFail((int)$data['pulse_plan_id']);
+        abort_unless($plan->is_active && $plan->is_public && ! $plan->is_trial && $plan->request_enabled, 404);
+        $commerce = $membership->settings();
+        $quote = $membership->quote($plan);
+        $access = $request->user()->pulseAccess()->with('plan')->first();
+        return response()->json(['data' => [
+            'commerce_model' => 'direct_usdt_admin_verification',
+            'plan' => $membership->mobilePlanPayload($plan, $access),
+            'quote' => $quote,
+            'wallet_address' => $commerce['wallet_address'],
+            'network' => $commerce['network'],
+            'payment_instructions' => $commerce['payment_instructions'],
+            'proof_required' => (bool)$commerce['proof_required'],
+            'message' => 'Transfer the exact USDT amount and submit the transaction reference. Admin verification activates the package.',
+        ]]);
     }
 
     public function submitMembershipRequest(Request $request, PulseMembershipService $membership, PulseAuditService $audit, BrandedMailService $mail)
     {
-        if($request->filled('payment_reference')) $request->merge(['payment_reference'=>trim((string)$request->input('payment_reference'))]);
-        $data=$request->validate([
-            'pulse_plan_id'=>['required','integer','exists:pulse_plans,id'],
-            'promotion_code'=>['nullable','string','max:80'],
-            'payment_reference'=>['nullable','string','max:190',Rule::unique('pulse_membership_requests','payment_reference')],
-            'payment_proof'=>['nullable','file','mimes:jpg,jpeg,png,pdf','max:5120'],
-            'user_notes'=>['nullable','string','max:2000'],
+        $data = $request->validate([
+            'pulse_plan_id' => ['required','integer','exists:pulse_plans,id'],
+            'payment_reference' => ['required','string','min:6','max:190', Rule::unique('pulse_membership_requests','payment_reference')],
+            'payment_proof' => ['nullable','file','mimes:jpg,jpeg,png,pdf,webp','max:8192'],
+            'user_notes' => ['nullable','string','max:2000'],
         ]);
-        $plan=PulsePlan::query()->findOrFail((int)$data['pulse_plan_id']);
-        abort_unless($plan->is_active && $plan->is_public && ! $plan->is_trial && $plan->request_enabled,404);
-        $commerce=$membership->settings();
-        if(!$commerce['requests_enabled']) throw ValidationException::withMessages(['membership'=>'New Pulse plan requests are temporarily unavailable.']);
-        $promotion=$membership->resolvePromotion($data['promotion_code']??null,$request->user(),$plan);
-        $quote=$membership->quote($plan,$promotion);
-        $freeVoucher=$promotion && $promotion->type==='gift_voucher' && $promotion->discount_type==='full';
-        if($plan->requires_payment && (float)$quote['base_amount']<=0 && !$freeVoucher) throw ValidationException::withMessages(['membership'=>'The plan rate is not currently published.']);
-        $requiresTransfer=$plan->requires_payment && (float)$quote['final_amount']>0;
-        if($requiresTransfer && ($commerce['wallet_address']==='' || $commerce['network']==='')) throw ValidationException::withMessages(['membership'=>'Payment details are not currently published.']);
-        if($requiresTransfer && blank($data['payment_reference']??null)) throw ValidationException::withMessages(['payment_reference'=>'Enter the USDT transaction reference or transaction hash.']);
-        if($requiresTransfer && $commerce['proof_required'] && !$request->hasFile('payment_proof')) throw ValidationException::withMessages(['payment_proof'=>'Upload payment proof to submit this Pulse plan request.']);
-
-        $item=$membership->createRequest($request,$request->user(),$plan,$promotion,$quote,$commerce);
-        $audit->record('api.membership_request_submitted',$request->user(),'PulseMembershipRequest',$item->id,null,[
-            'plan_id'=>$plan->id,'final_amount'=>(float)$item->final_amount,'currency'=>$item->currency,'promotion'=>$promotion?->code,'status'=>$item->status,
-        ],$request);
-        $mail->adminNewSubscription($item, 'mobile_api');
-        if($item->status==='approved') $mail->planActivated($item);
-        else $mail->planRequestReceived($item);
-        return response()->json(['message'=>$item->status==='approved'?'Pulse access activated.':'Pulse plan request submitted for verification.','data'=>$item->fresh(['plan','promotion'])],201);
+        $plan = PulsePlan::query()->findOrFail((int)$data['pulse_plan_id']);
+        abort_unless($plan->is_active && $plan->is_public && ! $plan->is_trial && $plan->request_enabled, 404);
+        $commerce = $membership->settings();
+        if (! $commerce['requests_enabled']) return response()->json(['message'=>'New package payment requests are temporarily paused.'],422);
+        if ((float)$plan->effectiveMonthlyPrice() > 0 && (($commerce['wallet_address'] ?? '') === '' || ($commerce['network'] ?? '') === '')) return response()->json(['message'=>'USDT payment details are not configured.'],422);
+        if (($commerce['proof_required'] ?? false) && ! $request->hasFile('payment_proof')) return response()->json(['message'=>'Payment proof is required.'],422);
+        $quote = $membership->quote($plan);
+        $item = $membership->createRequest($request,$request->user(),$plan,null,$quote,$commerce);
+        $audit->record('api.membership_request_submitted',$request->user(),'PulseMembershipRequest',$item->id,null,['plan_id'=>$plan->id,'amount'=>$quote['final_amount'],'currency'=>$quote['currency']],$request);
+        try { $mail->adminNewSubscription($item,'mobile_api'); $mail->planRequestReceived($item); } catch (\Throwable) {}
+        return response()->json(['message'=>'Payment submitted for Admin verification.','data'=>$item->fresh('plan')],201);
     }
 
     public function cancelMembershipRequest(Request $request, PulseMembershipRequest $membershipRequest, PulseAuditService $audit)
@@ -163,8 +170,14 @@ class PulseController extends Controller
 
     public function pairs(Request $request, PulsePairAccessService $pairAccess)
     {
-        $settings = PulseUserSetting::firstOrCreate(['user_id' => $request->user()->id], $this->defaults($request->user()));
-        return response()->json(['data' => $pairAccess->catalog($request->user(), $settings->selected_pairs ?? [])]);
+        $pairs = $pairAccess->allowedPairs($request->user())->values()->map(fn (PulsePair $pair) => [
+            'id' => $pair->id,
+            'symbol' => $pair->symbol,
+            'base_asset' => $pair->base_asset,
+            'quote_asset' => $pair->quote_asset,
+            'is_active' => (bool) $pair->is_active,
+        ]);
+        return response()->json(['data' => ['admin_controlled' => true, 'count' => $pairs->count(), 'markets' => $pairs]]);
     }
 
     public function strategies(Request $request)
@@ -175,27 +188,9 @@ class PulseController extends Controller
             : [];
         $catalog = PulseStrategy::query()->where('is_enabled', true)->orderBy('sort_order')->get()->map(function (PulseStrategy $strategy) use ($plan, $includedIds) {
             $included = ! $plan || in_array((int) $strategy->id, $includedIds, true);
-            return [
-                'id' => $strategy->id,
-                'name' => $strategy->name,
-                'slug' => $strategy->slug,
-                'description' => $strategy->description,
-                'timeframe' => $strategy->timeframe,
-                'weight' => $strategy->weight,
-                'minimum_score' => $strategy->minimum_score,
-                'settings' => $strategy->settings,
-                'sort_order' => $strategy->sort_order,
-                'included' => $included,
-                'status' => $included ? 'included' : 'locked_by_plan',
-            ];
+            return ['id' => $strategy->id, 'name' => $strategy->name, 'slug' => $strategy->slug, 'description' => $strategy->description, 'included' => $included];
         })->values();
-
-        return response()->json(['data' => [
-            'plan' => $plan?->only(['id','name','slug']),
-            'total_strategies' => $catalog->count(),
-            'included_strategies' => $catalog->where('included', true)->count(),
-            'strategies' => $catalog,
-        ]]);
+        return response()->json(['data' => ['admin_controlled' => true, 'plan' => $plan?->only(['id','name','slug']), 'strategies' => $catalog]]);
     }
 
     public function executionReadiness(Request $request, PulseAccessService $access)
@@ -285,15 +280,18 @@ class PulseController extends Controller
         return response()->json(['message' => 'Risk controls updated.', 'data' => $settings->fresh()]);
     }
 
-    public function settings(Request $request, PulseAccessService $accessService, PulsePairSelectionLockService $pairLock, PulseSignalThresholdService $thresholds)
+    public function settings(Request $request, PulseAccessService $accessService)
     {
         $settings = PulseUserSetting::firstOrCreate(['user_id' => $request->user()->id], $this->defaults($request->user()));
-        $effectiveThreshold = $thresholds->resolve($request->user(), $settings);
         return response()->json([
-            'data' => $settings,
-            'effective_minimum_score' => $effectiveThreshold['score'],
-            'minimum_score_source' => $effectiveThreshold['source'],
-            'pair_selection_lock' => $pairLock->status($settings),
+            'data' => $this->publicTradingSettings($settings),
+            'scanner' => [
+                'admin_controlled' => true,
+                'timeframes' => ['15m','4h'],
+                'qualification' => 'admin_managed',
+                'market_universe' => 'admin_package_managed',
+                'strategy_selection' => 'admin_package_managed',
+            ],
             'effective_capabilities' => $accessService->capabilityMatrix($request->user()),
         ]);
     }
@@ -303,88 +301,91 @@ class PulseController extends Controller
         return response()->json(['data' => $usage->today($request->user())]);
     }
 
-    public function updateSettings(Request $request, PulseAuditService $audit, PulseAccessService $access, PulsePairAccessService $pairAccess, PulsePairSelectionLockService $pairLock)
+    public function updateSettings(Request $request, PulseAuditService $audit, PulseAccessService $access)
     {
         $plan = $request->user()->pulsePlan();
         $data = $request->validate([
-            'environment' => ['required', 'in:testnet,live'], 'execution_mode' => ['required', 'in:signal_only,manual,automatic'],
-            'auto_trade_enabled' => ['sometimes', 'boolean'], 'emergency_stop' => ['sometimes', 'boolean'],
-            'default_leverage' => ['required', 'integer', 'min:1', 'max:'.config('pulse.risk.max_leverage', 20)], 'margin_type' => ['required', 'in:ISOLATED,CROSSED'],
-            'position_mode' => ['required', 'in:BOTH,LONG,SHORT'], 'risk_per_trade_percent' => ['required', 'numeric', 'min:0.1', 'max:10'],
-            'sizing_mode' => ['required', 'in:fixed_notional,fixed_quantity'], 'fixed_notional' => ['nullable', 'numeric', 'min:1'],
-            'fixed_quantity' => ['nullable', 'numeric', 'gt:0'], 'minimum_signal_score' => ['required', 'numeric', 'min:0', 'max:100'],
-            'default_order_type' => ['required', 'in:MARKET,LIMIT'], 'take_profit_percent' => ['required', 'numeric', 'min:0.1', 'max:50'],
-            'stop_loss_percent' => ['required', 'numeric', 'min:0.1', 'max:25'], 'daily_loss_limit' => ['nullable', 'numeric', 'min:0'],
-            'max_open_positions' => ['required', 'integer', 'min:1', 'max:20'], 'selected_pairs' => ['nullable', 'array'],
-            'selected_pairs.*' => ['string', 'max:30', 'exists:pulse_pairs,symbol'], 'notification_preferences' => ['nullable', 'array'],
+            'environment' => ['required','in:testnet,live'], 'execution_mode' => ['required','in:signal_only,manual,automatic'],
+            'auto_trade_enabled' => ['sometimes','boolean'], 'emergency_stop' => ['sometimes','boolean'],
+            'default_leverage' => ['required','integer','min:1','max:'.config('pulse.risk.max_leverage',20)],
+            'margin_type' => ['required','in:ISOLATED,CROSSED'], 'position_mode' => ['required','in:BOTH,LONG,SHORT'],
+            'risk_per_trade_percent' => ['required','numeric','min:0.1','max:10'], 'sizing_mode' => ['required','in:fixed_notional,fixed_quantity'],
+            'fixed_notional' => ['nullable','numeric','min:1'], 'fixed_quantity' => ['nullable','numeric','gt:0'],
+            'default_order_type' => ['required','in:MARKET,LIMIT'], 'take_profit_percent' => ['required','numeric','min:0.1','max:50'],
+            'stop_loss_percent' => ['required','numeric','min:0.1','max:25'], 'daily_loss_limit' => ['nullable','numeric','min:0'],
+            'max_open_positions' => ['required','integer','min:1','max:20'], 'notification_preferences' => ['nullable','array'],
         ]);
-        $settings = PulseUserSetting::firstOrCreate(['user_id' => $request->user()->id], $this->defaults($request->user()));
-        $selectedInput = array_key_exists('selected_pairs', $data) ? (array) $data['selected_pairs'] : (array) ($settings->selected_pairs ?? []);
-        $selected = array_values(array_unique(array_map('strtoupper', $selectedInput)));
-        $maxPairs = max(1, (int) ($plan?->max_selected_pairs ?: 5));
-        if (count($selected) > $maxPairs) return response()->json(['message' => "The current plan allows {$maxPairs} selected pairs."], 422);
-        $allowedSymbols = $pairAccess->allowedSymbols($request->user());
-        $notAllowed = array_values(array_diff($selected, $allowedSymbols));
-        if ($notAllowed !== []) return response()->json(['message' => 'One or more selected markets are not included in the current Pulse plan.', 'invalid_symbols' => $notAllowed], 422);
-        $eligibleCurrent = array_values(array_intersect((array) ($settings->selected_pairs ?? []), $allowedSymbols));
-        try {
-            $pairLockAttributes = $pairLock->guardAndAttributes($settings, $selected, $eligibleCurrent);
-        } catch (\Throwable $e) {
-            return response()->json(['message' => $e->getMessage(), 'pair_selection_lock' => $pairLock->status($settings)], 423);
-        }
         if ($data['execution_mode'] !== 'signal_only') {
             try { $access->assertEnvironment($request->user(), $data['environment']); }
-            catch (\Throwable $e) { return response()->json(['message' => $e->getMessage()], 422); }
-        } elseif ($data['environment'] === 'live' && ! $access->allows($request->user(), 'live_trading', false)) {
-            $data['environment'] = 'testnet';
+            catch (\Throwable $e) { return response()->json(['message'=>$e->getMessage()],422); }
+        } elseif ($data['environment']==='live' && ! $access->allows($request->user(),'live_trading',false)) {
+            $data['environment']='testnet';
         }
+        $automatic = $data['execution_mode']==='automatic' || (bool)($data['auto_trade_enabled']??false);
+        if ($automatic && (!config('pulse.allow_automatic_trading',false) || !$access->systemEnabled('automatic_trading_enabled',false) || !$access->allows($request->user(),'auto_trading',false))) {
+            return response()->json(['message'=>'Automatic trading is not enabled for this installation or account.'],422);
+        }
+        if ($data['execution_mode']==='manual' && !$access->allows($request->user(),'manual_trading',false)) return response()->json(['message'=>'Manual trading is not included in the current Pulse plan.'],422);
 
-        $automatic = $data['execution_mode'] === 'automatic' || (bool) ($data['auto_trade_enabled'] ?? false);
-        if ($automatic && (! config('pulse.allow_automatic_trading', false) || ! $access->allows($request->user(), 'auto_trading', false))) {
-            return response()->json(['message' => 'Automatic trading is not enabled for this installation or account.'], 422);
-        }
-        if ($data['execution_mode'] === 'manual' && ! $access->allows($request->user(), 'manual_trading', false)) {
-            return response()->json(['message' => 'Manual trading is not included in the current Pulse plan.'], 422);
-        }
-
-        $settings->update(array_merge([
-            'environment' => $data['environment'], 'execution_mode' => $data['execution_mode'],
-            'auto_trade_enabled' => $automatic && $data['execution_mode'] === 'automatic', 'emergency_stop' => (bool) ($data['emergency_stop'] ?? false),
-            'default_leverage' => min((int) $data['default_leverage'], (int) config('pulse.risk.max_leverage', 20)),
-            'margin_type' => $data['margin_type'], 'position_mode' => $data['position_mode'],
-            'risk_per_trade_percent' => min((float) $data['risk_per_trade_percent'], (float) config('pulse.risk.max_risk_per_trade', 5)),
-            'sizing_mode' => $data['sizing_mode'], 'fixed_notional' => $data['fixed_notional'] ?? null,
-            'fixed_quantity' => $data['fixed_quantity'] ?? null, 'minimum_signal_score' => $data['minimum_signal_score'],
-            'default_order_type' => $data['default_order_type'], 'take_profit_percent' => $data['take_profit_percent'],
-            'stop_loss_percent' => $data['stop_loss_percent'], 'daily_loss_limit' => $data['daily_loss_limit'] ?? 0,
-            'max_open_positions' => min((int) $data['max_open_positions'], max(1, (int) ($plan?->max_open_trades ?: 1))),
-            'selected_pairs' => $selected, 'notification_preferences' => $data['notification_preferences'] ?? [],
-        ], $pairLockAttributes));
-        $audit->record('api.settings_updated', $request->user(), 'PulseUserSetting', $settings->id, $settings->environment, ['selected_pairs' => $selected, 'pair_selection_locked_until' => $settings->pair_selection_locked_until?->toIso8601String()], $request);
-        return response()->json(['message' => 'Pulse settings updated.', 'data' => $settings, 'pair_selection_lock' => $pairLock->status($settings)]);
+        $settings=PulseUserSetting::firstOrCreate(['user_id'=>$request->user()->id],$this->defaults($request->user()));
+        $settings->update([
+            'environment'=>$data['environment'],'execution_mode'=>$data['execution_mode'],'auto_trade_enabled'=>$automatic && $data['execution_mode']==='automatic',
+            'emergency_stop'=>(bool)($data['emergency_stop']??false),'default_leverage'=>min((int)$data['default_leverage'],(int)config('pulse.risk.max_leverage',20)),
+            'margin_type'=>$data['margin_type'],'position_mode'=>$data['position_mode'],'risk_per_trade_percent'=>min((float)$data['risk_per_trade_percent'],(float)config('pulse.risk.max_risk_per_trade',5)),
+            'sizing_mode'=>$data['sizing_mode'],'fixed_notional'=>$data['fixed_notional']??null,'fixed_quantity'=>$data['fixed_quantity']??null,
+            'default_order_type'=>$data['default_order_type'],'take_profit_percent'=>$data['take_profit_percent'],'stop_loss_percent'=>$data['stop_loss_percent'],
+            'daily_loss_limit'=>$data['daily_loss_limit']??0,'max_open_positions'=>min((int)$data['max_open_positions'],max(1,(int)($plan?->max_open_trades?:1))),
+            'notification_preferences'=>$data['notification_preferences']??[],
+        ]);
+        $audit->record('api.settings_updated',$request->user(),'PulseUserSetting',$settings->id,$settings->environment,['scanner_controls'=>'admin_managed_v15'],$request);
+        return response()->json(['message'=>'Pulse trading preferences updated. Scanner markets, strategies, timeframes and qualification threshold remain Admin controlled.','data'=>$settings->fresh()]);
     }
 
     public function scannerRuns(Request $request)
     {
-        return response()->json(PulseScannerRun::query()->where('user_id', $request->user()->id)->latest()->paginate($this->perPage($request)));
+        $paginator = PulseScannerRun::query()->where('user_id', $request->user()->id)->with('bestSignal')->latest()->paginate($this->perPage($request));
+        $paginator->getCollection()->transform(fn (PulseScannerRun $run) => $this->publicScannerRunPayload($run));
+        return response()->json($paginator);
     }
 
-    public function scannerOverview(Request $request, PulsePageDataService $pages, PulseUsageService $usage)
+    public function scannerOverview(Request $request, PulseUsageService $usage, PulsePairAccessService $pairAccess)
     {
-        return response()->json(['data' => $pages->scanner($request->user(), $request->only([
-            'quote', 'direction', 'strategy', 'min_score', 'timeframe', 'liquidity', 'symbol',
-        ])), 'usage' => $usage->today($request->user())]);
+        $user = $request->user();
+        $lastRun = PulseScannerRun::query()->where('user_id', $user->id)->with('bestSignal')->latest()->first();
+        return response()->json(['data' => [
+            'admin_controlled' => true,
+            'timeframes' => ['15m','4h'],
+            'market_count' => $pairAccess->allowedPairs($user)->count(),
+            'best_signal_included' => true,
+            'per_signal_charge' => 0,
+            'last_run' => $lastRun ? $this->publicScannerRunPayload($lastRun) : null,
+        ], 'usage' => $usage->today($user)]);
     }
 
     public function runScanner(Request $request, PulseScannerService $scanner, PulseUsageService $usage)
     {
-        $data = $request->validate(['symbols' => ['nullable', 'array', 'max:'.max(1, (int) config('pulse.scanner.max_pairs_per_run', 1000))], 'symbols.*' => ['string', 'max:30'], 'timeframe' => ['required', 'in:15m,4h,all']]);
-        try {
-            $run = $scanner->run($request->user(), array_key_exists('symbols', $data) ? $data['symbols'] : null, $data['timeframe']);
-        } catch (\Throwable $e) {
-            return response()->json(['message' => $e->getMessage(), 'usage' => $usage->today($request->user())], 422);
-        }
-        return response()->json(['message' => 'Scanner completed.', 'data' => $run, 'usage' => $usage->today($request->user())], 201);
+        try { $run = $scanner->run($request->user(), null, 'all'); }
+        catch (\Throwable $e) { return response()->json(['message' => $e->getMessage(), 'usage' => $usage->today($request->user())], 422); }
+        $run->loadMissing('bestSignal');
+        $message = $run->bestSignal
+            ? 'Best Signal unlocked. Included with your active Pulse package.'
+            : 'No qualifying Best Signal found.';
+        return response()->json(['message' => $message, 'data' => $this->publicScannerRunPayload($run), 'usage' => $usage->today($request->user())], 201);
+    }
+
+    public function shareSignal(Request $request, PulseSignal $signal, PulseShareService $share)
+    {
+        abort_unless((int)$signal->user_id===(int)$request->user()->id,403);
+        $request->validate(['channel'=>['nullable','string','max:40']]);
+        $signal->increment('share_count');
+        return response()->json(['message'=>'Share card ready.','data'=>$share->payload($signal)]);
+    }
+
+    public function explainSignal(Request $request, PulseSignal $signal, PulseAiExplanationService $ai)
+    {
+        abort_unless((int)$signal->user_id===(int)$request->user()->id,403);
+        try{$text=$ai->explain($request->user(),$signal);}catch(RuntimeException $e){return response()->json(['message'=>$e->getMessage()],422);}
+        return response()->json(['message'=>'AI explanation ready.','data'=>['explanation'=>$text]]);
     }
 
     public function signals(Request $request)
@@ -393,22 +394,20 @@ class PulseController extends Controller
         if ($request->filled('status')) $query->where('status', $request->string('status'));
         if ($request->filled('direction')) $query->where('direction', $request->string('direction'));
         if ($request->filled('symbol')) $query->where('symbol', strtoupper((string) $request->string('symbol')));
-        return response()->json($query->paginate($this->perPage($request)));
+        $paginator = $query->paginate($this->perPage($request));
+        $paginator->getCollection()->transform(fn (PulseSignal $signal) => $this->publicSignalPayload($signal));
+        return response()->json($paginator);
     }
 
     public function signalsOverview(Request $request, PulsePageDataService $pages, PulseUsageService $usage)
     {
-        return response()->json(['data' => $pages->signals($request->user(), $request->only([
-            'status', 'direction', 'symbol', 'timeframe', 'strategy', 'min_score', 'selected',
-        ])), 'usage' => $usage->today($request->user())]);
+        return response()->json(['data' => $pages->signals($request->user(), $request->only(['status','selected'])), 'usage' => $usage->today($request->user())]);
     }
 
     public function signal(Request $request, PulseSignal $signal)
     {
         abort_unless($signal->user_id === $request->user()->id, 403);
-        $signal->load('trades');
-        if (Schema::hasTable('pulse_signal_validations')) $signal->load('validation');
-        return response()->json(['data' => $signal]);
+        return response()->json(['data' => $this->publicSignalPayload($signal)]);
     }
 
     public function dismissSignal(Request $request, PulseSignal $signal, PulsePageDataService $pages)
@@ -666,6 +665,88 @@ class PulseController extends Controller
     {
         $count = PulseAlert::query()->where('user_id', $request->user()->id)->where('is_read', false)->update(['is_read' => true]);
         return response()->json(['message' => 'All alerts marked as read.', 'updated' => $count]);
+    }
+
+    private function publicTradingSettings(PulseUserSetting $settings): array
+    {
+        return $settings->only([
+            'id','environment','execution_mode','auto_trade_enabled','emergency_stop','default_leverage','margin_type','position_mode',
+            'risk_per_trade_percent','sizing_mode','fixed_notional','fixed_quantity','default_order_type','take_profit_percent','stop_loss_percent',
+            'daily_loss_limit','max_open_positions','notification_preferences','created_at','updated_at',
+        ]);
+    }
+
+    private function publicPlanPayload(?PulsePlan $plan, ?UserServiceAccess $access, PulseMembershipService $membership): ?array
+    {
+        return $plan ? $membership->mobilePlanPayload($plan, $access) : null;
+    }
+
+    private function publicAccessPayload(?UserServiceAccess $access, PulseMembershipService $membership): ?array
+    {
+        if (! $access) return null;
+        return [
+            'service' => $access->service,
+            'status' => $access->status,
+            'starts_at' => $access->starts_at,
+            'ends_at' => $access->ends_at,
+            'is_active' => $access->isActive(),
+            'plan' => $access->plan ? $membership->mobilePlanPayload($access->plan, $access) : null,
+        ];
+    }
+
+    private function publicScannerRunPayload(PulseScannerRun $run): array
+    {
+        $run->loadMissing('bestSignal');
+        return [
+            'id' => $run->id,
+            'status' => $run->status,
+            'timeframe' => $run->timeframe,
+            'timeframes' => ['15m','4h'],
+            'pairs_scanned' => (int) $run->pairs_scanned,
+            'signals_created' => (int) $run->signals_created,
+            'per_signal_charge' => 0,
+            'started_at' => $run->started_at,
+            'completed_at' => $run->completed_at,
+            'best_signal' => $run->bestSignal ? $this->publicSignalPayload($run->bestSignal) : null,
+            'message' => $run->bestSignal ? 'Best Signal unlocked. Included with active package.' : ($run->status === 'completed' ? 'No qualifying Best Signal found.' : null),
+        ];
+    }
+
+    private function publicSignalPayload(PulseSignal $signal): array
+    {
+        $evidence = collect((array) $signal->strategy_breakdown)
+            ->filter(fn ($item) => is_array($item) && ! array_key_exists('_meta', $item))
+            ->map(fn (array $item) => [
+                'name' => $item['name'] ?? null,
+                'slug' => $item['slug'] ?? null,
+                'version' => $item['version'] ?? null,
+                'bias' => $item['bias'] ?? null,
+                'reason' => $item['reason'] ?? null,
+            ])->values()->all();
+
+        return [
+            'id' => $signal->id,
+            'symbol' => $signal->symbol,
+            'timeframe' => $signal->timeframe,
+            'direction' => $signal->direction,
+            'entry_price' => $signal->entry_price,
+            'stop_loss' => $signal->stop_loss,
+            'take_profit' => $signal->take_profit,
+            'take_profit_levels' => $signal->take_profit_levels,
+            'score' => $signal->score,
+            'technical_score' => $signal->technical_score,
+            'reliability_score' => $signal->reliability_score,
+            'confidence_score' => $signal->confidence_score,
+            'confidence_label' => $signal->confidence_label,
+            'status' => $signal->status,
+            'unlocked_at' => $signal->unlocked_at,
+            'generated_at' => $signal->generated_at,
+            'expires_at' => $signal->expires_at,
+            'strategy_evidence' => $evidence,
+            'ai_explanation' => $signal->ai_explanation,
+            'ai_explained_at' => $signal->ai_explained_at,
+            'share_count' => (int) ($signal->share_count ?? 0),
+        ];
     }
 
     private function weightedMetric($rows, string $valueField, string $weightField): ?float

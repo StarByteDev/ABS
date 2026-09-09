@@ -7,7 +7,8 @@
         <nav class="main-nav final-main-nav" data-main-nav aria-label="Primary navigation">
             <a href="{{ route('home') }}" class="{{ request()->routeIs('home') ? 'active' : '' }}">Home</a>
             <a href="{{ route('pulse.entry') }}" class="{{ request()->routeIs('pulse.*') ? 'active' : '' }}">Pulse Intelligence</a>
-            <a href="{{ route('news.index') }}" class="{{ request()->routeIs('news.*') ? 'active' : '' }}">Market News</a>
+            <a href="{{ route('pulse.free-signal') }}" class="{{ request()->routeIs('pulse.free-signal*') ? 'active' : '' }}">Free Signal</a>
+            <a href="{{ route('news.index') }}" class="{{ request()->routeIs('news.*') ? 'active' : '' }}">ABS News</a>
             <a href="{{ route('pulse.entry') }}#plans">Membership</a>
             <a href="{{ route('about') }}" class="{{ request()->routeIs('about') ? 'active' : '' }}">About</a>
             <a href="{{ route('home') }}#contact">Contact</a>

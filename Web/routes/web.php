@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AdminBackupController;
 use App\Http\Controllers\Admin\AdminContentController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AdminDashboardReportController;
 use App\Http\Controllers\Admin\AdminEnterpriseController;
 use App\Http\Controllers\Admin\AdminMaintenanceController;
 use App\Http\Controllers\Admin\AdminMarketDataController;
@@ -10,6 +11,7 @@ use App\Http\Controllers\Admin\AdminPortfolioController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AdminPulseController;
 use App\Http\Controllers\Admin\AdminReleaseController;
+use App\Http\Controllers\Admin\AdminRewardedSignalController;
 use App\Http\Controllers\Pulse\AlertController as PulseAlertController;
 use App\Http\Controllers\Pulse\BinanceController as PulseBinanceController;
 use App\Http\Controllers\Pulse\DashboardController as PulseDashboardController;
@@ -24,7 +26,8 @@ use App\Http\Controllers\Pulse\RiskController as PulseRiskController;
 use App\Http\Controllers\Pulse\ScannerController as PulseScannerController;
 use App\Http\Controllers\Pulse\SettingsController as PulseSettingsController;
 use App\Http\Controllers\Pulse\SignalController as PulseSignalController;
-use App\Http\Controllers\Pulse\StrategyController as PulseStrategyController;
+use App\Http\Controllers\Pulse\SignalUtilityController as PulseSignalUtilityController;
+use App\Http\Controllers\Pulse\PublicRewardedSignalController;
 use App\Http\Controllers\Pulse\TradeController as PulseTradeController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
@@ -43,10 +46,14 @@ Route::get('/', HomeController::class)->name('home');
 Route::redirect('/products', '/pulse', 301)->name('products');
 Route::get('/markets', [PageController::class, 'markets'])->name('markets');
 Route::redirect('/tools', '/pulse', 301)->name('tools');
-Route::redirect('/economic-calendar', '/markets', 301)->name('calendar');
+Route::redirect('/economic-calendar', '/news#economic-calendar', 301)->name('calendar');
 Route::get('/about', [PageController::class, 'about'])->name('about');
 
 Route::get('/pulse', PulseEntryController::class)->name('pulse.entry');
+Route::get('/pulse/free-signal', [PublicRewardedSignalController::class, 'index'])->name('pulse.free-signal');
+Route::get('/pulse/free-signal/status', [PublicRewardedSignalController::class, 'status'])->middleware('throttle:30,1')->name('pulse.free-signal.status');
+Route::post('/pulse/free-signal/ad-session', [PublicRewardedSignalController::class, 'session'])->middleware('throttle:10,1')->name('pulse.free-signal.session');
+Route::post('/pulse/free-signal/claim', [PublicRewardedSignalController::class, 'claim'])->middleware('throttle:10,1')->name('pulse.free-signal.claim');
 Route::get('/search', SearchController::class)->name('search');
 Route::get('/legal/privacy', [LegalController::class, 'privacy'])->name('legal.privacy');
 Route::get('/legal/terms', [LegalController::class, 'terms'])->name('legal.terms');
@@ -98,7 +105,9 @@ Route::middleware(['auth', 'account.active'])->group(function () {
         Route::get('/signals/{signal}', [PulseSignalController::class, 'show'])->middleware('pulse.capability:signals')->name('signals.show');
         Route::patch('/signals/{signal}/dismiss', [PulseSignalController::class, 'dismiss'])->middleware('pulse.capability:signals')->name('signals.dismiss');
         Route::post('/signals/{signal}/execute', [PulseSignalController::class, 'execute'])->middleware(['pulse.capability:signals', 'pulse.capability:manual_trading'])->name('signals.execute');
-        Route::get('/strategies', PulseStrategyController::class)->middleware('pulse.capability:signals')->name('strategies');
+        Route::post('/signals/{signal}/share', [PulseSignalUtilityController::class, 'share'])->middleware('pulse.capability:signals')->name('signals.share');
+        Route::post('/signals/{signal}/explain', [PulseSignalUtilityController::class, 'explain'])->middleware('pulse.capability:signals')->name('signals.explain');
+        Route::get('/strategies', fn () => redirect()->route('pulse.scanner'))->middleware('pulse.capability:signals')->name('strategies');
         Route::get('/execution', PulseExecutionController::class)->middleware('pulse.capability:signals')->name('execution');
         Route::get('/positions', PulsePositionController::class)->middleware('pulse.capability:orders')->name('positions');
         Route::get('/orders', PulseOrdersController::class)->middleware('pulse.capability:orders')->name('orders');
@@ -131,6 +140,7 @@ Route::middleware(['auth', 'account.active', 'private.member'])->prefix('private
 
 Route::middleware(['auth', 'account.active', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', AdminDashboardController::class)->name('dashboard');
+    Route::get('/executive-report.csv', AdminDashboardReportController::class)->name('dashboard.export');
     Route::get('/users', [AdminUserController::class, 'index'])->name('users');
     Route::get('/users/create', [AdminUserController::class, 'create'])->name('users.create');
     Route::post('/users', [AdminUserController::class, 'store'])->name('users.store');
@@ -163,6 +173,8 @@ Route::middleware(['auth', 'account.active', 'role:admin'])->prefix('admin')->na
         Route::get('/content/{type}/{id}/edit', [AdminEnterpriseController::class, 'contentEdit'])->name('content.edit')->whereIn('type', ['research','learning','events','products']);
         Route::put('/content/{type}/{id}', [AdminEnterpriseController::class, 'contentUpdate'])->name('content.update')->whereIn('type', ['research','learning','events','products']);
         Route::delete('/content/{type}/{id}', [AdminEnterpriseController::class, 'contentDestroy'])->name('content.destroy')->whereIn('type', ['research','learning','events','products']);
+        Route::put('/economic-calendar/settings', [AdminEnterpriseController::class, 'updateEconomicCalendarSettings'])->name('economic-calendar.settings');
+        Route::post('/economic-calendar/sync', [AdminEnterpriseController::class, 'syncEconomicCalendar'])->middleware('throttle:4,1')->name('economic-calendar.sync');
         Route::get('/settings', [AdminEnterpriseController::class, 'settings'])->name('settings');
         Route::put('/settings', [AdminEnterpriseController::class, 'updateSettings'])->name('settings.update');
         Route::get('/newsletters', [AdminEnterpriseController::class, 'newsletters'])->name('newsletters');
@@ -202,6 +214,8 @@ Route::middleware(['auth', 'account.active', 'role:admin'])->prefix('admin')->na
         Route::delete('/plans/{plan}', [AdminPulseController::class, 'deletePlan'])->name('plans.destroy');
 
         Route::get('/memberships', [AdminPulseController::class, 'memberships'])->name('memberships');
+        Route::get('/rewarded-signals', [AdminRewardedSignalController::class, 'index'])->name('rewarded-signals');
+        Route::put('/rewarded-signals', [AdminRewardedSignalController::class, 'update'])->name('rewarded-signals.update');
         Route::put('/memberships/settings', [AdminPulseController::class, 'updateMembershipSettings'])->name('memberships.settings');
         Route::post('/membership-requests/{membershipRequest}/approve', [AdminPulseController::class, 'approveMembershipRequest'])->name('membership-requests.approve');
         Route::post('/membership-requests/{membershipRequest}/reject', [AdminPulseController::class, 'rejectMembershipRequest'])->name('membership-requests.reject');

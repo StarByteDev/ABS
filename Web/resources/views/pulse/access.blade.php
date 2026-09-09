@@ -38,7 +38,7 @@
         <?php $__absForelseEmpty1 = true; foreach ($plans as $plan): $__absForelseEmpty1 = false; ?>
             <div>
                 <b>{{ $plan->name }}</b>
-                <small>{{ $plan->description }} · {{ $plan->scanner_runs_per_day ?: 'Unlimited' }} scans/day · up to {{ $plan->max_selected_pairs }} markets.</small>
+                <small>{{ $plan->description }} · Best Signal included · {{ number_format((float)$plan->effectiveMonthlyPrice(),2) }} USDT / {{ $plan->access_days }} days · up to {{ $plan->max_selected_pairs }} package markets.</small>
             </div>
         <?php endforeach; if ($__absForelseEmpty1): ?>
             <div><b>No active plan is currently published.</b><small>Contact {{ config('brand.support_email') }} for assistance.</small></div>

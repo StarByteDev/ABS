@@ -17,19 +17,33 @@ class AdminContentController extends Controller
         return config('content.news');
     }
 
-    public function index(string $type)
+    public function index(Request $request, string $type)
     {
         $definition = $this->definition($type);
+        $query = NewsArticle::query();
+        if ($request->filled('q')) {
+            $term = '%'.trim((string)$request->string('q')).'%';
+            $query->where(fn ($q) => $q->where('title','like',$term)->orWhere('category','like',$term)->orWhere('source_name','like',$term));
+        }
+        if ($request->filled('status')) $query->where('status', $request->string('status'));
+        if ($request->string('featured')->value() === '1') $query->where('is_featured', true);
 
         return view('admin.content.index', [
             'type' => 'news',
             'definition' => $definition,
-            'items' => NewsArticle::query()
+            'items' => $query
                 ->orderByDesc('is_featured')
                 ->latest('published_at')
                 ->latest('updated_at')
                 ->paginate(20)
                 ->withQueryString(),
+            'summary' => [
+                'total' => NewsArticle::query()->count(),
+                'published' => NewsArticle::query()->where('status','published')->count(),
+                'draft' => NewsArticle::query()->where('status','draft')->count(),
+                'featured' => NewsArticle::query()->where('status','published')->where('is_featured',true)->count(),
+                'updated30' => NewsArticle::query()->where('updated_at','>=',now()->subDays(30))->count(),
+            ],
         ]);
     }
 

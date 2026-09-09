@@ -1,6 +1,18 @@
 <?php
 
 return [
+    'openai' => [
+        'api_key' => env('OPENAI_API_KEY'),
+        'model' => env('OPENAI_MODEL', 'gpt-5.6-sol'),
+    ],
+    'rewarded_ads' => [
+        'secret' => env('PULSE_REWARDED_AD_SECRET'),
+        'admob_key_url' => env('ADMOB_SSV_KEY_URL', 'https://www.gstatic.com/admob/reward/verifier-keys.json'),
+    ],
+    'fmp' => [
+        'api_key' => env('FMP_API_KEY'),
+        'economic_calendar_url' => env('FMP_ECONOMIC_CALENDAR_URL', 'https://financialmodelingprep.com/stable/economic-calendar'),
+    ],
     'binance' => [
         'base_url' => env('BINANCE_MARKET_BASE_URL', 'https://data-api.binance.vision'),
         'base_urls' => array_filter(array_map('trim', explode(',', env('BINANCE_MARKET_BASE_URLS', 'https://data-api.binance.vision,https://api.binance.com,https://api1.binance.com')))),

@@ -10,7 +10,7 @@ return new class extends Migration
     {
         if (Schema::hasTable('pulse_plans') && ! Schema::hasColumn('pulse_plans', 'minimum_signal_score')) {
             Schema::table('pulse_plans', function (Blueprint $table): void {
-                $table->decimal('minimum_signal_score', 6, 2)->default(70)->after('signals_per_day');
+                $table->decimal('minimum_signal_score', 6, 2)->default(70);
             });
         }
     }

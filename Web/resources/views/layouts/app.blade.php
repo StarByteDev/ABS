@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="description" content="Alpha Block Solutions — Pulse trading intelligence, live market awareness and invitation-only private member reporting.">
-    <link rel="icon" type="image/png" href="{{ asset('assets/brand/abs-logo-512.png') }}">
+    <meta name="theme-color" content="#07111f">
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+    <link rel="alternate icon" type="image/png" href="{{ asset('assets/brand/abs-logo-512.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('assets/brand/abs-logo-512.png') }}">
     <title>@yield('title', 'Alpha Block Solutions')</title>
     <link rel="stylesheet" href="{{ asset('assets/css/abs-app.css') }}?v={{ @filemtime(public_path('assets/css/abs-app.css')) ?: '14.4' }}">
     <link rel="stylesheet" href="{{ asset('assets/css/abs-home-final.css') }}?v={{ @filemtime(public_path('assets/css/abs-home-final.css')) ?: '14.4' }}">

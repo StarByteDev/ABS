@@ -1,20 +1,24 @@
 @extends('admin.layout')
 @section('title','Pulse System Settings')
 @section('heading','Pulse System Gates & Alerts')
+@section('description','Control Pulse safety gates, operational defaults and targeted customer communications with server protections clearly separated.')
 @section('content')
-<section class="panel admin-note">
+<section class="enterprise-command-bar compact admin-report-command">
     <div>
-        <h2>Safety-first control layers</h2>
+        <span class="admin-report-eyebrow">PULSE GOVERNANCE · SAFETY CONTROLS</span><h2>Safety-first control layers</h2>
         <p>Database settings can disable features immediately, but cannot enable live or automatic execution while the corresponding server <code>.env</code> gate is false.</p>
     </div>
+    <div class="enterprise-command-actions"><a class="button button-primary" href="{{ route('admin.market-data') }}">Market Feed Health</a><a class="button button-ghost" href="{{ route('admin.pulse.logs') }}">Audit Trail</a></div>
 </section>
+
+<section class="enterprise-surface admin-insight-band"><div><span class="insight-dot good"></span><p><b>Database control</b><small>Operational features can be disabled immediately from this page.</small></p></div><div><span class="insight-dot warn"></span><p><b>Server authority</b><small>Live and automatic execution still require protected environment gates.</small></p></div><div><span class="insight-dot info"></span><p><b>Audit coverage</b><small>Every settings save and administrator broadcast is recorded.</small></p></div></section>
 
 <form method="POST" action="{{ route('admin.pulse.settings.update') }}">
     @csrf
     @method('PUT')
     @foreach($settings as $group => $items)
-        <section class="panel admin-form">
-            <h2>{{ ucfirst(str_replace('_',' ',$group)) }}</h2>
+        <details class="enterprise-surface enterprise-plan-editor setting-group" @if($loop->first) open @endif>
+            <summary><div><h2>{{ ucfirst(str_replace('_',' ',$group)) }}</h2><p>{{ $items->count() }} controlled settings in this operational group.</p></div><span>Review controls</span></summary>
             <div class="admin-form-grid">
                 @foreach($items as $setting)
                     <label class="{{ $setting->type === 'json' ? 'full' : '' }}">
@@ -33,14 +37,13 @@
                     </label>
                 @endforeach
             </div>
-        </section>
+        </details>
     @endforeach
     <div class="admin-page-actions"><button class="button button-primary">Save System Settings</button></div>
 </form>
 
-<section class="panel admin-form">
-    <h2>Broadcast Pulse alert</h2>
-    <p>Send an account notification to all Pulse users, active users, or one active plan.</p>
+<section class="enterprise-surface admin-form broadcast-control-card">
+    <div class="enterprise-section-head"><div><h2>Broadcast Pulse alert</h2><p>Send an account notification to all Pulse users, active users, or one active package.</p></div><span class="report-period-chip">CUSTOMER COMMS</span></div>
     <form method="POST" action="{{ route('admin.pulse.alerts.broadcast') }}" class="admin-form-grid" data-plan-audience-form>
         @csrf
         <label>Audience<select name="audience" data-plan-audience>

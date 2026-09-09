@@ -1,6 +1,7 @@
 @extends('admin.layout')
 @section('title',$user->name.' — ABS Admin')
 @section('heading','User 360° View')
+@section('description','One customer record for identity, security, role, Pulse entitlement, usage, signals, trades and private reporting access.')
 @section('content')
 @php
 $expired=$access?->ends_at && $access->ends_at->isPast();
@@ -17,7 +18,7 @@ $restrictions=is_array($access?->permissions)?$access->permissions:[];
 
 <section class="enterprise-section-grid two-one">
 <article class="enterprise-surface">
-    <div class="enterprise-section-head"><div><h2>Pulse subscription & entitlements</h2><p>Assign the plan, control the access period and optionally restrict individual capabilities.</p></div></div>
+    <div class="enterprise-section-head"><div><h2>Pulse plan access & entitlements</h2><p>Assign the plan, control the access period and optionally restrict individual capabilities.</p></div></div>
     <form method="POST" action="{{ route('admin.pulse.access.update',$user) }}" class="enterprise-form-grid">@csrf @method('PUT')
         <label>Status<select name="status">@foreach(['pending','active','suspended','expired','revoked'] as $x)<option value="{{ $x }}" @selected(old('status',$access?->status ?? 'pending')===$x)>{{ ucfirst($x) }}</option>@endforeach</select></label>
         <label>Pulse plan<select name="pulse_plan_id"><option value="">No plan</option>@foreach($plans as $plan)<option value="{{ $plan->id }}" @selected((int)old('pulse_plan_id',$access?->pulse_plan_id)===$plan->id)>{{ $plan->name }}</option>@endforeach</select></label>
@@ -25,12 +26,12 @@ $restrictions=is_array($access?->permissions)?$access->permissions:[];
         <label>Ends at<input type="datetime-local" name="ends_at" value="{{ old('ends_at',$access?->ends_at?->format('Y-m-d\TH:i')) }}"></label>
         <label class="full">Internal note<textarea name="notes" rows="2">{{ old('notes',$access?->notes) }}</textarea></label>
         <div class="full enterprise-entitlement-list"><h3>Individual restrictions</h3><p>Unchecked features follow the assigned plan. Check only the features this user should not receive.</p><div class="admin-capability-grid">@foreach(\App\Models\PulsePlan::CAPABILITIES as $key=>$label)<label class="admin-capability-toggle restriction-toggle"><input type="checkbox" name="restriction_{{ $key }}" value="1" @checked(array_key_exists($key,$restrictions)&&$restrictions[$key]===false)><span><b>Disable {{ $label }}</b></span></label>@endforeach</div></div>
-        <div class="full admin-page-actions"><button class="button button-primary">Save subscription</button></div>
+        <div class="full admin-page-actions"><button class="button button-primary">Save plan access</button></div>
     </form>
 </article>
 
 <article class="enterprise-surface">
-    <div class="enterprise-section-head"><div><h2>Subscription status</h2><p>Commercial and access timing summary.</p></div></div>
+    <div class="enterprise-section-head"><div><h2>Plan access status</h2><p>Commercial and access timing summary.</p></div></div>
     <div class="enterprise-metric-list subscription-summary">
         <div><span>Current plan</span><b>{{ $access?->plan?->name ?? 'Not assigned' }}</b></div>
         <div><span>Starts</span><b>{{ $access?->starts_at?->format('d M Y') ?? '—' }}</b></div>
@@ -43,7 +44,7 @@ $restrictions=is_array($access?->permissions)?$access->permissions:[];
 </article>
 </section>
 
-<section class="enterprise-surface"><div class="enterprise-section-head"><div><h2>Membership & payment requests</h2><p>Recent commercial membership activity for this user.</p></div><a href="{{ route('admin.pulse.memberships',['q'=>$user->email]) }}">Open membership center →</a></div><div class="enterprise-table-wrap"><table class="enterprise-table"><thead><tr><th>Request</th><th>Plan</th><th>Value</th><th>Promotion</th><th>Status</th><th>Submitted</th></tr></thead><tbody>@forelse($membershipRequests as $requestItem)<tr><td>#{{ $requestItem->id }}</td><td><b>{{ $requestItem->plan?->name ?? 'Plan removed' }}</b><small>{{ $requestItem->activation_days }} days</small></td><td>{{ number_format((float)$requestItem->final_amount,2) }} {{ $requestItem->currency }}</td><td>{{ $requestItem->promotion_code_snapshot ?: '—' }}</td><td><span class="admin-status {{ $requestItem->status==='approved'?'good':($requestItem->status==='rejected'?'danger':(in_array($requestItem->status,['submitted','under_review'])?'warn':'muted')) }}">{{ ucfirst(str_replace('_',' ',$requestItem->status)) }}</span></td><td>{{ $requestItem->created_at?->format('d M Y H:i') }}</td></tr>@empty<tr><td colspan="6">No membership requests for this account.</td></tr>@endforelse</tbody></table></div></section>
+<section class="enterprise-surface"><div class="enterprise-section-head"><div><h2>Legacy membership request history</h2><p>Direct USDT package payment history retained for audit and access verification.</p></div><a href="{{ route('admin.pulse.memberships',['q'=>$user->email]) }}">Open payment history →</a></div><div class="enterprise-table-wrap"><table class="enterprise-table"><thead><tr><th>Request</th><th>Plan</th><th>Value</th><th>Promotion</th><th>Status</th><th>Submitted</th></tr></thead><tbody>@forelse($membershipRequests as $requestItem)<tr><td>#{{ $requestItem->id }}</td><td><b>{{ $requestItem->plan?->name ?? 'Plan removed' }}</b><small>{{ $requestItem->activation_days }} days</small></td><td>{{ number_format((float)$requestItem->final_amount,2) }} {{ $requestItem->currency }}</td><td>{{ $requestItem->promotion_code_snapshot ?: '—' }}</td><td><span class="admin-status {{ $requestItem->status==='approved'?'good':($requestItem->status==='rejected'?'danger':(in_array($requestItem->status,['submitted','under_review'])?'warn':'muted')) }}">{{ ucfirst(str_replace('_',' ',$requestItem->status)) }}</span></td><td>{{ $requestItem->created_at?->format('d M Y H:i') }}</td></tr>@empty<tr><td colspan="6">No membership requests for this account.</td></tr>@endforelse</tbody></table></div></section>
 
 <section class="enterprise-section-grid equal">
 <article class="enterprise-surface"><div class="enterprise-section-head"><div><h2>Recent signals</h2><p>Latest generated Pulse signals for this user.</p></div><a href="{{ route('admin.pulse.signals') }}">All signals →</a></div><div class="enterprise-table-wrap"><table class="enterprise-table"><thead><tr><th>Generated</th><th>Market</th><th>Direction</th><th>Score</th><th>Status</th></tr></thead><tbody>@forelse($recentSignals as $signal)<tr><td>{{ $signal->generated_at?->format('d M H:i') }}</td><td>{{ $signal->symbol }}</td><td>{{ $signal->direction }}</td><td>{{ number_format((float)$signal->score,1) }}</td><td>{{ ucfirst($signal->status) }}</td></tr>@empty<tr><td colspan="5">No signal history.</td></tr>@endforelse</tbody></table></div></article>

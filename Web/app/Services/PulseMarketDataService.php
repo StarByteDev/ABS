@@ -6,9 +6,10 @@ use App\Models\PulseMarketCandle;
 use App\Models\PulseMarketDataRun;
 use App\Models\PulseMarketPrice;
 use App\Models\PulsePair;
+use App\Models\PulsePlan;
 use App\Models\PulseSignal;
 use App\Models\PulseSystemSetting;
-use App\Models\PulseUserSetting;
+use App\Models\UserServiceAccess;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -218,30 +219,55 @@ class PulseMarketDataService
     }
 
     /**
-     * Keep candle ingestion central while avoiding unnecessary per-symbol HTTP work on shared hosting.
-     * The shared universe is the union of markets selected by Pulse users plus recent signal symbols.
-     * If no user selection exists yet, fall back to the enabled catalog so a fresh installation still warms up.
+     * Keep candle ingestion central while avoiding per-user Binance requests.
+     * V15.0.3 warms the union of Admin/package-defined market universes because
+     * members no longer choose their own pairs. Recent signal markets and the
+     * three core markets stay warm for validation and first-run resilience.
      */
     private function scannerUniverse(Collection $enabledSymbols): Collection
     {
         $enabled = $enabledSymbols->map(fn ($s) => strtoupper((string) $s))->filter()->unique()->values();
         if ($enabled->isEmpty()) return collect();
 
-        $wanted = collect();
-        if (Schema::hasTable('pulse_user_settings') && Schema::hasColumn('pulse_user_settings', 'selected_pairs')) {
-            PulseUserSetting::query()->whereNotNull('selected_pairs')->select(['id','selected_pairs'])->chunkById(200, function ($settings) use (&$wanted): void {
-                foreach ($settings as $setting) {
-                    $wanted = $wanted->merge((array) ($setting->selected_pairs ?? []));
+        $wanted = collect(['BTCUSDT','ETHUSDT','SOLUSDT']);
+        if (Schema::hasTable('pulse_plans')) {
+            $planIds = PulsePlan::query()
+                ->where('is_active', true)
+                ->where('is_public', true)
+                ->pluck('id');
+
+            if (Schema::hasTable('user_service_access')) {
+                $assigned = UserServiceAccess::query()
+                    ->where('service', 'pulse')
+                    ->where('status', 'active')
+                    ->whereNotNull('pulse_plan_id')
+                    ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>', now()))
+                    ->pluck('pulse_plan_id');
+                $planIds = $planIds->merge($assigned);
+            }
+
+            $plans = PulsePlan::query()->with('pairs')->whereIn('id', $planIds->filter()->unique()->values())->get();
+            foreach ($plans as $plan) {
+                $limit = max(1, (int) ($plan->max_selected_pairs ?: 1));
+                if (($plan->pair_access_mode ?: 'all') === 'all') {
+                    $wanted = $wanted->merge($enabled->take($limit));
+                    continue;
                 }
-            });
+
+                $wanted = $wanted->merge(
+                    $plan->pairs
+                        ->filter(fn (PulsePair $pair) => (bool) ($pair->pivot?->is_enabled ?? true))
+                        ->pluck('symbol')
+                        ->take($limit)
+                );
+            }
         }
 
         if (Schema::hasTable('pulse_signals') && Schema::hasColumn('pulse_signals', 'symbol') && Schema::hasColumn('pulse_signals', 'generated_at')) {
             $wanted = $wanted->merge(PulseSignal::query()->where('generated_at', '>=', now()->subDays(2))->pluck('symbol'));
         }
 
-        $wanted = $wanted->merge(['BTCUSDT','ETHUSDT','SOLUSDT'])
-            ->map(fn ($s) => strtoupper(trim((string) $s)))->filter()->unique()->values();
+        $wanted = $wanted->map(fn ($s) => strtoupper(trim((string) $s)))->filter()->unique()->values();
         $allowed = array_flip($enabled->all());
         $wanted = $wanted->filter(fn ($symbol) => isset($allowed[$symbol]))->values();
 

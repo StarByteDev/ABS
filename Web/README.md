@@ -1,403 +1,221 @@
-# Alpha Block Solutions — ABS V14.9.2
+# ABS V15.1.5 — Free Signal Entry Watch Fallback Build
 
-**Mobile/Web Backend Parity & Admin Event Notifications Build**
+## What changed in V15.1.5
 
-V14.9.2 is the backend handoff release to use before production Flutter mobile development. The website and Flutter app share the same ABS authentication, entitlements, central Binance-derived market database, Pulse scanner/signals, execution/reconciliation state, content/CMS, notifications and reporting APIs.
+- Public rewarded Free Signal still prioritizes a real qualified public/system Pulse signal.
+- When no setup reaches the configured Pulse qualification threshold, ABS now selects the **highest-scoring LONG/SHORT setup from the completed public market scan** and presents it as **ENTRY WATCH**.
+- ENTRY WATCH is **not inserted into `pulse_signals`**, is not described as a qualified signal, and uses a distinct gold market-watch presentation and warning copy.
+- The market-watch fallback keeps the pair, direction, score, entry/watch level, stop, target, current market context and recent candles so the visitor can monitor the setup after the rewarded ad.
+- Social sharing clearly identifies an ENTRY WATCH as unqualified rather than promoting it as a Pulse signal.
+- If the scan has neither a qualified signal nor a usable LONG/SHORT market-watch candidate, the existing premium **Pulse Market Watch** / no-opportunity state remains and no rewarded ad/cooldown is consumed.
+- Existing 30-minute successful-unlock cooldown and page-session visibility behavior are unchanged.
+- No database migration is required from V15.1.4.
 
-### V14.9.2 changes
-
-- Complete `/api/v1` backend contract retained for web/mobile parity.
-- Mobile bootstrap now reports V14.9.2, `mobile_api_ready`, central ABS market-data source, 60-second target refresh and supported mobile modules.
-- New self-service registration alerts are emailed to the configurable administrator notification recipient.
-- New Pulse package subscription alerts are emailed to the same configurable administrator recipient.
-- Default recipient: `i@armansabir.com`; change it in **Admin → Email Communications**.
-- Includes a phpMyAdmin-safe, non-destructive schema create/repair SQL: `database/ABS_V14_9_2_CREATE_MISSING_TABLES_OR_COLUMNS_ONLY.sql`.
-- V14.9.1 user soft-delete/schema-repair hotfix and V14.9.0 one-minute central market architecture remain included.
 
 ---
 
-## Historical baseline — ABS V14.8.22
+# Alpha Block Solutions — ABS V15.1.4
 
-## Protected Database Self-Repair & Shared-Hosting Recovery
+**Free Signal Market-Watch Fallback + Premium Consent + Compact Top Layout**
 
-V14.8.22 is a shared-hosting recovery release built directly on V14.8.21. It preserves the full application QA, HostGator scheduler profile, guided Open Trade UX and central price/signal intelligence architecture while removing the need for Terminal access when an upgrade introduces missing database tables or columns.
+ABS V15.1.4 refines the public Free Signal experience without changing the production ABS logo, global header, direct-USDT commerce, scanner engine, rewarded-ad architecture, ABS News, emails or Binance protections.
 
-### V14.8.22 changes
+## What changed in V15.1.4
 
-- Replaced the command-heavy Setup Required page with a protected **Fix Missing Tables & Columns** workflow.
-- The repair form accepts the private `ABS_RECOVERY_KEY` already configured in `Laravel_ABS/.env`.
-- Added `POST /api/recovery/repair` with rate limiting and constant-time recovery-key comparison.
-- Web repair runs the existing non-destructive `abs:repair` reconciliation **without seeding**: missing ABS/Pulse tables are created and missing required columns are added while existing rows and business configuration are preserved.
-- Added before/after schema verification and a clear repair result showing how many missing tables/columns were reconciled.
-- Added a shared-hosting fallback that reads `ABS_RECOVERY_KEY` directly from the private `.env` when Laravel configuration was previously cached and Terminal access is unavailable. The key is never returned to the browser.
-- Kept advanced backup initialization/restore at `/api/recovery`, and added database repair there as the recommended first option.
-- Setup diagnostics still show the exact missing tables/columns in a collapsed detail section, but no longer instruct ordinary hosting users to run Terminal commands.
-- Added the complete SQL create/repair file under `database/ABS_V14_8_22_COMPLETE_DATABASE_SCHEMA_CREATE_REPAIR.sql` as a phpMyAdmin fallback.
-- No new database migration is required.
+- Removed the duplicate ABS Pulse product/hero block above Free Signal; the page now begins directly with the three compact benefit cards under the existing global header, matching the approved screenshot.
+- Replaced the classic risk checkbox with a premium custom acknowledgement card and aligned control.
+- Rewarded access now reserves a qualified **system/public** signal before showing an ad. User-private signals are never used as public fallback content.
+- If the live scan cannot evaluate central candle buffers, the technical exception is logged server-side and never shown to visitors. ABS first falls back to the latest still-active qualified public/system signal.
+- If neither a fresh nor already-active qualified public signal exists, no ad is shown and no cooldown is applied. The page presents a premium **Pulse Market Watch** state explaining that no new opportunity is available right now and that ABS is monitoring for the next setup.
+- When an already-active fallback signal is used, the revealed card clearly states that no new setup qualified in the latest market check and that the latest active qualified setup is being shown.
+- The signal still remains visible until refresh/navigation and the 30-minute successful-unlock cooldown remains unchanged.
 
-### Shared-hosting upgrade
+## Upgrade from V15.1.3
 
-After uploading this build, simply browse to the website. If ABS detects missing database structure, enter the configured `ABS_RECOVERY_KEY` and press **Fix Missing Database Structure**. When the repair reports success, open the website normally.
-
-HostGator Shared/Baby scheduler behavior remains the V14.8.21 model: one Laravel `schedule:run` cron every 15 minutes with missed 1-minute validation candles backfilled centrally.
+No database migration is required. Back up the site/database, preserve `.env`, replace the application files and run `php artisan optimize:clear` where available.
 
 ---
 
-# Cumulative ABS Revision History
+# Alpha Block Solutions — ABS V15.1.3
 
-## ABS V14.8.21 — Full Application QA & HostGator Shared Scheduler
+**Branded Free Signal Teaser + Page-Session Signal Reveal + Social Sharing**
 
-- Corrected release identity and aligned web/API/OpenAPI build metadata.
-- Added the `hostgator_shared` scheduler profile using one Laravel `schedule:run` cron every 15 minutes on HostGator Shared/Baby hosting.
-- Preserved 1-minute validation precision by downloading missed closed 1-minute candles on each central cycle and processing them chronologically.
-- Added profile-aware central-price freshness and prioritized central candle ingestion for user-selected markets, recent signal markets and core markets.
-- Added `abs:scheduler-check` and expanded `abs:production-check` for deployment/database, Blade/routes, scheduler, public market, Binance Futures public connectivity, central market ingestion and signal validation.
-- Added HostGator no-Terminal deployment/cron documentation.
-- No new database migration was required.
+ABS V15.1.3 is the current Laravel website/backend release. It keeps the V15.1.2 direct-USDT, ABS News, rewarded-ad and Binance execution architecture, and upgrades the public Free Signal experience to the approved ABS Pulse design. The production Alpha Block Solutions logo and global branding are preserved.
 
----
+## What changed in V15.1.3
 
-## ABS V14.8.20 — Guided Self-Configured Trading UX
+### Premium ABS Pulse Free Signal experience
 
-## Guided Self-Configured Trading UX
+- `/pulse/free-signal` now uses the approved dark navy, cyan and gold ABS Pulse visual language.
+- The production/global ABS logo is not replaced. The page uses the existing site header and a text-led ABS Pulse product strip.
+- The pre-ad signal area is a blurred teaser built from placeholders; actual signal values are not leaked in page HTML before the rewarded claim.
+- The rewarded-access panel includes a lightweight animated Pulse waveform/orbit treatment implemented in CSS.
 
-V14.8.20 is a customer-journey simplification release built directly on V14.8.19. It keeps the V14.8.17 central price/signal intelligence architecture and Binance risk backend intact while removing the unnecessary “Enable Trading in Settings” step for eligible users.
+### Signal stays visible until refresh
 
-### V14.8.20 changes
+- The old 30-second auto-hide behavior has been removed.
+- After a rewarded grant, the signal remains visible in the current page until the visitor refreshes, navigates away or later unlocks another signal.
+- The successful-unlock cooldown remains 30 minutes by default and is enforced server-side by the anonymous browser identity.
+- Refreshing during cooldown shows the blurred teaser again plus the remaining next-free-signal timer; the prior signal is not re-exposed by the server.
 
-- An explicit **Confirm & Open Trade** click now acts as consent for guided manual signal execution when the user's Pulse plan already includes manual trading.
-- Eligible signal-only accounts are automatically moved to managed manual execution at the moment of the first confirmed trade; customers no longer need to visit Settings first.
-- Automatic trading mode is never disabled or overwritten by a manual signal trade.
-- Open Trade readiness no longer depends on the Settings execution-mode selector. It depends on real requirements only: plan access, eligible environment, verified Binance connection, execution-system availability and Emergency Stop state.
-- The Open Trade drawer now displays a **Managed setup** message when ABS will apply the safe trading defaults automatically.
-- Removed the confusing **Enable Trading** redirect from the Open Trade flow. Required next steps are now explicit: Connect Binance, View Trading Plans, Review Trading Pause, Choose Trading Environment, or Trading Temporarily Unavailable.
-- Successful trades now return the customer to Pulse Signals instead of sending them to another trade-detail page. Pulse continues monitoring the Binance order and protection state in the background; **Monitor Trade** remains available from the signal.
-- Before submission, Pulse refreshes Binance trading permission, account equity and available balance when the stored connection snapshot is stale or incomplete.
-- The first Binance API connection is now **saved and verified in one step**; when it is the first successful connection, Pulse activates it automatically. Additional verified environments remain deliberate user choices.
-- Pulse Settings is renamed **Pulse Preferences** and explains that normal signal execution is managed automatically. Advanced execution preferences remain available but are collapsed by default.
-- Mobile execution-readiness API now reports the same managed setup logic with `managed_setup` and `next_step`.
-- No new database migration is required.
+### Rich real signal presentation
 
-### Upgrade commands
+Where central ABS market data is available, the unlocked snapshot includes current price, 24H change/high/low/volume and recent candles. The page renders a branded market card with direction, timeframe, score, entry, up to three take-profit levels, stop loss, Pulse strategies, a market-structure chart and the live cooldown counter. Missing market fields degrade to an em dash rather than fabricated values.
 
-```bash
-php artisan abs:repair --seed
-php artisan optimize:clear
-php artisan abs:doctor
-```
+### Social sharing / promotion
 
-Keep Laravel `schedule:run` once per minute for the central market-data and validation architecture.
+After unlock, the user can share the Free Signal page through X, Facebook, WhatsApp, Telegram, LinkedIn and Reddit. `More Apps` uses the browser/native Web Share capability where available, and `Copy Link` provides a universal fallback. The shared message references the unlocked market but the URL points to the public Free Signal landing page, so visitors must unlock their own signal.
+
+### Admin control
+
+Admin → Rewarded Signal Ads still controls enable/pause, Google test/production inventory, ad-unit configuration, cooldown and public gateway copy. The retired reveal-duration field is removed because signal visibility is now fixed to the current page session.
+
+## Upgrade from V15.1.2
+
+No new database migration is required for the V15.1.3 Free Signal UX change. Back up the site/database, preserve the production `.env`, replace the application files, then run `php artisan optimize:clear` where Terminal is available. Existing V15.1.0–V15.1.2 migrations/data remain valid.
+
+## Production smoke-test boundary
+
+Real Google rewarded-ad fill, FMP calendar responses, SMTP, MySQL/HostGator cron, Binance Testnet/Live credentials and production USDT configuration still require smoke testing in your own environment. Source/static/release validation cannot simulate those external accounts.
 
 ---
 
-## ABS V14.8.19 — Simplified Premium Pulse UX & Single Open-Trade Flow
+# Alpha Block Solutions — ABS V15.1.2
 
-## Simplified Premium Pulse UX & Single Open-Trade Flow
+**Premium Admin Usability + Binance Precision Guard + ABS News Calendar History + Simplified Free Signal**
 
-V14.8.19 is a UX simplification release built directly on V14.8.18. It keeps the V14.8.17 central price/signal-intelligence architecture and Binance safety backend unchanged while reducing visual density, removing the redundant standalone Trade Execution page from the user journey, and fixing the Strategies-page overlap shown in production testing.
+ABS V15.1.2 is the current Laravel website/backend release. It keeps the approved V15.1.1 architecture — direct USDT packages, anonymous rewarded Free Signal, ABS News macro intelligence, premium emails and no active Sparks/points economy — and fixes the usability/runtime issues found during local testing.
 
-### V14.8.19 changes
+## What changed in V15.1.2
 
-- Fixed the Pulse Strategies overlap by removing fixed-height catalog layout and placing all lower sections in normal responsive document flow.
-- Simplified Strategy cards to the essentials: strategy name, short description, timeframe, signal count, average score and one Scanner action.
-- Replaced the three crowded Strategy Contribution / Global Controls / Strategy Health blocks with a clean performance summary plus one combined Controls & Health card.
-- Removed Trade Execution from the signed-in sidebar.
-- Kept `/pulse/execution` only as a backward-compatible redirect to the Signals Open Trade drawer, so old bookmarks do not break.
-- Removed the Advanced execution link from the Open Trade drawer.
-- Simplified the drawer to Current, Entry, Stop Loss, Take Profit, Environment, Leverage, Trade Size and Max Loss, with one confirmation action: **Confirm & Open Trade**.
-- Removed Qualified Strategies, Potential Reward and Risk/Reward clutter from the execution drawer.
-- Incomplete execution setup now guides directly to Plans, Binance Connection or Settings instead of opening a second execution page.
-- Execution validation errors return to the same signal and automatically reopen the Open Trade drawer with the error shown clearly.
-- Reduced Pulse Signals summary cards from five to four and removed the R:R table column and duplicate 30-day activity block.
-- Preserved V14.8.17 central market-data, validation, reporting, learning, scheduler and mobile API behavior.
+### 1) Alerts & Emails simplified
 
-### Upgrade commands
+Admin → **Alerts & Emails** is rebuilt as one easy communications center:
 
-```bash
-php artisan abs:repair --seed
-php artisan optimize:clear
-php artisan abs:doctor
-```
+- Plan expiry reminders with a simple enable/disable switch and clear day thresholds.
+- Upcoming expiry audience counts.
+- Administrator alert recipient with separate registration and package-payment alert switches.
+- Customer email categories presented as clear cards instead of a dense configuration grid.
+- One sticky **Save Email Settings** action.
+- Simple branded test-email control.
+- Delivery history kept as a separate troubleshooting/audit section.
 
-No new V14.8.19 database migration is required. Keep Laravel `schedule:run` once per minute for central prices and signal validation.
+The existing centered premium transactional email template remains unchanged.
 
----
+### 2) Economic Calendar CMS ParseError fixed
 
+The Economic Calendar CMS list template was rewritten with explicit Blade blocks instead of compressed inline directives. This removes the `unexpected token "endforelse"` error seen on `/admin/cms/content/events`.
 
-## ABS V14.8.18 — Full-Site Stability, Dashboard Runtime & API Compatibility
+The provider panel is also simplified to:
 
-V14.8.18 is a stability release built directly on the V14.8.17 central price/signal-intelligence architecture. It fixes the Pulse Dashboard runtime error reported on `PulsePageDataService.php`, keeps the approved central market-data architecture intact, strengthens architecture-readiness handling on reporting/API surfaces, and restores the cumulative revision history in this README.
+- connect/replace the Financial Modeling Prep API key
+- enable/disable automatic synchronization
+- run **Sync Calendar Now**
+- preview ABS News
 
-### Changes
+### 3) ABS News calendar navigation + history
 
-- Fixed `Undefined variable $scannerCapabilities` on `/pulse/dashboard` by initializing dashboard capability and Binance connection-readiness state before building the page payload.
-- Fixed the companion uninitialized `$scannerConnectionReady` path that would have produced the next dashboard error after the first variable was corrected.
-- Added schema-readiness guards to central price health/read APIs so missing V14.8.17 tables return a controlled recovery state instead of a raw SQL/server error.
-- Added graceful empty-state handling to user Pulse Reports and Admin → Pulse → Signal Intelligence when the new intelligence tables have not yet been reconciled.
-- Added graceful mobile API behavior for signal validation/performance/learning endpoints while schema repair is pending.
-- Preserved the legacy `data.summary` object on `GET /api/v1/pulse/reports` while retaining the clearer `data.trading` alias, preventing an avoidable mobile-client breaking change.
-- Kept the V14.8.17 strategy-engine identity unchanged so this stability release does not incorrectly split strategy-learning evidence.
-- Restored cumulative revision history to the main README rather than replacing it with release-only notes.
-- Expanded release-wide static checks for routes/controllers, API/OpenAPI parity, controller view targets and Blade template references.
-- No new database migration is introduced by V14.8.18; V14.8.17 schema reconciliation is still required for the central price/signal-intelligence features.
+The public **ABS News** page now has premium calendar navigation:
 
-### Upgrade commands
+- **Today**
+- **Upcoming**
+- **Previous Releases** — last 30 days
+- **All** — recent history plus upcoming events
 
-```bash
-php artisan abs:repair --seed
-php artisan optimize:clear
-php artisan abs:doctor
-```
+Each row shows event time, impact, Previous / Forecast / Actual, an easy explanation and simplified crypto-impact context. High/medium crypto-relevant events are prioritized.
 
-For central prices and signal validation, configure hosting cron to execute Laravel `schedule:run` once per minute.
+If the calendar provider is configured but the event database is empty, ABS performs a throttled bootstrap synchronization. Normal provider synchronization now requests approximately **30 days of history and 45 days ahead**, so past release history can be retained instead of only near-future events.
 
----
+Actual economic-event values are never fabricated. A configured provider or Admin-maintained CMS records are required for real Previous / Forecast / Actual data.
 
-## ABS V14.8.17 — Central Price, Signal Intelligence, Reporting & Mobile API
+### 4) Find Best Signal page simplified
 
-- Added one centrally scheduled Binance Futures market-data pipeline instead of per-user public price/candle requests.
-- Added shared latest-price storage, 15M/4H closed-candle scanner buffers and short-retention 1M validation candles.
-- Froze generated signal strategy/version, entry, SL, TP levels, technical score, reliability, confidence and fingerprint.
-- Added entry-before-outcome validation, entry-minute exclusion and same-minute TP+SL ambiguous handling.
-- Added MFE, MAE, R-multiples, duration and TP progress tracking.
-- Added permanent daily signal/strategy aggregates and evidence-protected recency-weighted strategy learning.
-- Added user Pulse signal-intelligence reporting, Admin Signal Intelligence reporting and mobile-friendly reporting/market-data APIs.
-- Added `abs:pulse-market-data`, `abs:pulse-validate-signals` and `abs:pulse-learning` scheduled commands.
-- Database/schema reconciliation required.
+Removed the redundant **Automatic Pulse Intelligence** information block and its four descriptive chips. The page now moves directly from the page actions/status to the useful scanner metrics and Best Signal result.
 
-## ABS V14.8.16 — Right-Side Execution, Multi-Timeframe Scanner & Live Status
+The sidebar **Commerce / Direct USDT / Activation / Admin Verified** strip was also removed. Package status remains available through the existing package/account areas without repeating commerce wording on every Pulse screen.
 
-- Moved desktop Signal Execution to the right side; mobile retained the bottom-sheet treatment.
-- Fixed execution-footer button visibility.
-- Restored dedicated live Status columns to Scanner Results and Pulse Signals.
-- Fixed the then-current scanner multi-timeframe behavior so displayed timeframe matched evaluated timeframe.
-- Kept same-pair signals independent by timeframe.
+### 5) Binance `-1111 BAD_PRECISION` execution guard
 
-## ABS V14.8.15 — Live Price-Driven Signal Action & Open Trade
+Before risk math/order construction, Pulse now refreshes the selected pair's current Binance Futures symbol rules where possible. Before signing an order it also normalizes:
 
-- Removed scanner Risk / Reward clutter.
-- Removed static `New Signal` action logic.
-- Made action stage follow current Binance Futures price versus Entry/SL/TP.
-- Added Entry Ready, Move in Progress, Entry Watch, Trade Open and Signal Closed states.
-- Kept valid signals clickable and refreshed action state without consuming scan quota.
+- LIMIT quantity against live `LOT_SIZE`
+- MARKET quantity against live `MARKET_LOT_SIZE` when provided
+- price/trigger values against live `PRICE_FILTER.tickSize`
+- quantity/price decimal precision against current exchange rules
 
-## ABS V14.8.14 — Professional Signal Action & Binance Open Trade UX
+If Binance rejects the first request with a precision/filter error such as `-1111`, `-4023`, `-4014`, `-4029` or `-4030`, ABS refreshes `exchangeInfo`, re-normalizes the request and retries once. These errors represent an exchange rejection before order acceptance, so the retry path is designed not to create a duplicate accepted order.
 
-- Removed Last Price from Scanner Results.
-- Removed confusing `Signal Limit` action text.
-- Added professional Review/Open/Monitor/View action flow.
-- Added state-aware Recommended Binance Execution guidance.
-- Preserved protected Binance LIMIT execution and backend risk checks.
+Pair synchronization now stores `LOT_SIZE` as the normal executable quantity rule instead of incorrectly using `MARKET_LOT_SIZE` as the default for LIMIT orders.
 
-## ABS V14.8.13 — Professional Signal Actions & Trade Execution Drawer
+### 6) Free Signal rewarded-ad page simplified
 
-- Removed Strategy columns from execution-focused signal tables.
-- Surfaced Entry Price, Stop Loss and Take Profit directly.
-- Introduced professional lifecycle/action wording.
-- Added the compact execution drawer while preserving server-side Binance/risk safeguards.
+The anonymous `/pulse/free-signal` page is redesigned around one clear action:
 
-## ABS V14.8.12 — Simple Four-Phase Signal Workflow
+**Watch Ad → Unlock Signal**
 
-- Introduced Opportunity Spotted → Entry Ready → Trade In Progress → Expired.
-- Added Monitor Signal / Open Trade / Monitor Trade / View Signal actions.
-- Reduced execution to a compact single-review surface.
-- Prevented a second execution form on the standalone analysis page.
+End-user technical labels such as `GOOGLE REWARDED WEB`, `OPTIONAL`, `NO ACCOUNT REQUIRED` and provider-engine implementation explanations were removed. The page now communicates only what a visitor needs to know:
 
-## ABS V14.8.11 — Premium Guided Signal Trade Execution
+- no account required
+- one completed rewarded ad unlocks one qualified signal
+- signal visibility: current page session until refresh/navigation (V15.1.3)
+- default successful-unlock cooldown: 30 minutes
+- legal/risk acknowledgement before the ad
 
-- Replaced native browser confirmation with guided Signal Review → Confirm Trade → Binance execution.
-- Added LIVE/Testnet distinction, qualified-strategy display and risk preview.
-- Added final acknowledgement and duplicate-submit protection.
-- Preserved the advanced execution ticket and authoritative server validation.
+The underlying Google rewarded grant validation, signed one-time claim, duplicate protection and cooldown logic remain in place.
 
-## ABS V14.8.10 — Signal Execution Actions, Multi-Strategy & Live Time
+## Commerce model retained
 
-- Converted the Signals queue to decision-oriented actions.
-- Added protected LIMIT execution from ready/waiting signals.
-- Displayed all positively qualifying strategies.
-- Added relative scan-time updates without page refresh.
+- No customer Sparks/points wallet is used in active application code/UI.
+- Paid Pulse access uses **direct USDT transfer → TXID/payment proof → Admin verification → package activation**.
+- Best Signal is included with an eligible active package; there is no per-signal points debit.
+- USDT wallet/network/payment instructions remain Admin controlled.
 
-## ABS V14.8.9 — Scanner Action Consistency
+## Rewarded Free Signal retained
 
-- Standardized scanner action wording and prerequisite handling.
-- Refreshed existing active signals against the latest scan without consuming another signal slot.
-- Preserved original signal generation time.
+- No registration is required for `/pulse/free-signal`.
+- A qualified signal is reserved/created before an eligible rewarded ad is shown.
+- The signal is revealed only after the rewarded-grant event.
+- Closing/no-fill/no-grant reveals nothing and does not start the successful-unlock cooldown.
+- Admin → **Rewarded Signal Ads** controls enable/pause, Google test/production inventory, ad-unit path/snippet, timings and public gateway wording.
 
-## ABS V14.8.8 — Scanner Trade Action & Binance Protected Execution
+## ABS News data source
 
-- Restored deliberate Scanner → Trade Execution flow.
-- Reused the protected execution ticket with pre-filled entry, quantity, leverage, SL and TP.
-- Enforced plan/environment/manual-trading/risk/exchange safeguards.
-- Added Binance exchange-side TP/SL protection and controlled API validation errors.
-
-## ABS V14.8.7 — Selected-Pair Scanner & Threshold Consistency
-
-- Normal scans follow the user's saved package-approved selected markets.
-- Removed the legacy small scanner-pair ceiling from modern selected-market scanning.
-- Unified scanner minimum score with effective user/package signal threshold.
-- Added package-configurable default minimum score and repair support.
-
-## ABS V14.8.6 — Full Package Scanner
-
-- Expanded scanner processing and package market handling from the prior scanner baseline.
-- Added release checks around package-wide evaluation, concurrent market processing and completed-run quota accounting.
-- Retained mobile scanner API parity.
-
-## ABS V14.8.5 — Scanner Fragment Hotfix
-
-- Corrected scanner-page fragment/navigation issues from the preceding release.
-- Preserved V14.8.4 upgrade/database behavior while restoring scanner page stability.
-
-## ABS V14.8.4 — Upgrade Path & Database Fix
-
-- Added current-plan/next-tier upgrade UX.
-- Added production-safe self-healing database repair behavior.
-- Strengthened non-destructive upgrade/seeding paths for existing installations.
-
-## ABS V14.8.3 — Async Scanner, Quotas, Logout & Pair Lock
-
-- Added asynchronous scanner behavior and safer logout handling.
-- Added plan quota enforcement and selected-pair change locking.
-- Corrected Long/Short ratio handling and scanner usage accounting.
-
-## ABS V14.8.2 — Production Updates, Mobile & Binance
-
-- Established the production V14.8.x Pulse baseline.
-- Included the 15-strategy/package market model, Binance Futures connection/execution controls and mobile API parity.
-- Included production backup/restore and rollback-oriented release tooling.
-
-## ABS V14.7.9 — Final Logged-In Pulse Navigation
-
-- Finalized authenticated Pulse navigation and page routing consistency.
-- Preserved capability-aware links and premium authenticated layout.
-
-## ABS V14.7.8 — Complete Premium Authenticated Experience
-
-- Harmonized remaining logged-in Pulse pages with the approved premium dashboard/scanner/signals visual language.
-- Preserved real authenticated account, plan, signal, trade and exchange data rather than sample production values.
-- Maintained mobile/OpenAPI parity and execution safeguards.
-
-## ABS V14.7.7 — Premium Pulse User Pages + Mobile API Parity
-
-- Delivered premium Dashboard, Market Scanner, Signals, Strategies and Trade Execution pages.
-- Added shared page-data logic for web/mobile consistency.
-- Added capability-aware collapsible Pulse navigation.
-- Strengthened execution readiness and safe Binance metadata handling.
-
-## ABS V14.7.6 — Subscription Decision Workflow
-
-- Improved administrator subscription-request review, approve/reject decisions and remarks handling.
-- Focused the admin membership flow on clear operational decisions.
-
-## ABS V14.7.4 / V14.7.3 / V14.7.2 / V14.7.1
-
-- Continued production validation of Pulse routes/pages and deployment behavior.
-- Added premium admin/email activation guidance and live-market/database update guidance.
-- Added backup/restore support and production-safe recovery documentation.
-
-## ABS V14.7 — Production Distribution Baseline
-
-- Consolidated enterprise CMS, mobile API, email/alert matrix, deployment and validation documentation.
-- Established the production-oriented distribution/acceptance baseline used by later Pulse releases.
-
-## ABS V14.6.14 — Advantage Grid / Side-Card Clearance
-
-- Refined premium homepage layout clearance and side-card spacing.
-
-## ABS V14.6.13 — Integrated Futures Pricing Gauge
-
-- Integrated futures-positioning/pricing presentation into the premium public market experience.
-
-## ABS V14.6.12 — UI Validation
-
-- Added UI validation and consistency checks for the premium homepage iteration.
-
-## ABS V14.6.11 — Futures Positioning Metrics
-
-- Added futures-market positioning metrics to the public market-intelligence experience.
-
-## ABS V14.6.10 — Premium Wide Layout & Readability
-
-- Improved wide-layout readability, spacing and information density.
-
-## ABS V14.6.9 — Confirmed Premium Homepage
-
-- Locked the confirmed premium homepage visual reference.
-
-## ABS V14.6.8 — Premium Readability & Density Refinement
-
-- Refined information density and premium readability across the public homepage.
-
-## ABS V14.6.7 — Premium Public Experience
-
-- Advanced the professional public ABS visual/market-information experience.
-
-## ABS V14.6.2 — Homepage Live Data & 3D Treatment
-
-- Added/refined live-data presentation and the approved richer homepage treatment.
-
-## ABS V14.6.1 — Laragon / MySQL Fixed Build
-
-- Fixed local Laragon/MySQL startup and duplicate legacy user-migration conflicts.
-- Added cleanup/repair and MySQL-first local helper scripts.
-
-## ABS V14.6 — Complete Pulse Workspace
-
-- Completed the signed-in Pulse customer area: Dashboard, Scanner, Signals, Strategies, Trade Execution, Positions, History, Risk, Alerts/Watchlists, Reports, Binance Connection and Settings.
-- Preserved authenticated Binance terminology, execution safeguards and no-fake-production-data rules.
-
-## ABS V14.5 — Final Pulse Dashboard
-
-- Established the approved professional Pulse dashboard baseline used by the complete workspace.
-
-## ABS V14.4 — Final Homepage
-
-- Established the approved public ABS homepage baseline.
-
-## ABS V14.3 — Authentication UI
-
-- Consolidated premium authentication presentation and flow.
-
-## ABS V14.2 — Create Account Page
-
-- Added/refined the ABS account-registration experience.
-
-## ABS V14.1 — Login Page
-
-- Added/refined the ABS login experience.
-
-## Earlier retained baselines
-
-The package also retains documentation for the earlier membership/premium/error-fix foundations, including V13.7 Membership/Admin, V13.8 Premium Experience and V13.2 error-fix references. These earlier documents remain under `docs/` for traceability instead of being deleted from later builds.
-
----
-
-# V14.8.17 Architecture Operation Notes
-
-The current runtime still uses the V14.8.17 approved price/signal architecture:
-
-- Binance Futures public market data is fetched centrally by the server scheduler.
-- Web/mobile clients consume ABS-stored price/candle/reporting state rather than initiating per-user public Binance market-data fetches.
-- Scanner execution architecture uses 15M and 4H strategy candles.
-- Detailed validation uses 1M candles with approximately 7-day resolved-detail retention.
-- Compact daily strategy metrics and learning state are retained permanently.
-- Signal Entry/SL/TP/strategy/version snapshots remain immutable after generation.
-
-See:
-
-- `docs/ABS_V14_8_17_CENTRAL_PRICE_SIGNAL_INTELLIGENCE_ARCHITECTURE.md`
-- `docs/MOBILE_API_V14_8_17.md`
-- `docs/openapi.yaml`
-
-## Production deployment
-
-Back up the database and `.env`, upload the build, then run:
-
-```bash
-php artisan abs:repair --seed
-php artisan optimize:clear
-php artisan abs:doctor
-php artisan abs:production-check
-```
-
-Configure one hosting cron job to run Laravel `schedule:run` every minute so central prices, validation, exchange reconciliation and other scheduled ABS tasks remain current.
+Admin → **CMS → Economic Calendar CMS** can maintain records manually or configure an encrypted Financial Modeling Prep API key. Auto-sync uses the existing Laravel scheduler when enabled.
+
+Without a provider key, ABS does not invent market releases or forecast/actual numbers; manual CMS remains available.
+
+## Legal/risk coverage retained
+
+- Global market/risk notice across public and Pulse experiences.
+- Registration acknowledgement of Terms, Privacy, Risk Disclosure and Market Disclaimer.
+- Direct-USDT package submission risk/legal acknowledgement.
+- Free Signal legal/risk acknowledgement.
+- Economic data, forecasts/revisions, rewarded advertising, third-party data, blockchain/exchange risk and no professional-adviser relationship covered by legal pages.
+- Transactional emails include a concise market/risk disclaimer.
+
+These controls improve disclosure but are not a substitute for jurisdiction-specific legal advice.
+
+## Upgrade from V15.1.1
+
+1. Back up the current database and application files.
+2. Keep the production `.env`; do not overwrite it.
+3. Upload/replace the V15.1.2 application files.
+4. Preferred: run `php artisan migrate --force` and `php artisan optimize:clear`.
+5. Shared hosting without Terminal: import `ABS_V15_1_2_APPLY_USABILITY_FIXES.sql` once in phpMyAdmin. It only upgrades the old stock Free Signal copy and preserves Admin-customized wording.
+6. Keep the existing Laravel scheduler cron enabled.
+7. In Admin → CMS → Economic Calendar CMS, enter the FMP key if not already configured and run **Sync Calendar Now** once. This is required for real economic-event data.
+8. In Admin → Rewarded Signal Ads, keep Google test inventory enabled until the free-signal flow is confirmed in your target browsers.
+9. Re-test Binance Testnet execution on several symbols. V15.1.2 refreshes current symbol filters immediately before execution.
+10. Send a test email from Admin → Alerts & Emails.
+
+## Production smoke-test boundary
+
+Source/static validation is included in this release, but the following require your own external credentials/environment and must still be tested after deployment:
+
+- real Google rewarded-ad fill and browser eligibility
+- real FMP economic-calendar API responses
+- SMTP delivery/rendering
+- production MySQL migration/import
+- HostGator cron execution
+- real Binance Testnet/Live API credentials and exchange acceptance
+- production USDT wallet/network/payment-verification workflow

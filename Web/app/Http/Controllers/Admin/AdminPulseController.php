@@ -56,12 +56,29 @@ class AdminPulseController extends Controller
         $data = $request->validate([
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
+            'strategy' => ['nullable', 'string', 'max:100'],
+            'timeframe' => ['nullable', Rule::in(['15m', '4h'])],
+            'direction' => ['nullable', Rule::in(['LONG', 'SHORT'])],
         ]);
         $from = isset($data['from']) ? Carbon::parse($data['from'])->startOfDay() : now()->subDays(30)->startOfDay();
         $to = isset($data['to']) ? Carbon::parse($data['to'])->endOfDay() : now()->endOfDay();
+        $filters = [
+            'strategy' => trim((string) ($data['strategy'] ?? '')),
+            'timeframe' => strtolower(trim((string) ($data['timeframe'] ?? ''))),
+            'direction' => strtoupper(trim((string) ($data['direction'] ?? ''))),
+        ];
+        $catalog = Schema::hasTable('pulse_strategies')
+            ? PulseStrategy::query()->orderBy('sort_order')->orderBy('name')->get()
+            : collect();
+        if ($filters['strategy'] !== '' && ! $catalog->contains('slug', $filters['strategy'])) {
+            $filters['strategy'] = '';
+        }
+
         $daily = Schema::hasTable('pulse_signal_daily_metrics')
             ? PulseSignalDailyMetric::query()->whereNull('user_id')->whereBetween('metric_date', [$from->toDateString(), $to->toDateString()])->get()
             : collect();
+        if ($filters['timeframe'] !== '') $daily = $daily->where('timeframe', $filters['timeframe']);
+        if ($filters['direction'] !== '') $daily = $daily->where('direction', $filters['direction']);
         $wins = (int) $daily->sum('wins'); $losses = (int) $daily->sum('losses');
         $entries = (int) $daily->sum('entries'); $signals = (int) $daily->sum('signals');
         $weighted = static function ($rows, string $value, string $weight): ?float {
@@ -75,9 +92,31 @@ class AdminPulseController extends Controller
             return $d > 0 ? $n / $d : null;
         };
 
-        $strategyRows = Schema::hasTable('pulse_strategy_daily_metrics')
-            ? PulseStrategyDailyMetric::query()->where('market_regime', 'ALL')->whereBetween('metric_date', [$from->toDateString(), $to->toDateString()])->get()
-            : collect();
+        $strategyRows = collect();
+        if (Schema::hasTable('pulse_strategy_daily_metrics')) {
+            $strategyQuery = PulseStrategyDailyMetric::query()
+                ->where('market_regime', 'ALL')
+                ->whereBetween('metric_date', [$from->toDateString(), $to->toDateString()]);
+            if ($filters['strategy'] !== '') $strategyQuery->where('strategy_slug', $filters['strategy']);
+            if ($filters['timeframe'] !== '') $strategyQuery->where('timeframe', $filters['timeframe']);
+            if ($filters['direction'] !== '') $strategyQuery->where('direction', $filters['direction']);
+            $strategyRows = $strategyQuery->get();
+        }
+        $allTimeStrategyRows = collect();
+        if (Schema::hasTable('pulse_strategy_daily_metrics')) {
+            $allTimeQuery = PulseStrategyDailyMetric::query()->where('market_regime', 'ALL');
+            if ($filters['strategy'] !== '') $allTimeQuery->where('strategy_slug', $filters['strategy']);
+            if ($filters['timeframe'] !== '') $allTimeQuery->where('timeframe', $filters['timeframe']);
+            if ($filters['direction'] !== '') $allTimeQuery->where('direction', $filters['direction']);
+            $allTimeStrategyRows = $allTimeQuery->get();
+        }
+        if ($filters['strategy'] !== '') {
+            // Keep the KPI strip honest when Admin drills into one strategy.
+            $signals = (int) $strategyRows->sum('sample_count');
+            $entries = (int) $strategyRows->sum('entries');
+            $wins = (int) $strategyRows->sum('wins');
+            $losses = (int) $strategyRows->sum('losses');
+        }
         $strategies = $strategyRows->groupBy(fn ($row) => $row->strategy_slug.'|'.$row->strategy_version.'|'.$row->timeframe.'|'.$row->direction)
             ->map(function ($group, $key) use ($weighted) {
                 [$slug,$version,$tf,$direction] = explode('|', $key, 4);
@@ -88,20 +127,122 @@ class AdminPulseController extends Controller
                     'ambiguous'=>(int)$group->sum('ambiguous'),'win_rate'=>($w+$l)>0?($w/($w+$l))*100:null,
                     'avg_mfe_r'=>$weighted($group,'avg_mfe_r','entries'),'avg_mae_r'=>$weighted($group,'avg_mae_r','entries'),
                 ];
-            })->sortByDesc('samples')->values()->take(30);
+            })->sortByDesc('samples')->values()->take(60);
+
+        $learningRows = collect();
+        if (Schema::hasTable('pulse_strategy_learning_states')) {
+            $learningQuery = PulseStrategyLearningState::query()->where('market_regime', 'ALL');
+            if ($filters['strategy'] !== '') $learningQuery->where('strategy_slug', $filters['strategy']);
+            if ($filters['timeframe'] !== '') $learningQuery->where('timeframe', $filters['timeframe']);
+            if ($filters['direction'] !== '') $learningQuery->where('direction', $filters['direction']);
+            $learningRows = $learningQuery->get();
+        }
+
+        $visibleCatalog = $filters['strategy'] === '' ? $catalog : $catalog->where('slug', $filters['strategy']);
+        $evidenceRank = ['insufficient' => 1, 'developing' => 2, 'established' => 3];
+        $strategyRollups = $visibleCatalog->map(function (PulseStrategy $strategy) use ($strategyRows, $allTimeStrategyRows, $learningRows, $weighted, $evidenceRank) {
+            $metrics = $strategyRows->where('strategy_slug', $strategy->slug);
+            $allMetrics = $allTimeStrategyRows->where('strategy_slug', $strategy->slug);
+            $learning = $learningRows->where('strategy_slug', $strategy->slug);
+            $samples = (int) $metrics->sum('sample_count');
+            $entries = (int) $metrics->sum('entries');
+            $wins = (int) $metrics->sum('wins');
+            $losses = (int) $metrics->sum('losses');
+            $ambiguous = (int) $metrics->sum('ambiguous');
+            $decisive = $wins + $losses;
+            $allSamples = (int) $allMetrics->sum('sample_count');
+            $allEntries = (int) $allMetrics->sum('entries');
+            $allWins = (int) $allMetrics->sum('wins');
+            $allLosses = (int) $allMetrics->sum('losses');
+            $allAmbiguous = (int) $allMetrics->sum('ambiguous');
+            $allDecisive = $allWins + $allLosses;
+            $periodWinRate = $decisive > 0 ? ($wins / $decisive) * 100 : null;
+            $allTimeWinRate = $allDecisive > 0 ? ($allWins / $allDecisive) * 100 : null;
+            $learningWeight = max(0, (int) $learning->sum('sample_size'));
+            $reliability = $learning->isEmpty() ? null : ($learningWeight > 0
+                ? $learning->sum(fn ($row) => (float) $row->reliability_score * max(0, (int) $row->sample_size)) / $learningWeight
+                : (float) $learning->avg('reliability_score'));
+            $evidence = $learning->sortByDesc(fn ($row) => $evidenceRank[$row->evidence_level] ?? 0)->first()?->evidence_level;
+
+            return [
+                'name' => $strategy->name,
+                'slug' => $strategy->slug,
+                'version' => $strategy->version ?: '1.0',
+                'enabled' => (bool) $strategy->is_enabled,
+                'samples' => $samples,
+                'entries' => $entries,
+                'entry_rate' => $samples > 0 ? ($entries / $samples) * 100 : null,
+                'wins' => $wins,
+                'losses' => $losses,
+                'win_rate' => $periodWinRate,
+                'ambiguous' => $ambiguous,
+                'avg_mfe_r' => $weighted($metrics, 'avg_mfe_r', 'entries'),
+                'avg_mae_r' => $weighted($metrics, 'avg_mae_r', 'entries'),
+                'reliability' => $reliability,
+                // Pulse confidence uses 75% technical score + 25% learned reliability.
+                'confidence_impact' => $reliability === null ? null : ($reliability - 50.0) * 0.25,
+                'all_time_samples' => $allSamples,
+                'all_time_entries' => $allEntries,
+                'all_time_wins' => $allWins,
+                'all_time_losses' => $allLosses,
+                'all_time_ambiguous' => $allAmbiguous,
+                'all_time_win_rate' => $allTimeWinRate,
+                // Reporting comparison only: how the selected period's decisive outcome rate
+                // differs from all-time evidence after the model's 25% reliability weight.
+                'range_confidence_delta' => $periodWinRate === null || $allTimeWinRate === null ? null : ($periodWinRate - $allTimeWinRate) * 0.25,
+                'evidence' => $evidence ?: 'insufficient',
+                'calculated_at' => $learning->max('calculated_at'),
+            ];
+        })->values();
+
+        $trendSource = $filters['strategy'] !== '' ? $strategyRows : $daily;
+        $intelligenceTrend = $trendSource->groupBy(fn ($row) => $row->metric_date?->format('Y-m-d') ?? (string) $row->metric_date)
+            ->map(function ($rows, $date): array {
+                return [
+                    'date' => $date,
+                    'label' => Carbon::parse($date)->format('d M'),
+                    'signals' => (int) $rows->sum(fn ($row) => (int) ($row->signals ?? $row->sample_count ?? 0)),
+                    'entries' => (int) $rows->sum('entries'),
+                    'wins' => (int) $rows->sum('wins'),
+                    'losses' => (int) $rows->sum('losses'),
+                    'ambiguous' => (int) $rows->sum('ambiguous'),
+                ];
+            })->sortBy('date')->values();
+
+        $recentValidationQuery = Schema::hasTable('pulse_signal_validations')
+            ? PulseSignalValidation::query()->whereBetween('generated_at', [$from, $to])->latest('generated_at')
+            : null;
+        if ($recentValidationQuery && $filters['timeframe'] !== '') $recentValidationQuery->where('timeframe', $filters['timeframe']);
+        if ($recentValidationQuery && $filters['direction'] !== '') $recentValidationQuery->where('direction', $filters['direction']);
+        $recentValidations = $recentValidationQuery ? $recentValidationQuery->limit(50)->get() : collect();
+        $pendingValidations = 0;
+        if (Schema::hasTable('pulse_signal_validations')) {
+            $pendingQuery = PulseSignalValidation::query()->whereBetween('generated_at', [$from, $to])->whereNull('resolved_at');
+            if ($filters['timeframe'] !== '') $pendingQuery->where('timeframe', $filters['timeframe']);
+            if ($filters['direction'] !== '') $pendingQuery->where('direction', $filters['direction']);
+            if ($filters['strategy'] !== '') $pendingQuery->whereJsonContains('strategy_snapshot', ['slug' => $filters['strategy']]);
+            $pendingValidations = $pendingQuery->count();
+        }
 
         return view('admin.pulse.intelligence', [
-            'from'=>$from,'to'=>$to,'marketHealth'=>$market->health(),
+            'from'=>$from,'to'=>$to,'filters'=>$filters,'strategyCatalog'=>$catalog,'marketHealth'=>$market->health(),
             'summary'=>[
                 'signals'=>$signals,'entries'=>$entries,'entry_rate'=>$signals>0?($entries/$signals)*100:null,
-                'wins'=>$wins,'losses'=>$losses,'ambiguous'=>(int)$daily->sum('ambiguous'),
-                'expired_no_entry'=>(int)$daily->sum('expired_no_entry'),'expired_after_entry'=>(int)$daily->sum('expired_after_entry'),
+                'wins'=>$wins,'losses'=>$losses,'ambiguous'=>(int)($filters['strategy'] !== '' ? $strategyRows : $daily)->sum('ambiguous'),
+                'expired_no_entry'=>(int)($filters['strategy'] !== '' ? $strategyRows : $daily)->sum('expired_no_entry'),
+                'expired_after_entry'=>$filters['strategy'] !== '' ? 0 : (int)$daily->sum('expired_after_entry'),
                 'decisive_win_rate'=>($wins+$losses)>0?($wins/($wins+$losses))*100:null,
-                'avg_mfe_r'=>$weighted($daily,'avg_mfe_r','entries'),'avg_mae_r'=>$weighted($daily,'avg_mae_r','entries'),
+                'avg_mfe_r'=>$weighted($filters['strategy'] !== '' ? $strategyRows : $daily,'avg_mfe_r','entries'),
+                'avg_mae_r'=>$weighted($filters['strategy'] !== '' ? $strategyRows : $daily,'avg_mae_r','entries'),
+                'catalog_strategies'=>$visibleCatalog->count(),'tracked_strategies'=>$strategyRollups->where('samples','>',0)->count(),
+                'pending_validations'=>$pendingValidations,
             ],
             'strategies'=>$strategies,
-            'learningStates'=>Schema::hasTable('pulse_strategy_learning_states') ? PulseStrategyLearningState::query()->where('market_regime','ALL')->orderByDesc('sample_size')->orderByDesc('reliability_score')->limit(30)->get() : collect(),
-            'recentValidations'=>Schema::hasTable('pulse_signal_validations') ? PulseSignalValidation::query()->latest('generated_at')->limit(50)->get() : collect(),
+            'strategyRollups'=>$strategyRollups,
+            'intelligenceTrend'=>$intelligenceTrend,
+            'learningStates'=>$learningRows->sortByDesc('sample_size')->take(100)->values(),
+            'learningUpdatedAt'=>$learningRows->max('calculated_at'),
+            'recentValidations'=>$recentValidations,
             'marketRuns'=>Schema::hasTable('pulse_market_data_runs') ? PulseMarketDataRun::query()->latest('id')->limit(20)->get() : collect(),
         ]);
     }
@@ -152,7 +293,17 @@ class AdminPulseController extends Controller
 
     public function strategies()
     {
-        return view('admin.pulse.strategies', ['strategies' => PulseStrategy::query()->withCount('plans')->orderBy('sort_order')->get()]);
+        $strategies=PulseStrategy::query()->withCount('plans')->orderBy('sort_order')->get();
+        return view('admin.pulse.strategies', [
+            'strategies'=>$strategies,
+            'summary'=>[
+                'total'=>$strategies->count(),
+                'enabled'=>$strategies->where('is_enabled',true)->count(),
+                'disabled'=>$strategies->where('is_enabled',false)->count(),
+                'assigned'=>$strategies->where('plans_count','>',0)->count(),
+                'timeframes'=>$strategies->pluck('timeframe')->filter()->unique()->count(),
+            ],
+        ]);
     }
 
     public function storeStrategy(Request $request, PulseAuditService $audit)
@@ -378,57 +529,54 @@ class AdminPulseController extends Controller
             'usdt_network' => ['nullable','string','max:80'],
             'usdt_payment_instructions' => ['nullable','string','max:2000'],
             'payment_proof_required' => ['required','in:true,false'],
-            'promotion_codes_enabled' => ['required','in:true,false'],
             'trial_auto_assign_enabled' => ['required','in:true,false'],
             'trial_banner_enabled' => ['required','in:true,false'],
             'trial_duration_days' => ['required','integer','min:1','max:365'],
         ]);
-
         $definitions = [
-            'membership_requests_enabled' => ['boolean','membership','Allow users to submit Pulse membership requests.'],
-            'usdt_wallet_address' => ['string','membership','USDT receiving wallet displayed during membership checkout.'],
-            'usdt_network' => ['string','membership','Blockchain network users must use for USDT membership transfers.'],
-            'usdt_payment_instructions' => ['string','membership','Customer-facing instructions displayed at checkout.'],
-            'payment_proof_required' => ['boolean','membership','Require a payment screenshot or PDF in addition to the transaction reference.'],
-            'promotion_codes_enabled' => ['boolean','membership','Allow coupons and gift vouchers during checkout.'],
-            'trial_auto_assign_enabled' => ['boolean','membership','Automatically apply the active Trial plan to eligible new registrations.'],
-            'trial_banner_enabled' => ['boolean','membership','Show the concise Trial availability banner on the public Pulse page.'],
-            'trial_duration_days' => ['integer','membership','Default Trial duration for newly registered users.'],
+            'membership_requests_enabled' => [$data['membership_requests_enabled'] === 'true' ? '1' : '0','boolean','membership','Allow direct USDT Pulse package payment requests.'],
+            'usdt_wallet_address' => [trim((string)($data['usdt_wallet_address'] ?? '')),'string','membership','USDT wallet address shown at checkout.'],
+            'usdt_network' => [trim((string)($data['usdt_network'] ?? '')),'string','membership','USDT network shown at checkout.'],
+            'usdt_payment_instructions' => [trim((string)($data['usdt_payment_instructions'] ?? '')),'string','membership','Payment instructions shown to members.'],
+            'payment_proof_required' => [$data['payment_proof_required'] === 'true' ? '1' : '0','boolean','membership','Require payment proof upload with direct USDT package requests.'],
+            'trial_auto_assign_enabled' => [$data['trial_auto_assign_enabled'] === 'true' ? '1' : '0','boolean','membership','Automatically apply the active Trial plan to eligible new registrations.'],
+            'trial_banner_enabled' => [$data['trial_banner_enabled'] === 'true' ? '1' : '0','boolean','membership','Show Trial availability on the public Pulse page.'],
+            'trial_duration_days' => [(string)(int)$data['trial_duration_days'],'integer','membership','Default Trial duration for newly registered users.'],
         ];
-
-        foreach ($definitions as $key => [$type,$group,$description]) {
-            PulseSystemSetting::updateOrCreate(['key'=>$key], [
-                'value' => $type === 'integer' ? (string)(int)$data[$key] : trim((string)($data[$key] ?? '')),
-                'type' => $type,
-                'group' => $group,
-                'description' => $description,
-            ]);
+        foreach ($definitions as $key => [$value,$type,$group,$description]) {
+            PulseSystemSetting::updateOrCreate(['key'=>$key], compact('value','type','group','description'));
         }
-
+        PulseSystemSetting::updateOrCreate(['key'=>'promotion_codes_enabled'], ['value'=>'0','type'=>'boolean','group'=>'membership','description'=>'Promotions are disabled by default in the direct USDT package flow.']);
         $audit->record('admin.membership_settings_updated', $request->user(), null, null, null, ['keys'=>array_keys($definitions)], $request);
-        return back()->with('success', 'Membership, payment, promotion and Trial settings updated.');
+        return back()->with('success', 'USDT package payment and Trial settings updated.');
     }
 
     public function approveMembershipRequest(Request $request, PulseMembershipRequest $membershipRequest, PulseMembershipService $membership, PulseAuditService $audit, BrandedMailService $mail)
     {
         $data = $request->validate([
-            'activation_days' => ['required','integer','min:1','max:3650'],
-            'admin_notes' => ['required','string','max:2000'],
+            'activation_days' => ['nullable','integer','min:1','max:3650'],
+            'admin_notes' => ['nullable','string','max:2000'],
         ]);
-        if (! $membershipRequest->isOpen()) return back()->withErrors(['membership'=>'This request is no longer awaiting approval.']);
+        if (! $membershipRequest->isOpen()) {
+            return back()->withErrors(['membership'=>'This payment request is no longer awaiting review.']);
+        }
 
-        $membershipRequest->update(['status'=>'under_review']);
-        $access = $membership->activateMembership($membershipRequest, $request->user(), (int)$data['activation_days'], $data['admin_notes'] ?? null);
+        $access = $membership->activateMembership(
+            $membershipRequest,
+            $request->user(),
+            isset($data['activation_days']) ? (int)$data['activation_days'] : null,
+            trim((string)($data['admin_notes'] ?? '')) ?: null,
+        );
         $audit->record('admin.membership_request_approved', $request->user(), 'PulseMembershipRequest', $membershipRequest->id, null, [
             'target_user_id'=>$membershipRequest->user_id,
             'plan_id'=>$membershipRequest->pulse_plan_id,
             'access_id'=>$access->id,
-            'days'=>(int)$data['activation_days'],
-            'final_amount'=>(float)$membershipRequest->final_amount,
+            'amount'=>(float)$membershipRequest->final_amount,
+            'currency'=>$membershipRequest->currency,
         ], $request);
         $mail->planActivated($membershipRequest->fresh(['user','plan']));
 
-        return back()->with('success', 'Pulse plan verified and access activated.');
+        return back()->with('success', 'USDT transaction approved and the Pulse package is now active.');
     }
 
     public function rejectMembershipRequest(Request $request, PulseMembershipRequest $membershipRequest, PulseAuditService $audit, BrandedMailService $mail)
@@ -450,35 +598,14 @@ class AdminPulseController extends Controller
         return Storage::disk('local')->download($membershipRequest->payment_proof_path);
     }
 
-    public function storePromotion(Request $request, PulseAuditService $audit, BrandedMailService $mail)
+    public function storePromotion(Request $request)
     {
-        $data = $this->validatePromotion($request);
-        $data['code'] = strtoupper($data['code']);
-        $data['assigned_user_id'] = $this->resolvePromotionAssignee($data['assigned_user_email'] ?? null);
-        unset($data['assigned_user_email']);
-        $data['auto_activate'] = $request->boolean('auto_activate') && $data['type'] === 'gift_voucher' && $data['discount_type'] === 'full';
-        $data['is_active'] = $request->boolean('is_active');
-        $data['created_by'] = $request->user()->id;
-        $promotion = PulsePromotionCode::create($data);
-        $audit->record('admin.promotion_created', $request->user(), 'PulsePromotionCode', $promotion->id, null, ['code'=>$promotion->code,'type'=>$promotion->type], $request);
-        if ($promotion->assigned_user_id) $mail->promotionAssigned($promotion);
-        return back()->with('success', 'Coupon or gift voucher created.');
+        return back()->withErrors(['promotion' => 'Promotion codes are disabled in the current direct USDT package flow.']);
     }
 
-    public function updatePromotion(Request $request, PulsePromotionCode $promotion, PulseAuditService $audit, BrandedMailService $mail)
+    public function updatePromotion(Request $request, PulsePromotionCode $promotion)
     {
-        $data = $this->validatePromotion($request, $promotion);
-        $data['code'] = strtoupper($data['code']);
-        $data['assigned_user_id'] = $this->resolvePromotionAssignee($data['assigned_user_email'] ?? null);
-        unset($data['assigned_user_email']);
-        $data['auto_activate'] = $request->boolean('auto_activate') && $data['type'] === 'gift_voucher' && $data['discount_type'] === 'full';
-        $data['is_active'] = $request->boolean('is_active');
-        $oldAssignee = $promotion->assigned_user_id;
-        $oldActive = $promotion->is_active;
-        $promotion->update($data);
-        $audit->record('admin.promotion_updated', $request->user(), 'PulsePromotionCode', $promotion->id, null, ['code'=>$promotion->code], $request);
-        if ($promotion->assigned_user_id && ($oldAssignee !== $promotion->assigned_user_id || (! $oldActive && $promotion->is_active))) $mail->promotionAssigned($promotion);
-        return back()->with('success', 'Promotion updated.');
+        return back()->withErrors(['promotion' => 'Promotion codes are disabled in the current direct USDT package flow.']);
     }
 
     public function deletePromotion(Request $request, PulsePromotionCode $promotion, PulseAuditService $audit)
@@ -493,11 +620,92 @@ class AdminPulseController extends Controller
 
     public function signals(Request $request)
     {
-        $query = PulseSignal::query()->with('user')->latest('generated_at');
-        if ($request->filled('status')) $query->where('status', $request->string('status'));
-        if ($request->filled('symbol')) $query->where('symbol', strtoupper((string) $request->string('symbol')));
-        if ($request->filled('direction')) $query->where('direction', $request->string('direction'));
-        return view('admin.pulse.signals', ['signals' => $query->paginate(50)->withQueryString()]);
+        $data = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
+            'symbol' => ['nullable', 'string', 'max:30'],
+            'user' => ['nullable', 'string', 'max:160'],
+            'direction' => ['nullable', Rule::in(['LONG', 'SHORT', 'NEUTRAL'])],
+            'timeframe' => ['nullable', Rule::in(['15m', '4h'])],
+            'status' => ['nullable', Rule::in(['active', 'executed', 'expired', 'rejected'])],
+            'outcome' => ['nullable', Rule::in(['pending', 'tp', 'sl', 'ambiguous', 'expired_no_entry', 'expired_after_entry'])],
+        ]);
+
+        $from = isset($data['from']) ? Carbon::parse($data['from'])->startOfDay() : now()->subDays(30)->startOfDay();
+        $to = isset($data['to']) ? Carbon::parse($data['to'])->endOfDay() : now()->endOfDay();
+        $filters = [
+            'symbol' => strtoupper(trim((string) ($data['symbol'] ?? ''))),
+            'user' => trim((string) ($data['user'] ?? '')),
+            'direction' => strtoupper(trim((string) ($data['direction'] ?? ''))),
+            'timeframe' => strtolower(trim((string) ($data['timeframe'] ?? ''))),
+            'status' => strtolower(trim((string) ($data['status'] ?? ''))),
+            'outcome' => strtolower(trim((string) ($data['outcome'] ?? ''))),
+        ];
+
+        $query = PulseSignal::query()
+            ->with(['user', 'validation'])
+            ->whereBetween('pulse_signals.generated_at', [$from, $to]);
+        if ($filters['symbol'] !== '') $query->where('pulse_signals.symbol', 'like', '%'.$filters['symbol'].'%');
+        if ($filters['user'] !== '') {
+            $term = '%'.$filters['user'].'%';
+            $query->whereHas('user', fn ($q) => $q->where('email', 'like', $term)->orWhere('name', 'like', $term));
+        }
+        if ($filters['status'] !== '') $query->where('pulse_signals.status', $filters['status']);
+        if ($filters['direction'] !== '') $query->where('pulse_signals.direction', $filters['direction']);
+        if ($filters['timeframe'] !== '') $query->where('pulse_signals.timeframe', $filters['timeframe']);
+        if ($filters['outcome'] === 'pending') {
+            $query->where(fn ($q) => $q->whereDoesntHave('validation')->orWhereHas('validation', fn ($v) => $v->whereNull('resolved_at')));
+        } elseif ($filters['outcome'] !== '') {
+            $query->whereHas('validation', fn ($v) => $v->where('outcome', $filters['outcome']));
+        }
+
+        $total = (clone $query)->count();
+        $wins = (clone $query)->whereHas('validation', fn ($q) => $q->where('outcome', 'tp'))->count();
+        $losses = (clone $query)->whereHas('validation', fn ($q) => $q->where('outcome', 'sl'))->count();
+        $entries = (clone $query)->whereHas('validation', fn ($q) => $q->whereNotNull('entry_hit_at'))->count();
+        $averageConfidence = (clone $query)->whereNotNull('confidence_score')->avg('confidence_score');
+        if ($averageConfidence === null) $averageConfidence = (clone $query)->avg('score');
+        $ambiguous = (clone $query)->whereHas('validation', fn ($q) => $q->where('outcome', 'ambiguous'))->count();
+        $expiredNoEntry = (clone $query)->whereHas('validation', fn ($q) => $q->where('outcome', 'expired_no_entry'))->count();
+        $expiredAfterEntry = (clone $query)->whereHas('validation', fn ($q) => $q->where('outcome', 'expired_after_entry'))->count();
+        $pending = (clone $query)->where(fn ($q) => $q->whereDoesntHave('validation')->orWhereHas('validation', fn ($v) => $v->whereNull('resolved_at')))->count();
+        $signalTrend = (clone $query)->setEagerLoads([])
+            ->leftJoin('pulse_signal_validations as report_validation', 'report_validation.signal_id', '=', 'pulse_signals.id')
+            ->selectRaw("DATE(pulse_signals.generated_at) as metric_day, COUNT(DISTINCT pulse_signals.id) as signals, SUM(CASE WHEN report_validation.entry_hit_at IS NOT NULL THEN 1 ELSE 0 END) as entries, SUM(CASE WHEN report_validation.outcome = 'tp' THEN 1 ELSE 0 END) as wins, SUM(CASE WHEN report_validation.outcome = 'sl' THEN 1 ELSE 0 END) as losses, SUM(CASE WHEN report_validation.outcome = 'ambiguous' THEN 1 ELSE 0 END) as ambiguous")
+            ->groupBy(DB::raw('DATE(pulse_signals.generated_at)'))->orderBy('metric_day')->get()
+            ->map(fn ($row) => [
+                'label' => Carbon::parse($row->metric_day)->format('d M'),
+                'signals' => (int) $row->signals,
+                'entries' => (int) $row->entries,
+                'wins' => (int) $row->wins,
+                'losses' => (int) $row->losses,
+                'ambiguous' => (int) $row->ambiguous,
+            ])->values();
+
+        return view('admin.pulse.signals', [
+            'signals' => $query->latest('pulse_signals.generated_at')->paginate(30)->withQueryString(),
+            'from' => $from,
+            'to' => $to,
+            'filters' => $filters,
+            'signalTrend' => $signalTrend,
+            'summary' => [
+                'total' => $total,
+                'active' => (clone $query)->where('status', 'active')->count(),
+                'entries' => $entries,
+                'entry_rate' => $total > 0 ? ($entries / $total) * 100 : null,
+                'wins' => $wins,
+                'losses' => $losses,
+                'win_rate' => ($wins + $losses) > 0 ? ($wins / ($wins + $losses)) * 100 : null,
+                'pending' => $pending,
+                'ambiguous' => $ambiguous,
+                'expired_no_entry' => $expiredNoEntry,
+                'expired_after_entry' => $expiredAfterEntry,
+                'markets' => (clone $query)->distinct()->count('symbol'),
+                'average_confidence' => $averageConfidence === null ? null : (float) $averageConfidence,
+                'unlocked' => (clone $query)->whereNotNull('unlocked_at')->count(),
+                'latest_at' => (clone $query)->max('generated_at'),
+            ],
+        ]);
     }
 
     public function updateSignal(Request $request, PulseSignal $signal, PulseAuditService $audit)
@@ -509,11 +717,70 @@ class AdminPulseController extends Controller
 
     public function trades(Request $request)
     {
-        $query = PulseTrade::query()->with(['user', 'signal'])->latest();
-        if ($request->filled('status')) $query->where('status', $request->string('status'));
-        if ($request->filled('environment')) $query->where('environment', $request->string('environment'));
-        if ($request->filled('symbol')) $query->where('symbol', strtoupper((string) $request->string('symbol')));
-        return view('admin.pulse.trades', ['trades' => $query->paginate(50)->withQueryString()]);
+        $data = $request->validate([
+            'from' => ['nullable','date'], 'to' => ['nullable','date','after_or_equal:from'],
+            'symbol' => ['nullable','string','max:30'], 'user' => ['nullable','string','max:160'],
+            'status' => ['nullable',Rule::in(['submitting','pending','open','protection_failed','closing','closed','failed','cancelled'])],
+            'environment' => ['nullable',Rule::in(['testnet','live'])],
+        ]);
+        $from = isset($data['from']) ? Carbon::parse($data['from'])->startOfDay() : now()->subDays(30)->startOfDay();
+        $to = isset($data['to']) ? Carbon::parse($data['to'])->endOfDay() : now()->endOfDay();
+        $filters = [
+            'status' => strtolower(trim((string) ($data['status'] ?? ''))),
+            'environment' => strtolower(trim((string) ($data['environment'] ?? ''))),
+            'symbol' => strtoupper(trim((string) ($data['symbol'] ?? ''))),
+            'user' => trim((string) ($data['user'] ?? '')),
+        ];
+        $query = PulseTrade::query()->with(['user', 'signal'])->whereBetween('pulse_trades.created_at',[$from,$to]);
+        if ($filters['status'] !== '') $query->where('pulse_trades.status', $filters['status']);
+        if ($filters['environment'] !== '') $query->where('pulse_trades.environment', $filters['environment']);
+        if ($filters['symbol'] !== '') $query->where('pulse_trades.symbol', 'like', '%'.$filters['symbol'].'%');
+        if ($filters['user'] !== '') {
+            $term='%'.$filters['user'].'%';
+            $query->whereHas('user',fn($q)=>$q->where('email','like',$term)->orWhere('name','like',$term));
+        }
+        $total=(clone $query)->count();
+        $closed=(clone $query)->where('pulse_trades.status','closed')->count();
+        $profitable=(clone $query)->where('pulse_trades.status','closed')->where('pulse_trades.realized_pnl','>',0)->count();
+        $losing=(clone $query)->where('pulse_trades.status','closed')->where('pulse_trades.realized_pnl','<',0)->count();
+        $flat=(clone $query)->where('pulse_trades.status','closed')->where('pulse_trades.realized_pnl','=',0)->count();
+        $activeStatuses = ['submitting','pending','open','closing','protection_failed'];
+        $protectionScope = (clone $query)->whereIn('pulse_trades.status',['open','protection_failed']);
+        $protectionEligible = (clone $protectionScope)->count();
+        $protected = (clone $protectionScope)->where('pulse_trades.protection_status','confirmed')->count();
+        $tradeTrend = (clone $query)->setEagerLoads([])
+            ->selectRaw("DATE(pulse_trades.created_at) as metric_day, COUNT(*) as trades, SUM(CASE WHEN pulse_trades.status = 'closed' THEN 1 ELSE 0 END) as closed, SUM(CASE WHEN pulse_trades.status = 'closed' AND pulse_trades.realized_pnl > 0 THEN 1 ELSE 0 END) as profitable, SUM(COALESCE(pulse_trades.realized_pnl,0)) as realized_pnl, SUM(COALESCE(pulse_trades.fees,0)) as fees")
+            ->groupBy(DB::raw('DATE(pulse_trades.created_at)'))->orderBy('metric_day')->get()
+            ->map(fn ($row) => [
+                'label' => Carbon::parse($row->metric_day)->format('d M'),
+                'trades' => (int) $row->trades,
+                'closed' => (int) $row->closed,
+                'profitable' => (int) $row->profitable,
+                'realized_pnl' => round((float) $row->realized_pnl, 4),
+                'fees' => round((float) $row->fees, 4),
+            ])->values();
+        $environmentMix = [
+            'practice' => (clone $query)->where('pulse_trades.environment','testnet')->count(),
+            'live' => (clone $query)->where('pulse_trades.environment','live')->count(),
+        ];
+        return view('admin.pulse.trades', [
+            'trades' => $query->latest('pulse_trades.created_at')->paginate(30)->withQueryString(), 'from'=>$from, 'to'=>$to,
+            'filters'=>$filters, 'tradeTrend'=>$tradeTrend, 'environmentMix'=>$environmentMix,
+            'summary' => [
+                'total'=>$total,
+                'open'=>(clone $query)->whereIn('pulse_trades.status',$activeStatuses)->count(),
+                'protection_review'=>$protectionEligible-$protected,
+                'protection_rate'=>$protectionEligible>0?($protected/$protectionEligible)*100:null,
+                'closed'=>$closed,
+                'profitable'=>$profitable,
+                'losing'=>$losing,
+                'flat'=>$flat,
+                'profitable_rate'=>$closed>0?($profitable/$closed)*100:null,
+                'realized_pnl'=>(float)(clone $query)->sum('pulse_trades.realized_pnl'),
+                'unrealized_pnl'=>(float)(clone $query)->whereIn('pulse_trades.status',$activeStatuses)->sum('pulse_trades.unrealized_pnl'),
+                'fees'=>(float)(clone $query)->sum('pulse_trades.fees'),
+            ],
+        ]);
     }
 
     public function settings()
@@ -572,10 +839,29 @@ class AdminPulseController extends Controller
 
     public function logs(Request $request)
     {
-        $query = PulseAuditLog::query()->with('user')->latest('created_at');
-        if ($request->filled('action')) $query->where('action', 'like', '%'.trim((string) $request->string('action')).'%');
-        if ($request->filled('environment')) $query->where('environment', $request->string('environment'));
-        return view('admin.pulse.logs', ['logs' => $query->paginate(100)->withQueryString()]);
+        $data=$request->validate([
+            'from'=>['nullable','date'],'to'=>['nullable','date','after_or_equal:from'],'action'=>['nullable','string','max:160'],
+            'user'=>['nullable','string','max:160'],'environment'=>['nullable',Rule::in(['testnet','live'])],
+        ]);
+        $from=isset($data['from'])?Carbon::parse($data['from'])->startOfDay():now()->subDays(7)->startOfDay();
+        $to=isset($data['to'])?Carbon::parse($data['to'])->endOfDay():now()->endOfDay();
+        $query = PulseAuditLog::query()->with('user')->whereBetween('created_at',[$from,$to]);
+        if (!empty($data['action'])) $query->where('action','like','%'.trim($data['action']).'%');
+        if (!empty($data['environment'])) $query->where('environment',$data['environment']);
+        if (!empty($data['user'])) {
+            $term='%'.trim($data['user']).'%';
+            $query->whereHas('user',fn($q)=>$q->where('email','like',$term)->orWhere('name','like',$term));
+        }
+        return view('admin.pulse.logs', [
+            'logs'=>$query->latest('created_at')->paginate(75)->withQueryString(),'from'=>$from,'to'=>$to,
+            'summary'=>[
+                'total'=>(clone $query)->count(),
+                'administrators'=>(clone $query)->whereHas('user',fn($q)=>$q->where('role','admin'))->count(),
+                'system'=>(clone $query)->whereNull('user_id')->count(),
+                'live'=>(clone $query)->where('environment','live')->count(),
+                'security'=>(clone $query)->where(fn($q)=>$q->where('action','like','%security%')->orWhere('action','like','%password%')->orWhere('action','like','%login%'))->count(),
+            ],
+        ]);
     }
 
 
@@ -624,7 +910,6 @@ class AdminPulseController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'], 'slug' => ['nullable', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:3000'], 'monthly_price' => ['required', 'numeric', 'min:0'], 'currency' => ['required', 'string', 'max:8'],
-            'scanner_runs_per_day' => ['required', 'integer', 'min:0'], 'signals_per_day' => ['required', 'integer', 'min:0'],
             'minimum_signal_score' => ['required', 'numeric', 'min:0', 'max:100'],
             'manual_trades_per_day' => ['required', 'integer', 'min:0'], 'auto_trades_per_day' => ['required', 'integer', 'min:0'],
             'max_open_trades' => ['required', 'integer', 'min:0'], 'max_selected_pairs' => ['required', 'integer', 'min:1'],
@@ -659,8 +944,10 @@ class AdminPulseController extends Controller
         $data['is_active'] = $request->boolean('is_active');
         $data['is_trial'] = $request->boolean('is_trial');
         $data['is_public'] = $request->boolean('is_public');
-        $data['request_enabled'] = $request->boolean('request_enabled');
-        $data['requires_payment'] = $request->boolean('requires_payment');
+        // V15.1 commerce: direct USDT transfer followed by Admin verification.
+        $data['request_enabled'] = $request->boolean('request_enabled') && ! $data['is_trial'];
+        $data['requires_payment'] = $request->boolean('requires_payment') && ! $data['is_trial'];
+        $data['currency'] = 'USDT';
         $data['is_featured'] = $request->boolean('is_featured');
 
         return $data;

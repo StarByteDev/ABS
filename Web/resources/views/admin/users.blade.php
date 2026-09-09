@@ -1,12 +1,15 @@
 @extends('admin.layout')
 @section('title','User Directory — ABS Admin')
 @section('heading','User Directory')
+@section('description','Manage account identity, user level, Pulse package access, expiry, security and customer activity from one operational directory.')
 @section('content')
 <section class="enterprise-command-bar compact">
-    <div><h2>Users, roles & service access</h2><p>Create and manage every ABS account, role, Private Member permission, Pulse plan, access period and account status from one directory.</p></div>
-    <div class="admin-actions"><a class="button button-ghost" href="{{ route('admin.pulse.access') }}">Subscriptions & expiry</a><a class="button button-primary" href="{{ route('admin.users.create') }}">+ Create User</a></div>
+    <div><span class="admin-report-eyebrow">CUSTOMER ADMINISTRATION · USER 360°</span><h2>Users, access levels & service entitlement</h2><p>Create and manage every ABS account, role, Private Member permission, Pulse package, access period and security state from one directory.</p></div>
+    <div class="admin-actions"><a class="button button-ghost" href="{{ route('admin.pulse.access') }}">Plan Access & Expiry</a><a class="button button-primary" href="{{ route('admin.users.create') }}">+ Create User</a></div>
 </section>
-<section class="enterprise-mini-kpis">@foreach($summary as $label=>$value)<div><small>{{ ucfirst($label) }}</small><strong>{{ number_format($value) }}</strong></div>@endforeach</section>
+<section class="admin-report-kpis user-directory-kpis">@foreach($summary as $label=>$value)<article><span class="report-kpi-icon {{ str_contains($label,'Suspended')||str_contains($label,'Deleted')?'red':(str_contains($label,'Pulse')?'gold':'blue') }}">{{ str_contains($label,'Pulse')?'✦':'◎' }}</span><div><small>{{ $label }}</small><strong>{{ number_format($value) }}</strong><em>{{ str_contains($label,'accounts')?'Account lifecycle':'Access classification' }}</em></div></article>@endforeach</section>
+
+<section class="enterprise-surface admin-insight-band user-level-guide"><div><span class="insight-dot info"></span><p><b>Standard User</b><small>Core ABS account. Pulse access is granted separately through an Admin-verified USDT package.</small></p></div><div><span class="insight-dot good"></span><p><b>Private Member</b><small>Receives controlled private portfolio reporting in addition to any assigned Pulse package.</small></p></div><div><span class="insight-dot warn"></span><p><b>Administrator</b><small>Enterprise control authority. At least one active administrator is always protected.</small></p></div></section>
 
 <section class="enterprise-surface enterprise-filter-surface">
 <form method="GET" class="enterprise-filter-grid">
@@ -37,6 +40,6 @@
 </tr>
 @empty<tr><td colspan="8">No users match the selected filters.</td></tr>@endforelse
 </tbody></table></div>
-<div class="enterprise-pagination">{{ $users->links() }}</div>
+<div class="enterprise-pagination">{{ $users->onEachSide(1)->links('vendor.pagination.abs-admin') }}</div>
 </section>
 @endsection

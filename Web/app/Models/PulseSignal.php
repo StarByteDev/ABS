@@ -14,6 +14,7 @@ class PulseSignal extends Model
         'stop_loss', 'take_profit', 'score', 'confidence_label', 'status',
         'strategy_breakdown', 'generated_at', 'expires_at', 'signal_fingerprint', 'strategy_version',
         'strategy_snapshot', 'take_profit_levels', 'technical_score', 'reliability_score', 'confidence_score',
+        'unlocked_at', 'ai_explanation', 'ai_explained_at', 'share_count',
     ];
 
     protected function casts(): array
@@ -31,6 +32,9 @@ class PulseSignal extends Model
             'confidence_score' => 'decimal:2',
             'generated_at' => 'datetime',
             'expires_at' => 'datetime',
+            'unlocked_at' => 'datetime',
+            'ai_explained_at' => 'datetime',
+            'share_count' => 'integer',
         ];
     }
 

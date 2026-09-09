@@ -56,13 +56,13 @@ class PulseMembershipService
             return $next;
         }
 
-        $currentPrice = $current->effectiveMonthlyPrice();
+        $currentPrice = max(0.0, (float) $current->effectiveMonthlyPrice());
         return $plans
             ->filter(fn (PulsePlan $plan): bool =>
                 (int) $plan->id !== (int) $current->id
-                && $plan->effectiveMonthlyPrice() > $currentPrice
+                && max(0.0, (float) $plan->effectiveMonthlyPrice()) > $currentPrice
             )
-            ->sortBy(fn (PulsePlan $plan) => [$plan->effectiveMonthlyPrice(), (int) $plan->sort_order, $plan->name])
+            ->sortBy(fn (PulsePlan $plan) => [max(0.0, (float) $plan->effectiveMonthlyPrice()), (int) $plan->sort_order, $plan->name])
             ->first();
     }
 
@@ -85,14 +85,14 @@ class PulseMembershipService
             $plans = collect([$current])->concat($plans);
         }
 
-        $currentPrice = $current->effectiveMonthlyPrice();
+        $currentPrice = max(0.0, (float) $current->effectiveMonthlyPrice());
         return $plans->filter(function (PulsePlan $plan) use ($current, $currentPrice): bool {
             if ((int) $plan->id === (int) $current->id) {
                 return true;
             }
 
             return (int) $plan->sort_order > (int) $current->sort_order
-                || $plan->effectiveMonthlyPrice() > $currentPrice;
+                || max(0.0, (float) $plan->effectiveMonthlyPrice()) > $currentPrice;
         })->values();
     }
 
@@ -101,25 +101,42 @@ class PulseMembershipService
         $next = $this->nextUpgradePlan($access);
         $current = $access?->isActive() && (int) $access->pulse_plan_id === (int) $plan->id;
 
-        return array_merge($plan->toArray(), [
+        return [
+            'id' => $plan->id,
+            'name' => $plan->name,
+            'slug' => $plan->slug,
+            'description' => $plan->description,
+            'badge' => $plan->badge,
+            'access_days' => (int) $plan->access_days,
+            'price' => round((float) $plan->effectiveMonthlyPrice(), 2),
+            'currency' => strtoupper((string) ($plan->currency ?: 'USDT')),
+            'requires_payment' => (bool) $plan->requires_payment,
+            'request_enabled' => (bool) $plan->request_enabled,
+            'max_open_trades' => (int) $plan->max_open_trades,
+            'max_markets' => (int) $plan->max_selected_pairs,
+            'pair_access_mode' => (string) ($plan->pair_access_mode ?: 'all'),
             'capability_matrix' => $plan->capabilityMatrix(),
             'is_current_plan' => $current,
             'is_next_upgrade' => $next && (int) $next->id === (int) $plan->id,
             'subscription_state' => $current ? 'active' : (($next && (int) $next->id === (int) $plan->id) ? 'next_upgrade' : 'available'),
-        ]);
+            'commerce_model' => 'direct_usdt_admin_verification',
+            'commerce_label' => 'USDT transfer · Admin verified',
+        ];
     }
+
     public function settings(): array
     {
         return [
             'requests_enabled' => (bool) PulseSystemSetting::value('membership_requests_enabled', true),
             'wallet_address' => trim((string) PulseSystemSetting::value('usdt_wallet_address', '')),
-            'network' => trim((string) PulseSystemSetting::value('usdt_network', '')),
-            'payment_instructions' => trim((string) PulseSystemSetting::value('usdt_payment_instructions', 'Send the exact amount shown and submit your transaction reference for verification.')),
+            'network' => trim((string) PulseSystemSetting::value('usdt_network', 'TRC20')),
+            'payment_instructions' => trim((string) PulseSystemSetting::value('usdt_payment_instructions', 'Send the exact USDT amount to the configured wallet, then submit the transaction reference for Admin verification. Pulse access activates only after the payment is approved.')),
             'proof_required' => (bool) PulseSystemSetting::value('payment_proof_required', false),
-            'promotions_enabled' => (bool) PulseSystemSetting::value('promotion_codes_enabled', true),
+            'promotions_enabled' => (bool) PulseSystemSetting::value('promotion_codes_enabled', false),
             'trial_auto_assign_enabled' => (bool) PulseSystemSetting::value('trial_auto_assign_enabled', true),
             'trial_banner_enabled' => (bool) PulseSystemSetting::value('trial_banner_enabled', true),
             'trial_duration_days' => max(1, (int) PulseSystemSetting::value('trial_duration_days', 7)),
+            'commerce_model' => 'direct_usdt_admin_verification',
         ];
     }
 

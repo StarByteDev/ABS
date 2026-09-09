@@ -130,6 +130,7 @@ const crossRouteTargets = {
     about: {file: 'resources/views/pages/about.blade.php'},
     'pulse.entry': {file: 'resources/views/pulse/gateway.blade.php'},
     'pulse.settings.edit': {file: 'resources/views/pulse/settings.blade.php'},
+    'pulse.points.index': {file: 'resources/views/pulse/points/index.blade.php'},
     'legal.privacy': {anchors: ['section-8-cookies-sessions']},
 };
 for (const match of allBladeSource.matchAll(/route\(\s*['"]([^'"]+)['"][^)]*\)\s*}}#([A-Za-z][\w:-]*)/g)) {

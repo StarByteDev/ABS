@@ -5,11 +5,12 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\PulsePlan;
 use App\Models\SiteSetting;
+use App\Services\PulseMembershipService;
 use Illuminate\Http\Request;
 
 class AppController extends Controller
 {
-    public function bootstrap(Request $request)
+    public function bootstrap(Request $request, PulseMembershipService $membership)
     {
         $settings = SiteSetting::query()->whereIn('group', ['general', 'mobile', 'contact', 'legal'])->get()->mapWithKeys(function (SiteSetting $item) {
             return [$item->key => $this->castValue($item->value, $item->type)];
@@ -20,8 +21,8 @@ class AppController extends Controller
                 'name' => config('app.name', 'Alpha Block Solutions'),
                 'environment' => config('app.env'),
                 'api_version' => 'v1',
-                'build' => '14.9.2',
-                'release' => 'Mobile/Web Backend Parity & Admin Event Notifications',
+                'build' => '15.1.5',
+                'release' => 'Direct USDT + Rewarded Free Signal + Entry Watch Fallback + Social Sharing + ABS News Macro Intelligence',
                 'mobile_api_ready' => true,
                 'market_data_source' => 'ABS central database (Binance Futures upstream)',
                 'market_refresh_seconds' => (int) config('pulse.market_data.target_price_refresh_seconds', 60),
@@ -30,15 +31,16 @@ class AppController extends Controller
                 'maintenance_mode' => (bool) $settings->get('mobile_maintenance_mode', false),
                 'maintenance_message' => $settings->get('mobile_maintenance_message'),
                 'support_email' => config('brand.support_email'),
+                'market_risk_notice' => 'ABS market intelligence, economic-event context and signals are informational and educational only, not financial advice. Digital assets involve substantial risk; data and forecasts may be delayed or revised and outcomes are never guaranteed.',
                 'mobile_modules' => [
                     'authentication', 'account', 'dashboard', 'market', 'watchlist', 'news', 'research', 'learning',
-                    'economic_calendar', 'pulse_packages', 'pulse_scanner', 'pulse_signals', 'pulse_strategies',
+                    'economic_calendar', 'pulse_packages', 'pulse_free_signal', 'pulse_scanner', 'pulse_signals',
                     'binance_connections', 'execution_readiness', 'positions', 'orders', 'trades', 'reports',
-                    'alerts', 'notifications', 'devices', 'private_member_portal', 'contact', 'newsletter',
+                    'signal_sharing', 'ai_signal_explanations', 'alerts', 'notifications', 'devices', 'private_member_portal', 'contact', 'newsletter',
                 ],
             ],
             'settings' => $settings,
-            'pulse_plans' => PulsePlan::query()->publiclyAvailable()->orderBy('sort_order')->get(),
+            'pulse_plans' => PulsePlan::query()->publiclyAvailable()->orderBy('sort_order')->get()->map(fn (PulsePlan $plan) => $membership->mobilePlanPayload($plan, null)),
             'links' => [
                 'privacy' => route('legal.privacy'),
                 'terms' => route('legal.terms'),

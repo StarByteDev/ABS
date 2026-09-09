@@ -82,12 +82,23 @@ class ContentController extends Controller
 
     public function calendar(Request $request)
     {
-        $from = $request->date('from') ?: now()->startOfDay();
+        $from = $request->date('from') ?: now()->subDay()->startOfDay();
         $to = $request->date('to') ?: now()->addDays(30)->endOfDay();
         $query = EconomicEvent::query()->whereBetween('event_at', [$from, $to]);
         if ($request->filled('impact')) $query->where('impact', $request->string('impact'));
         if ($request->filled('currency')) $query->where('currency', strtoupper((string) $request->string('currency')));
-        return response()->json(['data' => $query->orderBy('event_at')->limit(500)->get()]);
+        if ($request->boolean('crypto_relevant')) $query->where('is_crypto_relevant', true);
+
+        return response()->json([
+            'data' => $query->orderBy('event_at')->limit(500)->get(),
+            'meta' => [
+                'timezone' => (string) config('app.timezone'),
+                'values' => ['previous' => 'Previous published reading', 'forecast' => 'Market/provider consensus estimate', 'actual' => 'Current released reading when available'],
+                'crypto_impact_note' => 'Crypto impact notes are simplified market context, not predictions or financial advice. Actual market reaction can differ or reverse quickly.',
+                'disclaimer_url' => route('legal.disclaimer'),
+                'risk_url' => route('legal.risk'),
+            ],
+        ]);
     }
 
     public function settings(Request $request)

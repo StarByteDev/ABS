@@ -63,12 +63,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     bindSavedScanControls();
 
-    const formatQuota = (quota) => quota?.unlimited ? 'Unlimited' : `${Number(quota?.remaining || 0)} / ${Number(quota?.limit || 0)} left`;
-    const updateUsage = (usage) => {
-        if (!usage) return;
-        document.querySelectorAll('[data-usage-scans]').forEach(node => { node.textContent = formatQuota(usage.scans); });
-        document.querySelectorAll('[data-usage-signals]').forEach(node => { node.textContent = formatQuota(usage.signals); });
-    };
     const replaceScanFragment = (name, html) => {
         const current = document.querySelector(`[data-scan-fragment="${name}"]`);
         if (!current || !html) return;
@@ -82,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // V14.8.15: keep scanner action stages aligned with a fresh Binance ticker
     // snapshot without consuming another scan. This refreshes the rendered
-    // action state only; it does not rerun strategies or use scanner quota.
+    // action state only; it does not rerun strategies or alter package access.
     let liveScannerRefreshBusy = false;
     const refreshScannerLiveState = async () => {
         if (!scanRunForm?.dataset.refreshUrl || liveScannerRefreshBusy || document.hidden) return;
@@ -119,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (button?.disabled) return;
 
         // V14.8.16: the scan follows the timeframe currently selected in the
-        // scanner filter. "All" is one quota-safe multi-timeframe run (15M+4H).
+        // scanner filter. "All" is one protected multi-timeframe run (15M+4H).
         const runTimeframe = scanRunForm.querySelector('[data-scan-run-timeframe]');
         const selectedTimeframe = document.querySelector('[data-scan-filters] select[name="timeframe"]');
         if (runTimeframe && selectedTimeframe) runTimeframe.value = selectedTimeframe.value || 'all';
@@ -136,7 +130,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 credentials: 'same-origin',
             });
             const payload = await response.json().catch(() => ({}));
-            updateUsage(payload.usage);
             if (!response.ok) throw new Error(payload.message || 'The market scan could not be completed.');
 
             const refreshUrl = new URL(scanRunForm.dataset.refreshUrl, window.location.origin);
@@ -154,7 +147,6 @@ document.addEventListener('DOMContentLoaded', () => {
             replaceScanFragment('results', refreshed.results_html);
             replaceScanFragment('bottom', refreshed.bottom_html);
             bindSavedScanControls();
-            updateUsage(refreshed.usage || payload.usage);
             document.querySelectorAll('[data-scanner-last-scan]').forEach(node => { node.textContent = refreshed.last_scan || 'just now'; });
             if (status) { status.className = 'pp-async-status success'; status.textContent = payload.message || 'Market scan completed and results updated.'; }
         } catch (error) {
@@ -163,6 +155,22 @@ document.addEventListener('DOMContentLoaded', () => {
             if (button) button.disabled = false;
             if (label) label.textContent = originalLabel;
         }
+    });
+
+    document.querySelectorAll('[data-copy-value]').forEach(button => {
+        button.addEventListener('click', async () => {
+            const value = button.getAttribute('data-copy-value') || '';
+            if (!value) return;
+            const original = button.textContent;
+            try {
+                await navigator.clipboard.writeText(value);
+                button.textContent = 'Copied';
+                window.setTimeout(() => { button.textContent = original; }, 1400);
+            } catch (error) {
+                button.textContent = 'Copy manually';
+                window.setTimeout(() => { button.textContent = original; }, 1600);
+            }
+        });
     });
 
     const ticket = document.querySelector('[data-order-ticket]');

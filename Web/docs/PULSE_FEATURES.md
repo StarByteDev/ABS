@@ -1,5 +1,18 @@
 # ABS V14.0 Pulse Trading Intelligence — Complete Feature Set
 
+## V15.0.5 Investor analytics and operational control
+
+- Isolated premium responsive Admin design system across Pulse, users, CMS, communications and system operations
+- Executive charts for Pulse activity, entry behavior, TP/SL outcomes, ambiguity and operating risk
+- Signal Oversight with a first-position date toolbar, plain-language purpose, charts, market-adaptive prices and collapsed lifecycle review
+- Strategy Intelligence with selected-period versus all-time TP/SL/ambiguous evidence and current confidence contribution
+- Execution & Risk reporting with practice/live separation, protection confirmation, closed profitability and exchange-recorded financial values
+- Admin-configurable, deduplicated plan-expiry email thresholds with upcoming audience reporting
+- SVG favicon plus PNG/apple fallbacks across public, authentication, Pulse, Admin and recovery layouts
+- Executive user-level, package, Spark commerce, content publishing and platform-health reporting
+- Structured CMS registers and publishing workflows for News, Research, Learning, Economic Calendar and Products & Services
+- No change to V15.0.3 package pricing, no-daily-quota rules, one-minute market scheduler cadence or preserved strategy calculations
+
 Pulse Trading Intelligence is the flagship Alpha Block Solutions trading platform. ABS V14.0 keeps one shared ABS identity, an administrator-controlled plan system and a permission-aware Pulse access environment. The assigned plan determines which Pulse modules, strategies, limits and execution capabilities the user can see and use.
 
 ## Accounts, plans and access
@@ -31,7 +44,7 @@ Every plan can independently enable or disable:
 5. Reports & Performance
 6. Binance API Connection
 7. Alerts
-8. Plan & Limits
+8. Plan & Access
 9. Pulse Settings
 10. Mobile API
 11. Practice Trading
@@ -46,7 +59,7 @@ The platform-wide Live and Automatic trading safety switches remain authoritativ
 - Administrator-maintained Binance USD-M Futures market list
 - 5m, 15m, 30m, 1h, 2h, 4h and 1d timeframes
 - Manual scanner runs from the web workspace or API
-- Per-plan daily scanner usage controls
+- V15.1.0: no daily scanner-run quota; active paid package access includes Best Signal scanning with no per-signal charge
 - Per-plan selected-market limit
 - Run history, progress and completion status
 - Per-market direction, score, entry reference, stop loss, take profit and explanation
@@ -86,7 +99,7 @@ Administrators can enable, disable, order and weight strategies globally and cho
 - Strategy-by-strategy evidence
 - Active, executed, dismissed and expired lifecycle
 - Expiry handling for older active signals
-- Daily signal limits defined by the assigned plan
+- V15.0.3: no daily signal quota; a new Best Signal costs the Admin-configured Spark amount only when successfully unlocked
 - Manual execution only when both Signals and Manual Order Execution are included in the plan
 
 ## Binance USD-M Futures connection

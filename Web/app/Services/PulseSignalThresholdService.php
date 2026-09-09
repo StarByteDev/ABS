@@ -9,11 +9,6 @@ class PulseSignalThresholdService
 {
     public function resolve(?User $user, ?PulseUserSetting $settings = null): array
     {
-        $profile = $settings?->minimum_signal_score;
-        if ($profile !== null && is_numeric($profile)) {
-            return ['score' => $this->clamp((float) $profile), 'source' => 'profile'];
-        }
-
         $package = $user?->pulsePlan()?->minimum_signal_score;
         if ($package !== null && is_numeric($package)) {
             return ['score' => $this->clamp((float) $package), 'source' => 'package'];

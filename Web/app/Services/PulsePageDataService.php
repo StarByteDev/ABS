@@ -110,182 +110,42 @@ class PulsePageDataService
     {
         $settings = $this->settings($user);
         $connection = $this->connection($user, $settings);
-        $latestRun = PulseScannerRun::query()->where('user_id', $user->id)->latest()->first();
-        $allowedPairs = app(PulsePairAccessService::class)->allowedPairs($user);
-        $pairMap = $allowedPairs->keyBy(fn (PulsePair $pair) => strtoupper((string) $pair->symbol));
-        $allowedSymbols = $pairMap->keys()->all();
-        $selectedSymbols = collect($settings->selected_pairs ?? [])
-            ->map(fn ($symbol) => strtoupper(trim((string) $symbol)))
-            ->filter()
-            ->unique()
-            ->intersect($allowedSymbols)
-            ->values();
-        $scanPairs = $allowedPairs->whereIn('symbol', $selectedSymbols->all())->values();
-        $scanPairMap = $scanPairs->keyBy(fn (PulsePair $pair) => strtoupper((string) $pair->symbol));
-        $scanSymbols = $scanPairMap->keys()->all();
-        // V14.8.17: signal action state uses the centrally scheduled Binance Futures snapshot.
-        // No per-user ticker call is made while rendering scanner or mobile-facing state.
+        $latestRun = PulseScannerRun::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'completed')
+            ->latest('completed_at')
+            ->first();
+
+        $allowedPairs = app(PulsePairAccessService::class)->allowedPairs($user)->values();
+        $scanSymbols = $allowedPairs->pluck('symbol')->map(fn ($symbol) => strtoupper((string) $symbol))->values()->all();
         $liveTickers = $this->liveTickerMap($scanSymbols);
-        $quoteFilter = strtoupper((string) ($filters['quote'] ?? 'all'));
-        $quoteAssets = $scanPairs->pluck('quote_asset')->filter()->unique()->sort()->values();
-        $eligibleSymbols = $quoteFilter !== '' && strtolower($quoteFilter) !== 'all'
-            ? $scanPairs->where('quote_asset', $quoteFilter)->pluck('symbol')->map(fn ($symbol) => strtoupper((string) $symbol))->values()->all()
-            : $scanSymbols;
-        $directionFilter = strtoupper((string) ($filters['direction'] ?? ''));
-        $timeframeFilter = strtolower((string) ($filters['timeframe'] ?? ''));
         $effectiveThreshold = app(PulseSignalThresholdService::class)->resolve($user, $settings);
-        $minimumScore = array_key_exists('min_score', $filters) && is_numeric($filters['min_score'])
-            ? max(0, min(100, (float) $filters['min_score']))
-            : (float) $effectiveThreshold['score'];
-        $strategyFilter = strtolower(trim((string) ($filters['strategy'] ?? 'all')));
-        $symbolFilter = strtoupper(trim((string) ($filters['symbol'] ?? '')));
+        $rows = collect();
+        $winner = null;
 
-        $evaluationRows = collect();
-        $runSummary = collect($latestRun?->summary ?? [])->filter(fn ($item) => is_array($item));
-        if ($runSummary->isNotEmpty()) {
-            $runSignals = $latestRun
-                ? PulseSignal::query()->where('user_id', $user->id)->whereIn('symbol', $scanSymbols)
-                    ->where('status', 'active')->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-                    ->latest('generated_at')->get()->unique(fn (PulseSignal $signal) => strtoupper($signal->symbol).'|'.strtoupper($signal->direction).'|'.strtolower((string) $signal->timeframe))
-                    ->keyBy(fn (PulseSignal $signal) => strtoupper($signal->symbol).'|'.strtoupper($signal->direction).'|'.strtolower((string) $signal->timeframe))
-                : collect();
-
-            $evaluationRows = $runSummary
-                ->filter(function (array $analysis) use ($scanSymbols): bool {
-                    $symbol = strtoupper((string) ($analysis['symbol'] ?? ''));
-                    return $symbol !== ''
-                        && in_array($symbol, $scanSymbols, true)
-                        && strtoupper((string) ($analysis['direction'] ?? '')) !== 'UNAVAILABLE'
-                        && empty($analysis['error']);
-                })
-                ->map(function (array $analysis) use ($scanPairMap, $runSignals, $latestRun, $minimumScore, $liveTickers): array {
-                    $symbol = strtoupper((string) $analysis['symbol']);
-                    $direction = strtoupper((string) ($analysis['direction'] ?? 'NEUTRAL'));
-                    $score = max(0, min(100, (float) ($analysis['score'] ?? 0)));
-                    $pair = $scanPairMap->get($symbol);
-                    $analysisTimeframe = strtolower((string) ($analysis['timeframe'] ?? $latestRun?->timeframe ?? ''));
-                    $signal = $runSignals->get($symbol.'|'.$direction.'|'.$analysisTimeframe);
-                    $breakdown = collect($analysis['strategies'] ?? [])->filter(fn ($item) => is_array($item));
-                    $primary = $breakdown
-                        ->filter(fn (array $item) => (float) ($item['points'] ?? 0) > 0
-                            && ($direction === 'NEUTRAL' || strtoupper((string) ($item['bias'] ?? '')) === $direction))
-                        ->sortByDesc(fn (array $item) => (float) ($item['points'] ?? 0))
-                        ->first();
-                    $atrPercent = data_get($analysis, 'indicators.atrPercent');
-                    $qualified = in_array($direction, ['LONG', 'SHORT'], true) && $score >= $minimumScore;
-                    $status = $score >= 80 && $qualified
-                        ? 'High-Conviction'
-                        : ($qualified ? 'Qualified' : ($direction === 'NEUTRAL' ? 'No Setup' : 'Below Filter'));
-
-                    $liveTicker = $liveTickers->get($symbol, []);
-                    $livePrice = is_numeric($liveTicker['price'] ?? null) ? (float) $liveTicker['price'] : (float) ($analysis['last_price'] ?? $analysis['entry_price'] ?? 0);
-                    $liveChange = is_numeric($liveTicker['change_percent'] ?? null) ? (float) $liveTicker['change_percent'] : (isset($analysis['change_percent']) && is_numeric($analysis['change_percent']) ? (float) $analysis['change_percent'] : null);
-
-                    return [
-                        'id' => $signal?->id,
-                        'actionable' => (bool) ($signal?->isActionable() ?? false),
-                        'symbol' => $symbol,
-                        'pair' => $pair ? strtoupper($pair->base_asset).'/'.strtoupper($pair->quote_asset) : $this->pair($symbol),
-                        'quote_asset' => strtoupper((string) ($pair?->quote_asset ?? '')),
-                        'strategy' => (string) ($primary['name'] ?? 'Multi-Factor'),
-                        'strategy_breakdown' => $breakdown->values()->all(),
-                        'direction' => $direction,
-                        'score' => $score,
-                        'entry_price' => (float) ($analysis['entry_price'] ?? 0),
-                        'stop_loss' => (float) ($analysis['stop_loss'] ?? 0),
-                        'take_profit' => (float) ($analysis['take_profit'] ?? 0),
-                        'timeframe' => strtoupper($analysisTimeframe),
-                        'last_price' => $livePrice,
-                        'change_percent' => $liveChange,
-                        'volatility' => is_numeric($atrPercent) ? ((float) $atrPercent >= 2 ? 'Elevated' : ((float) $atrPercent < .8 ? 'Low' : 'Moderate')) : 'Moderate',
-                        'status' => $status,
-                        'qualified' => $qualified,
-                        'generated_at' => $latestRun?->completed_at,
-                    ];
-                })->values();
+        if ($latestRun?->best_signal_id) {
+            $winner = PulseSignal::query()->where('user_id', $user->id)->whereKey((int) $latestRun->best_signal_id)->first();
         }
 
-        if ($latestRun && $runSummary->isNotEmpty()) {
-            $baseRows = $evaluationRows
-                ->when($quoteFilter !== '' && strtolower($quoteFilter) !== 'all', fn (Collection $rows) => $rows->where('quote_asset', $quoteFilter))
-                ->when(in_array($directionFilter, ['LONG', 'SHORT'], true), fn (Collection $rows) => $rows->where('direction', $directionFilter))
-                ->when($timeframeFilter !== '' && $timeframeFilter !== 'all', fn (Collection $rows) => $rows->filter(fn (array $row) => strtolower($row['timeframe']) === $timeframeFilter))
-                ->when($symbolFilter !== '', fn (Collection $rows) => $rows->where('symbol', $symbolFilter))
-                ->when($strategyFilter !== '' && $strategyFilter !== 'all', fn (Collection $rows) => $rows->filter(fn (array $row) => $this->analysisUsesStrategy($row['strategy_breakdown'], $strategyFilter, $row['direction'])))
-                ->values();
-
-            $qualifiedRows = $baseRows->filter(fn (array $row) => in_array($row['direction'], ['LONG', 'SHORT'], true) && (float) $row['score'] >= $minimumScore)->values();
-            // Do not make an empty scanner look broken. If nothing clears the
-            // user's current threshold, show the strongest evaluated markets
-            // as transparent below-filter/no-setup candidates.
-            $rows = ($qualifiedRows->isNotEmpty() ? $qualifiedRows : $baseRows)
-                ->sortByDesc('score')->take(1000)->values();
-            $setupsIdentified = $qualifiedRows->count();
-            $setupPairs = $qualifiedRows->pluck('symbol')->unique()->count();
-            $highConviction = $qualifiedRows->where('score', '>=', 80)->count();
-            $longCount = $qualifiedRows->where('direction', 'LONG')->count();
-            $shortCount = $qualifiedRows->where('direction', 'SHORT')->count();
-        } else {
-            // Before the first V14.8.7 scan, retain useful existing active
-            // signals rather than showing an entirely blank scanner page.
-            $query = PulseSignal::query()->where('user_id', $user->id)
-                ->where('status', 'active')
-                ->where(fn ($active) => $active->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-                ->when($eligibleSymbols !== [], fn ($q) => $q->whereIn('symbol', $eligibleSymbols), fn ($q) => $q->whereRaw('1 = 0'))
-                ->latest('generated_at');
-            if (in_array($directionFilter, ['LONG', 'SHORT'], true)) $query->where('direction', $directionFilter);
-            if ($timeframeFilter !== '' && $timeframeFilter !== 'all') $query->where('timeframe', $timeframeFilter);
-            $query->where('score', '>=', $minimumScore);
-            if ($symbolFilter !== '') $query->where('symbol', $symbolFilter);
-            $signals = $query->limit(100)->get();
-            if ($strategyFilter !== '' && $strategyFilter !== 'all') {
-                $signals = $signals->filter(fn (PulseSignal $signal): bool => $this->signalUsesStrategy($signal, $strategyFilter))->values();
-            }
-            $rows = $signals->map(function (PulseSignal $signal) use ($liveTickers): array {
-                $ticker = $liveTickers->get(strtoupper((string) $signal->symbol), []);
-                $currentPrice = is_numeric($ticker['price'] ?? null) ? (float) $ticker['price'] : null;
-                $row = $this->signalRow($signal, $currentPrice);
-                if (is_numeric($ticker['change_percent'] ?? null)) $row['change_percent'] = (float) $ticker['change_percent'];
-                return $row;
-            })->values();
-            $setupsIdentified = $signals->count();
-            $setupPairs = $signals->pluck('symbol')->unique()->count();
-            $highConviction = $signals->where('score', '>=', 80)->count();
-            $longCount = $signals->where('direction', 'LONG')->count();
-            $shortCount = $signals->where('direction', 'SHORT')->count();
+        if ($winner) {
+            $ticker = $liveTickers->get(strtoupper((string) $winner->symbol), []);
+            $currentPrice = is_numeric($ticker['price'] ?? null) ? (float) $ticker['price'] : null;
+            $row = $this->signalRow($winner, $currentPrice);
+            if (is_numeric($ticker['change_percent'] ?? null)) $row['change_percent'] = (float) $ticker['change_percent'];
+            $capabilities = $this->capabilities($user);
+            $connectionReady = $this->connectionReady($connection);
+            $activeTrade = PulseTrade::query()->where('user_id', $user->id)->where('signal_id', $winner->id)
+                ->whereIn('status', self::OPEN_STATUSES)->latest('created_at')->first();
+            $row['trade_action'] = $this->signalTradeAction($user, $winner, $settings, $connectionReady, $capabilities, $activeTrade, $currentPrice);
+            $rows = collect([$row]);
         }
 
-        $scannerCapabilities = $this->capabilities($user);
-        $scannerConnectionReady = $this->connectionReady($connection);
-        $scannerSignalIds = $rows->pluck('id')->filter()->map(fn ($id) => (int) $id)->unique()->values();
-        $scannerSignalsById = $scannerSignalIds->isNotEmpty()
-            ? PulseSignal::query()->where('user_id', $user->id)->whereIn('id', $scannerSignalIds->all())->get()->keyBy('id')
-            : collect();
-        $scannerActiveTradesBySignal = $scannerSignalIds->isNotEmpty()
-            ? PulseTrade::query()->where('user_id', $user->id)->whereIn('signal_id', $scannerSignalIds->all())
-                ->whereIn('status', self::OPEN_STATUSES)->latest('created_at')->get()->unique('signal_id')->keyBy('signal_id')
-            : collect();
-        $rows = $rows->map(function (array $row) use ($user, $settings, $scannerConnectionReady, $scannerCapabilities, $scannerSignalsById, $scannerActiveTradesBySignal): array {
-            $signalId = (int) ($row['id'] ?? 0);
-            $signal = $signalId > 0 ? $scannerSignalsById->get($signalId) : null;
-            if (! $signal) return $row;
-            return array_merge($row, [
-                'trade_action' => $this->signalTradeAction(
-                    $user,
-                    $signal,
-                    $settings,
-                    $scannerConnectionReady,
-                    $scannerCapabilities,
-                    $scannerActiveTradesBySignal->get($signalId),
-                    isset($row['last_price']) && is_numeric($row['last_price']) ? (float) $row['last_price'] : null,
-                ),
-            ]);
-        })->values();
+        $plan = $user->pulsePlan();
 
-        $packageAvailable = $allowedPairs->count();
-        $selected = $selectedSymbols->count();
-        $monitored = $selected;
         $assessed = (int) ($latestRun?->pairs_scanned ?? 0);
+        $packageAvailable = $allowedPairs->count();
+        $longCount = $rows->where('direction', 'LONG')->count();
+        $shortCount = $rows->where('direction', 'SHORT')->count();
 
         return [
             'settings' => $settings,
@@ -293,34 +153,30 @@ class PulsePageDataService
             'connection' => $connection,
             'connection_ready' => $this->connectionReady($connection),
             'latest_run' => $latestRun,
-            'pairs_monitored' => $monitored,
-            'selected_pairs' => $selected,
+            'best_signal' => $winner,
+            'best_signal_included' => true,
+            'per_signal_charge' => 0,
+            'pairs_monitored' => $packageAvailable,
+            'selected_pairs' => $packageAvailable,
             'package_pairs_available' => $packageAvailable,
-            'package_pair_limit' => max(1, (int) ($user->pulsePlan()?->max_selected_pairs ?: 1)),
+            'package_pair_limit' => $packageAvailable,
             'effective_minimum_score' => (float) $effectiveThreshold['score'],
             'minimum_score_source' => (string) $effectiveThreshold['source'],
-            'setups_identified' => $setupsIdentified,
-            'setup_pairs' => $setupPairs,
-            'high_conviction' => $highConviction,
-            'scan_coverage' => $monitored > 0 ? min(100, ($assessed / $monitored) * 100) : 0,
+            'setups_identified' => $winner ? 1 : 0,
+            'setup_pairs' => $winner ? 1 : 0,
+            'high_conviction' => $winner && (float) $winner->score >= 80 ? 1 : 0,
+            'scan_coverage' => $packageAvailable > 0 ? min(100, ($assessed / max(1, $packageAvailable)) * 100) : 0,
             'pairs_assessed' => $assessed,
             'results' => $rows,
-            'filters' => [
-                'quote' => $quoteFilter === '' ? 'all' : $quoteFilter,
-                'direction' => strtolower($directionFilter) === '' ? 'all' : strtolower($directionFilter),
-                'strategy' => (string) ($filters['strategy'] ?? 'all'),
-                'min_score' => $minimumScore,
-                'timeframe' => $timeframeFilter === '' ? 'all' : $timeframeFilter,
-                'liquidity' => (string) ($filters['liquidity'] ?? 'high-medium'),
-            ],
+            'filters' => ['quote' => 'all', 'direction' => 'all', 'strategy' => 'all', 'min_score' => (float) $effectiveThreshold['score'], 'timeframe' => 'all', 'liquidity' => 'all'],
             'market_bias' => $longCount === $shortCount ? 'Balanced' : ($longCount > $shortCount ? 'Bullish' : 'Defensive'),
             'volatility' => $rows->contains(fn (array $row): bool => ($row['volatility'] ?? '') === 'Elevated') ? 'Elevated' : 'Moderate',
-            'liquidity' => 'Stable',
+            'liquidity' => 'Admin universe',
             'btc_dominance' => null,
             'data_freshness' => $latestRun?->completed_at ? 'Current' : 'Awaiting scan',
-            'insufficient_data' => $runSummary->filter(fn ($item) => is_array($item) && ! empty($item['error']))->count(),
-            'quote_assets' => $quoteAssets,
-            'strategy_options' => $this->strategyOptions($user),
+            'insufficient_data' => 0,
+            'quote_assets' => $allowedPairs->pluck('quote_asset')->filter()->unique()->sort()->values(),
+            'strategy_options' => collect(),
         ];
     }
 
@@ -809,6 +665,10 @@ class PulsePageDataService
         return array_merge($row, [
             'evidence' => $evidence,
             'evidence_total' => $qualified->count(),
+            'unlocked_at' => $signal->unlocked_at,
+            'ai_explanation' => $signal->ai_explanation,
+            'ai_explained_at' => $signal->ai_explained_at,
+            'share_count' => (int) $signal->share_count,
         ]);
     }
 

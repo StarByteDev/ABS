@@ -19,35 +19,48 @@ class ScannerController extends Controller
 
     public function run(Request $request, PulseScannerService $scanner, PulseUsageService $usage)
     {
-        $data = $request->validate([
-            'symbols' => ['nullable', 'array', 'max:'.max(1, (int) config('pulse.scanner.max_pairs_per_run', 1000))],
-            'symbols.*' => ['string', 'max:30'],
-            'timeframe' => ['required', 'in:15m,4h,all'],
-        ]);
-
         try {
-            $run = $scanner->run($request->user(), array_key_exists('symbols', $data) ? $data['symbols'] : null, $data['timeframe']);
+            $run = $scanner->run($request->user(), null, 'all');
         } catch (\Throwable $e) {
             if ($request->expectsJson()) {
-                return response()->json([
-                    'message' => $e->getMessage(),
-                    'usage' => $usage->today($request->user()),
-                ], 422);
+                return response()->json(['message' => $e->getMessage(), 'usage' => $usage->today($request->user())], 422);
             }
-
             return back()->withErrors(['scanner' => $e->getMessage()]);
         }
 
-        $message = "Market scan completed: {$run->pairs_scanned} selected markets were reviewed.";
+        $winner = $run->bestSignal;
+        $message = $winner
+            ? 'Best Signal unlocked: '.strtoupper($winner->symbol).' '.strtoupper($winner->direction).'. Included with your active Pulse package.'
+            : 'No qualifying Best Signal was found in this scan.';
 
         if ($request->expectsJson()) {
             return response()->json([
                 'message' => $message,
-                'run' => $run,
+                'run' => [
+                    'id' => $run->id,
+                    'status' => $run->status,
+                    'markets_scanned' => (int) $run->markets_scanned,
+                    'signals_generated' => (int) $run->signals_generated,
+                    'per_signal_charge' => 0,
+                    'started_at' => $run->started_at,
+                    'completed_at' => $run->completed_at,
+                    'best_signal' => $winner ? [
+                        'id' => $winner->id,
+                        'symbol' => $winner->symbol,
+                        'timeframe' => $winner->timeframe,
+                        'direction' => $winner->direction,
+                        'entry_price' => $winner->entry_price,
+                        'stop_loss' => $winner->stop_loss,
+                        'take_profit' => $winner->take_profit,
+                        'technical_score' => $winner->technical_score,
+                        'reliability_score' => $winner->reliability_score,
+                        'confidence_score' => $winner->confidence_score,
+                        'confidence_label' => $winner->confidence_label,
+                    ] : null,
+                ],
                 'usage' => $usage->today($request->user()),
             ], 201);
         }
-
         return redirect()->route('pulse.scanner')->with('success', $message);
     }
 
@@ -69,8 +82,6 @@ class ScannerController extends Controller
 
     private function filters(Request $request): array
     {
-        return $request->only([
-            'quote', 'direction', 'strategy', 'min_score', 'timeframe', 'liquidity', 'symbol',
-        ]);
+        return [];
     }
 }

@@ -5,7 +5,6 @@
     "dev": "vite",
     "build": "vite build",
     "audit:static": "node scripts/static-release-audit.mjs",
-    "audit:visual-contract": "node tests/Visual/verify-premium-contract.mjs",
     "manifest:release": "node scripts/generate-release-manifests.mjs",
     "manifest:verify": "node scripts/verify-release-manifest.mjs",
     "audit:v1482": "node tests/Release/verify-v1482-contract.mjs",
@@ -24,7 +23,12 @@
     "audit:v14820": "node tests/Release/verify-v14820-guided-self-configured-trading.mjs",
     "audit:v14821": "node tests/Release/verify-v14821-full-qa-hostgator.mjs",
     "audit:v14822": "node tests/Release/verify-v14822-database-self-repair.mjs",
-    "audit:v1492": "node tests/Release/verify-v1492-mobile-web-backend.mjs"
+    "audit:v1492": "node tests/Release/verify-v1492-mobile-web-backend.mjs",
+    "audit:visual-contract:legacy": "node tests/Visual/verify-premium-contract.mjs",
+    "audit:v1510": "node tests/Release/verify-v1510-direct-usdt-public-rewarded-signal.mjs",
+    "audit:visual-contract": "node tests/Visual/verify-premium-contract.mjs",
+    "audit:v1511": "node tests/Release/verify-v1511-news-legal-email.mjs",
+    "audit:v1513": "node tests/Release/verify-v1513-free-signal-share-experience.mjs"
   },
   "devDependencies": {
     "axios": "^1.11.0",

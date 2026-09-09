@@ -13,7 +13,10 @@ use App\Models\Product;
 use App\Models\PulseSystemSetting;
 use App\Models\ResearchReport;
 use App\Models\SiteSetting;
+use App\Models\UserServiceAccess;
 use App\Services\BrandedMailService;
+use App\Services\EconomicCalendarService;
+use App\Services\MacroImpactInterpreter;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -21,14 +24,55 @@ use Illuminate\Validation\Rule;
 
 class AdminEnterpriseController extends Controller
 {
-    public function contentIndex(string $type)
+    public function contentIndex(Request $request, string $type)
     {
         [$model, $definition] = $this->contentDefinition($type);
         $query = $model::query();
+        if ($request->filled('q')) {
+            $term = '%'.trim((string) $request->string('q')).'%';
+            $query->where(function ($q) use ($term, $type): void {
+                $q->where($type === 'products' ? 'name' : 'title', 'like', $term);
+                if ($type !== 'events') $q->orWhere('category', 'like', $term);
+                if ($type === 'research') $q->orWhere('asset_symbol', 'like', $term);
+                if ($type === 'events') $q->orWhere('country', 'like', $term)->orWhere('currency', 'like', $term);
+            });
+        }
+        if ($request->filled('status')) {
+            if ($type === 'events') $query->where('impact', $request->string('status'));
+            else $query->where('status', $request->string('status'));
+        }
+        if ($request->string('featured')->value() === '1' && $type !== 'events') $query->where('is_featured', true);
         if ($type === 'events') $query->orderByDesc('event_at');
         elseif ($type === 'products') $query->orderBy('sort_order')->orderBy('name');
         else $query->latest('updated_at');
-        return view('admin.enterprise.content-index', compact('type', 'definition') + ['items' => $query->paginate(25)]);
+        $base = $model::query();
+        $summary = $type === 'events'
+            ? [
+                'total' => (clone $base)->count(),
+                'primary' => (clone $base)->where('event_at', '>=', now())->count(),
+                'secondary' => (clone $base)->where('impact', 'high')->where('event_at', '>=', now())->count(),
+                'featured' => null,
+                'updated30' => (clone $base)->where('updated_at', '>=', now()->subDays(30))->count(),
+            ]
+            : [
+                'total' => (clone $base)->count(),
+                'primary' => (clone $base)->where('status', $type === 'products' ? 'live' : 'published')->count(),
+                'secondary' => (clone $base)->where('status', 'draft')->count(),
+                'featured' => (clone $base)->where('is_featured', true)->count(),
+                'updated30' => (clone $base)->where('updated_at', '>=', now()->subDays(30))->count(),
+            ];
+        $filterOptions = $type === 'events' ? ['high','medium','low'] : ($type === 'products' ? ['draft','live','archived'] : ['draft','published','archived']);
+        $economicIntegration = null;
+        if ($type === 'events') {
+            $calendar = app(EconomicCalendarService::class);
+            $economicIntegration = [
+                'configured' => $calendar->configured(),
+                'auto_sync' => $calendar->autoSyncEnabled(),
+                'provider' => $calendar->providerName(),
+                'last_sync_at' => $calendar->lastSyncAt(),
+            ];
+        }
+        return view('admin.enterprise.content-index', compact('type', 'definition', 'summary', 'filterOptions', 'economicIntegration') + ['items' => $query->paginate(25)->withQueryString()]);
     }
 
     public function contentCreate(string $type)
@@ -67,16 +111,29 @@ class AdminEnterpriseController extends Controller
 
     public function settings()
     {
-        return view('admin.enterprise.settings', [
-            'settings' => SiteSetting::query()->orderBy('group')->orderBy('key')->get()->groupBy('group'),
-        ]);
+        // Integration credentials and provider runtime state are managed by their
+        // dedicated Admin screens. Never render encrypted values in the generic
+        // website/mobile settings editor, even as ciphertext.
+        $settings = SiteSetting::query()
+            ->where('type', '!=', 'encrypted')
+            ->where('key', 'not like', 'economic_calendar_%')
+            ->orderBy('group')
+            ->orderBy('key')
+            ->get()
+            ->groupBy('group');
+
+        return view('admin.enterprise.settings', compact('settings'));
     }
 
     public function updateSettings(Request $request)
     {
         $data = $request->validate(['settings' => ['required', 'array'], 'settings.*' => ['nullable', 'string', 'max:10000']]);
         foreach ($data['settings'] as $key => $value) {
+            if (str_starts_with((string) $key, 'economic_calendar_')) continue;
+
             $existing = SiteSetting::query()->where('key', $key)->first();
+            if ($existing?->type === 'encrypted') continue;
+
             if ($existing) {
                 $existing->update(['value' => $value]);
             } else {
@@ -90,7 +147,16 @@ class AdminEnterpriseController extends Controller
     {
         $query = NewsletterSubscriber::query()->latest();
         if ($request->filled('status')) $query->where('status', $request->string('status'));
-        return view('admin.enterprise.newsletters', ['items' => $query->paginate(30)->withQueryString()]);
+        if ($request->filled('q')) $query->where('email', 'like', '%'.trim((string)$request->string('q')).'%');
+        return view('admin.enterprise.newsletters', [
+            'items' => $query->paginate(30)->withQueryString(),
+            'summary' => [
+                'total' => NewsletterSubscriber::query()->count(),
+                'active' => NewsletterSubscriber::query()->where('status','active')->count(),
+                'unsubscribed' => NewsletterSubscriber::query()->where('status','unsubscribed')->count(),
+                'new30' => NewsletterSubscriber::query()->where('created_at','>=',now()->subDays(30))->count(),
+            ],
+        ]);
     }
 
     public function updateNewsletter(Request $request, NewsletterSubscriber $subscriber)
@@ -109,7 +175,20 @@ class AdminEnterpriseController extends Controller
         $query = ContactMessage::query()->latest();
         if ($request->filled('status')) $query->where('status', $request->string('status'));
         if ($request->filled('category')) $query->where('category', $request->string('category'));
-        return view('admin.enterprise.contacts', ['items' => $query->paginate(30)->withQueryString()]);
+        if ($request->filled('priority')) $query->where('priority', $request->string('priority'));
+        if ($request->filled('q')) {
+            $term = '%'.trim((string)$request->string('q')).'%';
+            $query->where(fn ($q) => $q->where('name','like',$term)->orWhere('email','like',$term)->orWhere('subject','like',$term));
+        }
+        return view('admin.enterprise.contacts', [
+            'items' => $query->paginate(30)->withQueryString(),
+            'summary' => [
+                'new' => ContactMessage::query()->where('status','new')->count(),
+                'open' => ContactMessage::query()->whereIn('status',['new','open','waiting'])->count(),
+                'urgent' => ContactMessage::query()->where('priority','urgent')->whereNotIn('status',['resolved','closed'])->count(),
+                'resolved7' => ContactMessage::query()->whereIn('status',['resolved','closed'])->where('updated_at','>=',now()->subDays(7))->count(),
+            ],
+        ]);
     }
 
     public function contactShow(ContactMessage $contact)
@@ -156,7 +235,18 @@ class AdminEnterpriseController extends Controller
             'failed_24h' => EmailDeliveryLog::query()->where('status', 'failed')->where('created_at', '>=', now()->subDay())->count(),
             'devices' => MobileDevice::query()->where('is_active', true)->count(),
         ];
-        return view('admin.enterprise.emails', compact('settings', 'adminEventSettings', 'logs', 'stats'));
+        $configuredDays = PulseSystemSetting::value('expiry_reminder_days', [7, 3, 1, 0]);
+        if (! is_array($configuredDays)) $configuredDays = explode(',', (string) $configuredDays);
+        $expiryDays = collect($configuredDays)->map(fn ($day) => (int) $day)->filter(fn ($day) => $day >= 0 && $day <= 90)->unique()->sortDesc()->values();
+        if ($expiryDays->isEmpty()) $expiryDays = collect([7, 3, 1, 0]);
+        $today = today();
+        $expiryAudience = $expiryDays->mapWithKeys(function (int $day) use ($today): array {
+            $date = $today->copy()->addDays($day);
+            $count = UserServiceAccess::query()->where('service', 'pulse')->where('status', 'active')->whereDate('ends_at', $date)->count();
+            return [(string) $day => $count];
+        });
+        $expirySent30 = EmailDeliveryLog::query()->where('status', 'sent')->where('event', 'like', 'plan_expiry_%')->where('created_at', '>=', now()->subDays(30))->count();
+        return view('admin.enterprise.emails', compact('settings', 'adminEventSettings', 'logs', 'stats', 'expiryDays', 'expiryAudience', 'expirySent30'));
     }
 
     public function updateEmailSettings(Request $request)
@@ -165,7 +255,14 @@ class AdminEnterpriseController extends Controller
             'admin_notification_email' => ['required', 'email', 'max:255'],
             'admin_notify_new_registration' => ['nullable', Rule::in(['0', '1'])],
             'admin_notify_new_subscription' => ['nullable', Rule::in(['0', '1'])],
+            'expiry_reminder_days' => ['required', 'string', 'max:100', 'regex:/^\s*\d{1,2}(\s*,\s*\d{1,2})*\s*$/'],
         ]);
+
+        $expiryDays = collect(explode(',', $data['expiry_reminder_days']))
+            ->map(fn ($day) => (int) trim($day))->filter(fn ($day) => $day >= 0 && $day <= 90)->unique()->sortDesc()->values();
+        if ($expiryDays->isEmpty() || $expiryDays->count() > 8) {
+            return back()->withInput()->withErrors(['expiry_reminder_days' => 'Enter between 1 and 8 unique reminder days from 0 to 90, separated by commas.']);
+        }
 
         $keys = ['transactional_emails_enabled','pulse_alert_emails_enabled','signal_email_alerts_enabled','trade_email_alerts_enabled','promotion_emails_enabled','expiry_emails_enabled','daily_market_brief_enabled'];
         foreach ($keys as $key) {
@@ -176,6 +273,12 @@ class AdminEnterpriseController extends Controller
                 'description' => 'ABS production email control',
             ]);
         }
+        PulseSystemSetting::updateOrCreate(['key' => 'expiry_reminder_days'], [
+            'value' => $expiryDays->toJson(),
+            'type' => 'json',
+            'group' => 'email',
+            'description' => 'Admin-configured UTC day thresholds for deduplicated Pulse plan expiry reminders.',
+        ]);
 
         SiteSetting::updateOrCreate(['key' => 'admin_notification_email'], [
             'value' => strtolower(trim($data['admin_notification_email'])),
@@ -203,6 +306,29 @@ class AdminEnterpriseController extends Controller
         return back()->with('success', 'Test email delivery was attempted. Review the delivery log below for the result.');
     }
 
+    public function updateEconomicCalendarSettings(Request $request, EconomicCalendarService $calendar)
+    {
+        $data = $request->validate([
+            'api_key' => ['nullable','string','max:255'],
+            'auto_sync' => ['nullable','boolean'],
+            'clear_api_key' => ['nullable','boolean'],
+        ]);
+        if ($request->boolean('clear_api_key')) $calendar->clearApiKey();
+        elseif (filled($data['api_key'] ?? null)) $calendar->saveApiKey((string) $data['api_key']);
+        $calendar->setAutoSync($request->boolean('auto_sync'));
+        return back()->with('success', 'Economic Calendar integration settings updated.');
+    }
+
+    public function syncEconomicCalendar(EconomicCalendarService $calendar)
+    {
+        try {
+            $result = $calendar->sync();
+            return back()->with('success', 'Economic Calendar synced: '.number_format($result['created']).' new, '.number_format($result['updated']).' updated.');
+        } catch (\Throwable $e) {
+            return back()->with('warning', 'Economic Calendar sync could not complete: '.$e->getMessage());
+        }
+    }
+
     private function ensureAdminEventNotificationSettings(): void
     {
         SiteSetting::firstOrCreate(['key' => 'admin_notification_email'], [
@@ -227,7 +353,7 @@ class AdminEnterpriseController extends Controller
         return match ($type) {
             'research' => [ResearchReport::class, ['title' => 'Research CMS', 'description' => 'Publish structured research and market analysis.', 'fields' => ['title','slug','summary','body','category','asset_symbol','risk_level','image_url','status','is_featured','published_at']]],
             'learning' => [LearningArticle::class, ['title' => 'Learning CMS', 'description' => 'Manage educational articles and learning material.', 'fields' => ['title','slug','excerpt','body','category','level','duration_minutes','status','is_featured','published_at']]],
-            'events' => [EconomicEvent::class, ['title' => 'Economic Calendar CMS', 'description' => 'Manage scheduled macro and economic events.', 'fields' => ['title','country','currency','impact','event_at','previous_value','forecast_value','actual_value','source']]],
+            'events' => [EconomicEvent::class, ['title' => 'Economic Calendar CMS', 'description' => 'Manage CPI, PPI, FOMC, jobs, GDP and other market-moving macro events with previous, forecast, actual and easy crypto context.', 'fields' => ['title','country','currency','impact','event_at','previous_value','forecast_value','actual_value','source','source_url','crypto_impact','easy_explanation','crypto_impact_summary','is_crypto_relevant']]],
             'products' => [Product::class, ['title' => 'Products & Services CMS', 'description' => 'Manage public ABS services and product presentation.', 'fields' => ['name','slug','category','tagline','description','icon','accent','features','status','sort_order','is_featured']]],
             default => abort(404),
         };
@@ -260,11 +386,21 @@ class AdminEnterpriseController extends Controller
             return $data;
         }
         if ($type === 'events') {
-            return $request->validate([
+            $data = $request->validate([
                 'title' => ['required','string','max:180'], 'country' => ['nullable','string','max:80'], 'currency' => ['nullable','string','max:10'],
                 'impact' => ['required',Rule::in(['low','medium','high'])], 'event_at' => ['required','date'], 'previous_value' => ['nullable','string','max:100'],
                 'forecast_value' => ['nullable','string','max:100'], 'actual_value' => ['nullable','string','max:100'], 'source' => ['nullable','string','max:255'],
+                'source_url' => ['nullable','url','max:500'], 'crypto_impact' => ['nullable',Rule::in(['supportive','pressure','volatile','mixed','neutral'])],
+                'easy_explanation' => ['nullable','string','max:3000'], 'crypto_impact_summary' => ['nullable','string','max:3000'],
+                'is_crypto_relevant' => ['nullable','boolean'],
             ]);
+            $data['currency'] = filled($data['currency'] ?? null) ? strtoupper((string) $data['currency']) : null;
+            $data['is_crypto_relevant'] = $request->boolean('is_crypto_relevant', true);
+            $auto = app(MacroImpactInterpreter::class)->interpret((string) $data['title'], $data['actual_value'] ?? null, $data['forecast_value'] ?? null, $data['previous_value'] ?? null);
+            $data['crypto_impact'] = $data['crypto_impact'] ?: $auto['crypto_impact'];
+            $data['easy_explanation'] = $data['easy_explanation'] ?: $auto['easy_explanation'];
+            $data['crypto_impact_summary'] = $data['crypto_impact_summary'] ?: $auto['crypto_impact_summary'];
+            return $data;
         }
         $data = $request->validate([
             'name' => ['required','string','max:180'], 'slug' => ['nullable','string','max:190'], 'category' => ['required','string','max:80'],

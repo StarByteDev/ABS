@@ -2464,3 +2464,5 @@ body.abs-body[data-home-page="0"] .premium-legal-document h2{font-size:18px}
 .membership-next-tier{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;margin-top:16px;padding-top:14px;border-top:1px solid rgba(139,151,182,.16)}
 .membership-next-tier small{grid-column:1;color:#c79a48;font-size:9px;font-weight:900;letter-spacing:.12em}.membership-next-tier b{grid-column:1;color:#f2f5fb;font-size:14px}.membership-next-tier a{grid-column:2;grid-row:1/span 2}
 @media(max-width:760px){.pulse-plan-upgrade-summary{align-items:flex-start;flex-direction:column}}
+
+/* ABS V15.1.1 macro intelligence styles are shipped directly in public/assets/css/abs-app.css for shared-hosting deployment. */

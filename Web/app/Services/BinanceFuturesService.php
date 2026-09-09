@@ -228,7 +228,27 @@ class BinanceFuturesService
             throw new RuntimeException('A valid symbol and BUY/SELL side are required.');
         }
 
-        return $this->signed('POST', '/fapi/v1/order', $parameters, $connection);
+        // Binance validates quantity/price against live symbol filters. Normalize immediately
+        // before signing so a stale database precision cannot create -1111 BAD_PRECISION.
+        $parameters = $this->normalizeLiveOrderParameters($connection->environment, $parameters);
+
+        try {
+            return $this->signed('POST', '/fapi/v1/order', $parameters, $connection);
+        } catch (RuntimeException $e) {
+            $message = $e->getMessage();
+            $precisionRejected = str_contains($message, 'Binance -1111:')
+                || str_contains($message, 'Binance -4023:')
+                || str_contains($message, 'Binance -4014:')
+                || str_contains($message, 'Binance -4029:')
+                || str_contains($message, 'Binance -4030:');
+
+            if (! $precisionRejected) throw $e;
+
+            // These errors mean Binance rejected the request before order acceptance, so one
+            // safe retry with freshly downloaded exchange filters cannot duplicate a trade.
+            $parameters = $this->normalizeLiveOrderParameters($connection->environment, $parameters, true);
+            return $this->signed('POST', '/fapi/v1/order', $parameters, $connection);
+        }
     }
 
     public function placeAlgoOrder(BinanceConnection $connection, array $parameters): array
@@ -244,7 +264,15 @@ class BinanceFuturesService
             throw new RuntimeException('A valid conditional algo order is required.');
         }
 
-        return $this->signed('POST', '/fapi/v1/algoOrder', $parameters, $connection);
+        $parameters = $this->normalizeLiveOrderParameters($connection->environment, $parameters);
+        try {
+            return $this->signed('POST', '/fapi/v1/algoOrder', $parameters, $connection);
+        } catch (RuntimeException $e) {
+            $message = $e->getMessage();
+            if (! str_contains($message, 'Binance -1111:') && ! str_contains($message, 'Binance -4014:') && ! str_contains($message, 'Binance -4029:')) throw $e;
+            $parameters = $this->normalizeLiveOrderParameters($connection->environment, $parameters, true);
+            return $this->signed('POST', '/fapi/v1/algoOrder', $parameters, $connection);
+        }
     }
 
     public function cancelOrder(BinanceConnection $connection, string $symbol, string|int $orderId): array
@@ -389,8 +417,10 @@ class BinanceFuturesService
                     'price_precision' => (int) ($symbol['pricePrecision'] ?? 2),
                     'quantity_precision' => (int) ($symbol['quantityPrecision'] ?? 3),
                     'tick_size' => $priceFilter['tickSize'] ?? null,
-                    'step_size' => $marketLotFilter['stepSize'] ?? ($lotFilter['stepSize'] ?? null),
-                    'minimum_quantity' => $marketLotFilter['minQty'] ?? ($lotFilter['minQty'] ?? null),
+                    // Store LOT_SIZE as the default executable quantity rule. MARKET_LOT_SIZE
+                    // is applied dynamically only to MARKET orders in placeOrder().
+                    'step_size' => $lotFilter['stepSize'] ?? ($marketLotFilter['stepSize'] ?? null),
+                    'minimum_quantity' => $lotFilter['minQty'] ?? ($marketLotFilter['minQty'] ?? null),
                     'minimum_notional' => $notionalFilter['notional'] ?? null,
                     'last_synced_at' => now(),
                 ],
@@ -409,6 +439,32 @@ class BinanceFuturesService
         }
 
         return $count;
+    }
+
+    public function refreshPairRules(PulsePair $pair, string $environment): PulsePair
+    {
+        try {
+            $rules = $this->symbolRules($environment, $pair->symbol);
+            $lot = (array) ($rules['lot'] ?? []);
+            $price = (array) ($rules['price'] ?? []);
+            $notional = (array) ($rules['notional'] ?? []);
+
+            $pair->update([
+                'price_precision' => (int) ($rules['price_precision'] ?? $pair->price_precision),
+                'quantity_precision' => (int) ($rules['quantity_precision'] ?? $pair->quantity_precision),
+                'tick_size' => $price['tickSize'] ?? $pair->tick_size,
+                'step_size' => $lot['stepSize'] ?? $pair->step_size,
+                'minimum_quantity' => $lot['minQty'] ?? $pair->minimum_quantity,
+                'minimum_notional' => $notional['notional'] ?? $notional['minNotional'] ?? $pair->minimum_notional,
+                'last_synced_at' => now(),
+            ]);
+
+            return $pair->fresh();
+        } catch (\Throwable) {
+            // Execution can still use the last known filters; placeOrder performs a
+            // second live normalization and safe precision-error retry.
+            return $pair;
+        }
     }
 
     public function normalizeQuantity(PulsePair $pair, float $quantity): float
@@ -431,6 +487,91 @@ class BinanceFuturesService
         }
 
         return round(round($price / $tick) * $tick, max(0, (int) $pair->price_precision));
+    }
+
+
+    /**
+     * Apply current Binance PRICE_FILTER / LOT_SIZE rules directly to a new order.
+     * LIMIT orders use LOT_SIZE; MARKET orders prefer MARKET_LOT_SIZE when present.
+     */
+    private function normalizeLiveOrderParameters(string $environment, array $parameters, bool $fresh = false): array
+    {
+        $symbol = strtoupper((string) ($parameters['symbol'] ?? ''));
+        if ($symbol === '') return $parameters;
+
+        try {
+            $rules = $this->symbolRules($environment, $symbol, $fresh);
+        } catch (\Throwable) {
+            // Keep the existing normalized values if exchangeInfo is temporarily unavailable.
+            return $parameters;
+        }
+
+        $type = strtoupper((string) ($parameters['type'] ?? 'MARKET'));
+        $lot = $type === 'MARKET' && (float) data_get($rules, 'market_lot.stepSize', 0) > 0
+            ? (array) ($rules['market_lot'] ?? [])
+            : (array) ($rules['lot'] ?? []);
+
+        if (isset($parameters['quantity']) && is_numeric($parameters['quantity'])) {
+            $quantity = abs((float) $parameters['quantity']);
+            $step = (float) ($lot['stepSize'] ?? 0);
+            $minQty = (float) ($lot['minQty'] ?? 0);
+            $maxQty = (float) ($lot['maxQty'] ?? 0);
+            if ($step > 0) $quantity = floor(($quantity + 1e-12) / $step) * $step;
+            if ($minQty > 0) $quantity = max($quantity, $minQty);
+            if ($maxQty > 0) $quantity = min($quantity, $maxQty);
+            $quantityDecimals = $step > 0
+                ? min(max(0, (int) ($rules['quantity_precision'] ?? 8)), $this->decimalPlaces((string) ($lot['stepSize'] ?? '1')))
+                : max(0, (int) ($rules['quantity_precision'] ?? 8));
+            $parameters['quantity'] = $this->formatFixed($quantity, $quantityDecimals);
+        }
+
+        foreach (['price', 'stopPrice', 'triggerPrice', 'activationPrice'] as $priceKey) {
+            if (! isset($parameters[$priceKey]) || ! is_numeric($parameters[$priceKey])) continue;
+            $price = (float) $parameters[$priceKey];
+            $tick = (float) data_get($rules, 'price.tickSize', 0);
+            if ($tick > 0) $price = round($price / $tick) * $tick;
+            $priceDecimals = $tick > 0
+                ? min(max(0, (int) ($rules['price_precision'] ?? 8)), $this->decimalPlaces((string) data_get($rules, 'price.tickSize', '1')))
+                : max(0, (int) ($rules['price_precision'] ?? 8));
+            $parameters[$priceKey] = $this->formatFixed($price, $priceDecimals);
+        }
+
+        return $parameters;
+    }
+
+    private function symbolRules(string $environment, string $symbol, bool $fresh = false): array
+    {
+        $cacheKey = 'pulse:binance:symbol-rules:'.strtolower($environment).':'.strtoupper($symbol);
+        if ($fresh) Cache::forget($cacheKey);
+
+        return Cache::remember($cacheKey, 300, function () use ($environment, $symbol): array {
+            $info = $this->exchangeInfo($environment);
+            foreach ((array) ($info['symbols'] ?? []) as $row) {
+                if (strtoupper((string) ($row['symbol'] ?? '')) !== strtoupper($symbol)) continue;
+                $filters = collect($row['filters'] ?? [])->keyBy('filterType');
+                return [
+                    'price_precision' => (int) ($row['pricePrecision'] ?? 8),
+                    'quantity_precision' => (int) ($row['quantityPrecision'] ?? 8),
+                    'price' => (array) $filters->get('PRICE_FILTER', []),
+                    'lot' => (array) $filters->get('LOT_SIZE', []),
+                    'market_lot' => (array) $filters->get('MARKET_LOT_SIZE', []),
+                    'notional' => (array) ($filters->get('MIN_NOTIONAL', $filters->get('NOTIONAL', []))),
+                ];
+            }
+            throw new RuntimeException('Binance exchange rules are unavailable for '.$symbol.'.');
+        });
+    }
+
+    private function decimalPlaces(string $step): int
+    {
+        $step = rtrim(trim($step), '0');
+        if (! str_contains($step, '.')) return 0;
+        return max(0, strlen(substr(strrchr($step, '.'), 1)));
+    }
+
+    private function formatFixed(float $value, int $decimals): string
+    {
+        return number_format($value, max(0, min(12, $decimals)), '.', '');
     }
 
     private function signed(string $method, string $path, array $parameters, BinanceConnection $connection): array

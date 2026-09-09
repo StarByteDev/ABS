@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Schema;
 class PulseSchemaRepair
 {
     public const REQUIRED_SCHEMA = [
-        'pulse_plans' => ['id','name','slug','description','monthly_price','currency','scanner_runs_per_day','signals_per_day','minimum_signal_score','manual_trades_per_day','auto_trades_per_day','max_open_trades','max_selected_pairs','pair_access_mode','allow_testnet_trading','allow_manual_trading','allow_live_trading','allow_auto_trading','allow_mobile_api','capabilities','is_active','sort_order','is_trial','is_public','request_enabled','requires_payment','access_days','badge','is_featured','created_at','updated_at'],
+        'pulse_plans' => ['id','name','slug','description','monthly_price','currency','minimum_signal_score','manual_trades_per_day','auto_trades_per_day','max_open_trades','max_selected_pairs','pair_access_mode','allow_testnet_trading','allow_manual_trading','allow_live_trading','allow_auto_trading','allow_mobile_api','capabilities','is_active','sort_order','is_trial','is_public','request_enabled','requires_payment','access_days','badge','is_featured','created_at','updated_at'],
         'pulse_plan_strategies' => ['id','pulse_plan_id','pulse_strategy_id','is_enabled','weight_override','created_at','updated_at'],
         'pulse_plan_pairs' => ['id','pulse_plan_id','pulse_pair_id','is_enabled','created_at','updated_at'],
         'user_service_access' => ['id','user_id','service','status','pulse_plan_id','approved_by','starts_at','ends_at','trial_used_at','permissions','notes','created_at','updated_at'],
@@ -16,8 +16,8 @@ class PulseSchemaRepair
         'pulse_pairs' => ['id','symbol','base_asset','quote_asset','is_enabled','sort_order','price_precision','quantity_precision','tick_size','step_size','minimum_quantity','minimum_notional','last_synced_at','created_at','updated_at'],
         'pulse_user_settings' => ['id','user_id','environment','execution_mode','auto_trade_enabled','emergency_stop','default_leverage','margin_type','position_mode','risk_per_trade_percent','sizing_mode','fixed_notional','fixed_quantity','minimum_signal_score','default_order_type','take_profit_percent','stop_loss_percent','daily_loss_limit','max_open_positions','selected_pairs','notification_preferences','pair_selection_saved_at','pair_selection_locked_until','created_at','updated_at'],
         'binance_connections' => ['id','user_id','environment','label','api_key','api_secret','is_active','permissions','last_tested_at','last_error','created_at','updated_at'],
-        'pulse_scanner_runs' => ['id','user_id','status','timeframe','pairs_scanned','signals_created','started_at','completed_at','summary','error_message','created_at','updated_at'],
-        'pulse_signals' => ['id','user_id','scanner_run_id','symbol','timeframe','direction','entry_price','stop_loss','take_profit','score','confidence_label','status','strategy_breakdown','generated_at','expires_at','signal_fingerprint','strategy_version','strategy_snapshot','take_profit_levels','technical_score','reliability_score','confidence_score','created_at','updated_at'],
+        'pulse_scanner_runs' => ['id','user_id','status','timeframe','pairs_scanned','signals_created','best_signal_id','started_at','completed_at','summary','error_message','created_at','updated_at'],
+        'pulse_signals' => ['id','user_id','scanner_run_id','symbol','timeframe','direction','entry_price','stop_loss','take_profit','score','confidence_label','status','unlocked_at','ai_explanation','ai_explained_at','share_count','strategy_breakdown','generated_at','expires_at','signal_fingerprint','strategy_version','strategy_snapshot','take_profit_levels','technical_score','reliability_score','confidence_score','created_at','updated_at'],
         'pulse_trades' => ['id','user_id','signal_id','symbol','side','environment','order_type','leverage','quantity','entry_price','current_price','stop_loss','take_profit','exchange_order_id','exchange_tp_order_id','exchange_sl_order_id','exchange_close_order_id','exchange_position_side','status','protection_status','realized_pnl','unrealized_pnl','fees','commission_asset','opened_at','closed_at','last_synced_at','close_reason','meta','created_at','updated_at'],
         'pulse_alerts' => ['id','user_id','type','title','message','severity','is_read','action_url','data','created_at','updated_at'],
         'pulse_system_settings' => ['id','key','value','type','group','description'],
@@ -33,6 +33,7 @@ class PulseSchemaRepair
         'pulse_strategy_daily_metrics' => ['id','metric_date','strategy_slug','strategy_version','timeframe','direction','market_regime','sample_count','entries','wins','losses','ambiguous','expired_no_entry','avg_mfe_r','avg_mae_r','avg_duration_seconds','created_at','updated_at'],
         'pulse_strategy_learning_states' => ['id','strategy_slug','strategy_version','timeframe','direction','market_regime','sample_size','win_rate','ambiguous_rate','reliability_score','recency_weighted_score','evidence_level','meta','calculated_at','created_at','updated_at'],
         'pulse_promotion_redemptions' => ['id','promotion_code_id','user_id','pulse_plan_id','membership_request_id','discount_amount','redeemed_at','created_at','updated_at'],
+        'pulse_public_signal_unlocks' => ['id','visitor_hash','provider','provider_reference','ad_unit','signal_id','signal_snapshot','status','claimed_at','view_expires_at','next_available_at','meta','created_at','updated_at'],
     ];
 
     public static function repair(): void
@@ -52,6 +53,7 @@ class PulseSchemaRepair
         self::memberships();
         self::priceArchitecture();
         self::enhancements();
+        self::v1510DirectUsdtRewardedSignals();
     }
 
     private static function plans(): void
@@ -64,8 +66,6 @@ class PulseSchemaRepair
                 $table->text('description')->nullable();
                 $table->decimal('monthly_price', 12, 2)->default(0);
                 $table->string('currency', 8)->default('USD');
-                $table->unsignedInteger('scanner_runs_per_day')->default(5);
-                $table->unsignedInteger('signals_per_day')->default(10);
                 $table->decimal('minimum_signal_score', 6, 2)->default(70);
                 $table->unsignedInteger('auto_trades_per_day')->default(0);
                 $table->unsignedInteger('max_open_trades')->default(2);
@@ -86,8 +86,6 @@ class PulseSchemaRepair
             'description' => fn (Blueprint $t) => $t->text('description')->nullable(),
             'monthly_price' => fn (Blueprint $t) => $t->decimal('monthly_price',12,2)->default(0),
             'currency' => fn (Blueprint $t) => $t->string('currency',8)->default('USD'),
-            'scanner_runs_per_day' => fn (Blueprint $t) => $t->unsignedInteger('scanner_runs_per_day')->default(5),
-            'signals_per_day' => fn (Blueprint $t) => $t->unsignedInteger('signals_per_day')->default(10),
             'minimum_signal_score' => fn (Blueprint $t) => $t->decimal('minimum_signal_score',6,2)->default(70),
             'auto_trades_per_day' => fn (Blueprint $t) => $t->unsignedInteger('auto_trades_per_day')->default(0),
             'max_open_trades' => fn (Blueprint $t) => $t->unsignedInteger('max_open_trades')->default(2),
@@ -824,6 +822,14 @@ class PulseSchemaRepair
                 'updated_at' => fn (Blueprint $t) => $t->timestamp('updated_at')->nullable(),
             ]);
         }
+    }
+
+    private static function v1510DirectUsdtRewardedSignals(): void
+    {
+        $path = database_path('migrations/2026_09_09_151000_restore_direct_usdt_and_add_public_rewarded_signals.php');
+        if (! is_file($path)) return;
+        $migration = require $path;
+        if (is_object($migration) && method_exists($migration, 'up')) $migration->up();
     }
 
     private static function addMissing(string $table, array $definitions): void

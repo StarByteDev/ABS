@@ -7,6 +7,8 @@
     <meta name="description" content="Pulse trading intelligence inside Alpha Block Solutions.">
     <title>@yield('title','Pulse Trading Intelligence')</title>
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+    <link rel="alternate icon" type="image/png" href="{{ asset('assets/brand/abs-logo-512.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('assets/brand/abs-logo-512.png') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/abs-app.css') }}?v={{ @filemtime(public_path('assets/css/abs-app.css')) ?: '14.8.11' }}">
     <link rel="stylesheet" href="{{ asset('assets/css/pulse-app.css') }}?v={{ @filemtime(public_path('assets/css/pulse-app.css')) ?: '14.8.11' }}">
     <link rel="stylesheet" href="{{ asset('assets/css/pulse-premium.css') }}?v={{ @filemtime(public_path('assets/css/pulse-premium.css')) ?: '14.8.11' }}">
@@ -29,21 +31,14 @@
     $pulseHasPaidCurrentPlan = $pulseAccess?->isActive() && $pulseAccess?->plan && ! $pulseAccess->plan->is_trial;
     $pulsePlanChipLabel = $pulseNextPlan
         ? (($pulseHasPaidCurrentPlan ? 'Upgrade to ' : 'Choose ').$pulseNextPlan->name)
-        : (($pulseAccess?->isActive() ? $pulsePlanName.' · Active' : 'View Pulse Plans'));
+        : (($pulseAccess?->isActive() ? $pulsePlanName.' · Active' : 'View Pulse Packages'));
     $pulsePlanChipTitle = $pulseNextPlan
         ? (($pulseHasPaidCurrentPlan ? 'Next tier: ' : 'Recommended plan: ').$pulseNextPlan->name)
-        : ($pulseAccess?->isActive() ? $pulsePlanName.' is your highest available tier' : 'View available Pulse plans');
+        : ($pulseAccess?->isActive() ? $pulsePlanName.' is your highest available tier' : 'View available direct-USDT Pulse packages');
     $pulseUnreadAlerts = isset($unreadAlerts)
         ? (int) $unreadAlerts
         : \App\Models\PulseAlert::query()->where('user_id', $pulseUser?->id)->where('is_read', false)->count();
     $pulseAlertBadge = $pulseUnreadAlerts > 0 ? min($pulseUnreadAlerts, 99) : null;
-    $pulseUsage = app(\App\Services\PulseUsageService::class)->today($pulseUser);
-    $pulseScanQuotaText = data_get($pulseUsage, 'scans.unlimited')
-        ? 'Unlimited'
-        : data_get($pulseUsage, 'scans.remaining', 0).' / '.data_get($pulseUsage, 'scans.limit', 0).' left';
-    $pulseSignalQuotaText = data_get($pulseUsage, 'signals.unlimited')
-        ? 'Unlimited'
-        : data_get($pulseUsage, 'signals.remaining', 0).' / '.data_get($pulseUsage, 'signals.limit', 0).' left';
     // V14.7.9: keep the finalized signed-in navigation visible as one stable
     // product shell. Plan/account permissions restrict access to a destination;
     // they no longer make core navigation disappear or fall back to the legacy
@@ -51,12 +46,13 @@
     // Dashboard, Scanner, Signals, Strategies, Execution and account controls.
     $pulseNavItems = [
         ['enabled' => $pulseHasActive || $pulseUser?->isAdmin(), 'match' => 'pulse.dashboard', 'route' => 'pulse.dashboard', 'icon' => 'dashboard', 'label' => 'Dashboard'],
-        ['enabled' => $pulseAccessService->allows($pulseUser, 'scanner', false), 'match' => 'pulse.scanner*', 'route' => 'pulse.scanner', 'icon' => 'search', 'label' => 'Market Scanner'],
+        ['enabled' => $pulseAccessService->allows($pulseUser, 'scanner', false), 'match' => 'pulse.scanner*', 'route' => 'pulse.scanner', 'icon' => 'search', 'label' => 'Find Best Signal'],
         ['enabled' => $pulseAccessService->allows($pulseUser, 'signals', false), 'match' => 'pulse.signals*', 'route' => 'pulse.signals.index', 'icon' => 'pulse', 'label' => 'Signals'],
-        ['enabled' => $pulseAccessService->allows($pulseUser, 'signals', false), 'match' => 'pulse.strategies', 'route' => 'pulse.strategies', 'icon' => 'strategy', 'label' => 'Strategies'],
+        ['enabled' => true, 'match' => ['pulse.plans','pulse.membership.*'], 'route' => 'pulse.membership.index', 'icon' => 'card', 'label' => 'Package & Payments'],
         ['enabled' => $pulseAccessService->allows($pulseUser, 'orders', false), 'match' => 'pulse.positions', 'route' => 'pulse.positions', 'icon' => 'briefcase', 'label' => 'Open Positions'],
         ['enabled' => $pulseAccessService->allows($pulseUser, 'trades', false), 'match' => 'pulse.trades*', 'route' => 'pulse.trades.index', 'icon' => 'history', 'label' => 'Trade History'],
         ['enabled' => $pulseAccessService->allows($pulseUser, 'alerts', false), 'match' => 'pulse.alerts*', 'route' => 'pulse.alerts.index', 'icon' => 'bell', 'label' => 'Alerts & Watchlists'],
+        ['enabled' => true, 'match' => 'news.*', 'route' => 'news.index', 'icon' => 'bars', 'label' => 'ABS News'],
         ['enabled' => $pulseAccessService->allows($pulseUser, 'reports', false), 'match' => 'pulse.reports', 'route' => 'pulse.reports', 'icon' => 'bars', 'label' => 'Reports & P&L'],
         ['enabled' => $pulseAccessService->allows($pulseUser, 'settings', false), 'match' => ['pulse.settings*','pulse.risk.*','pulse.binance*'], 'route' => 'pulse.settings.edit', 'icon' => 'settings', 'label' => 'Trading Setup'],
     ];
@@ -90,6 +86,7 @@
     <symbol id="pulse-icon-refresh" viewBox="0 0 24 24"><path d="M20 6v5h-5M4 18v-5h5M18 9a7 7 0 0 0-12-2L4 11M6 15a7 7 0 0 0 12 2l2-4"/></symbol>
     <symbol id="pulse-icon-list" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12M3 6h1M3 12h1M3 18h1"/></symbol>
     <symbol id="pulse-icon-plus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></symbol>
+    <symbol id="pulse-icon-play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4V8z"/></symbol>
     <symbol id="pulse-icon-book" viewBox="0 0 24 24"><path d="M4 5c4-1 6 0 8 2v13c-2-2-4-3-8-2V5zM20 5c-4-1-6 0-8 2v13c2-2 4-3 8-2V5z"/></symbol>
     <symbol id="pulse-icon-edit" viewBox="0 0 24 24"><path d="m4 20 4-1 11-11-3-3L5 16l-1 4zM14 7l3 3"/></symbol>
     <symbol id="pulse-icon-alert" viewBox="0 0 24 24"><path d="M12 3 22 20H2L12 3z"/><path d="M12 9v5M12 17h.01"/></symbol>
@@ -137,11 +134,11 @@
                 <div class="pulse-account-popover">
                     <div class="pulse-account-identity"><b>{{ $pulseUser->name }}</b><span>{{ $pulsePlanName }} · {{ $pulseRoleLabel }}</span></div>
                     <div class="pulse-account-usage">
-                        <span><small>Scans today</small><b data-usage-scans>{{ $pulseScanQuotaText }}</b></span>
-                        <span><small>Signals today</small><b data-usage-signals>{{ $pulseSignalQuotaText }}</b></span>
+                        <span><small>Package access</small><b>{{ $pulseAccess?->isActive() ? 'Active' : 'Not active' }}</b></span>
+                        <span><small>Current plan</small><b>{{ $pulsePlanName }}</b></span>
                     </div>
                     <a href="{{ route('profile') }}">@include('pulse.partials.icon', ['name' => 'user']) <span>Profile & Account</span></a>
-                    <a href="{{ route('pulse.plans') }}">@include('pulse.partials.icon', ['name' => 'diamond']) <span>Plan & Limits</span></a>
+                    <a href="{{ route('pulse.plans') }}">@include('pulse.partials.icon', ['name' => 'diamond']) <span>Plan & Access</span></a>
                     <a class="pulse-account-logout" href="{{ route('logout') }}">@include('pulse.partials.icon', ['name' => 'send']) <span>Sign Out</span></a>
                 </div>
             </details>
@@ -167,11 +164,7 @@
             </nav>
 
             <div class="pulse-sidebar-account">
-                <div class="pulse-usage-strip" title="Daily plan usage resets at midnight">
-                    <span><small>Scans</small><b data-usage-scans>{{ $pulseScanQuotaText }}</b></span>
-                    <span><small>Signals</small><b data-usage-signals>{{ $pulseSignalQuotaText }}</b></span>
-                </div>
-                <a class="pulse-plan-chip {{ $pulseNextPlan ? 'upgrade-available' : 'current-tier' }}" href="{{ $pulseNextPlan ? route('pulse.membership.checkout', $pulseNextPlan) : route('pulse.plans') }}" data-pulse-tooltip="{{ $pulsePlanChipTitle }}" title="{{ $pulsePlanChipTitle }}">
+                <a class="pulse-plan-chip {{ $pulseNextPlan ? 'upgrade-available' : 'current-tier' }}" href="{{ route('pulse.plans') }}" data-pulse-tooltip="{{ $pulsePlanChipTitle }}" title="{{ $pulsePlanChipTitle }}">
                     @include('pulse.partials.icon', ['name' => 'diamond'])
                     <span class="pulse-plan-chip-copy">
                         @if($pulseNextPlan)<small>{{ $pulseHasPaidCurrentPlan ? 'NEXT TIER' : 'AVAILABLE PLAN' }}</small>@endif
@@ -208,6 +201,7 @@
                     <div class="pulse-automation-banner enabled"><strong>Automatic mode selected.</strong> Execution remains subject to your plan, account permissions and platform controls.</div>
                 <?php endif; ?>
                 @yield('content')
+                @include('partials.market-disclaimer')
             </section>
         </main>
     </div>

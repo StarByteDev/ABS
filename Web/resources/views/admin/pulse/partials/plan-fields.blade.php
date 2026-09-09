@@ -18,15 +18,15 @@
         <label>Name<input name="name" required value="{{ old('name',$p?->name) }}" placeholder="e.g. Pulse Trial"></label>
         <label>Slug<input name="slug" value="{{ old('slug',$p?->slug) }}" placeholder="auto-generated"></label>
         <label class="full">Customer description<textarea name="description" rows="3" placeholder="Explain who this plan is for and what it includes.">{{ old('description',$p?->description) }}</textarea></label>
-        <label>Membership price<input type="number" name="monthly_price" min="0" step="0.01" value="{{ old('monthly_price',$p?->monthly_price ?? 0) }}"></label>
-        <label>Currency<input name="currency" maxlength="8" value="{{ old('currency',$p?->currency ?? 'USDT') }}" placeholder="USDT"></label>
+        <label>Package price (USDT)<input type="number" name="monthly_price" min="0" step="0.01" value="{{ old('monthly_price',$p?->monthly_price ?? 0) }}"><small>The exact amount the member transfers before Admin verification.</small></label>
+        <input type="hidden" name="currency" value="USDT">
         <label>Access duration (days)<input type="number" name="access_days" min="1" max="3650" value="{{ old('access_days',$p?->access_days ?? 30) }}"></label>
         <label>Customer badge<input name="badge" maxlength="50" value="{{ old('badge',$p?->badge) }}" placeholder="e.g. Most popular"></label>
         <label>Display order<input type="number" name="sort_order" min="0" value="{{ old('sort_order',$p?->sort_order ?? 0) }}"></label>
         <label class="admin-check admin-check-inline"><input type="checkbox" name="is_active" value="1" @checked(old('is_active',$p?->is_active ?? true))><span>Active / assignable</span></label>
         <label class="admin-check admin-check-inline"><input type="checkbox" name="is_public" value="1" @checked(old('is_public',$p?->is_public ?? true))><span>Show on customer plan page</span></label>
-        <label class="admin-check admin-check-inline"><input type="checkbox" name="request_enabled" value="1" @checked(old('request_enabled',$p?->request_enabled ?? true))><span>Allow membership requests</span></label>
-        <label class="admin-check admin-check-inline"><input type="checkbox" name="requires_payment" value="1" @checked(old('requires_payment',$p?->requires_payment ?? true))><span>Require payment before activation</span></label>
+        <label class="admin-check admin-check-inline"><input type="checkbox" name="request_enabled" value="1" @checked(old('request_enabled',$p?->request_enabled ?? true))><span>Allow USDT payment requests</span></label>
+        <label class="admin-check admin-check-inline"><input type="checkbox" name="requires_payment" value="1" @checked(old('requires_payment',$p?->requires_payment ?? true))><span>Payment required</span></label>
         <label class="admin-check admin-check-inline"><input type="checkbox" name="is_featured" value="1" @checked(old('is_featured',$p?->is_featured ?? false))><span>Highlight this plan</span></label>
         <label class="admin-check admin-check-inline"><input type="checkbox" name="is_trial" value="1" @checked(old('is_trial',$p?->is_trial ?? false))><span>Trial plan (banner only, never a paid plan card)</span></label>
     </div>
@@ -34,22 +34,20 @@
 
 <div class="admin-plan-section full">
     <div class="admin-plan-section-head">
-        <div><h3>Usage limits</h3><p>Enter 0 for unlimited daily scanner, signal or trade counts. Open positions and selected markets use the exact maximum entered.</p></div>
+        <div><h3>Trading & market safeguards</h3><p>Best Signal access is included with an active package and has no per-signal wallet charge. These controls remain for trading safety and package market scope.</p></div>
     </div>
     <div class="admin-form-grid compact-grid admin-limit-grid">
-        <label>Scanner runs/day<input type="number" name="scanner_runs_per_day" min="0" value="{{ old('scanner_runs_per_day',$p?->scanner_runs_per_day ?? 50) }}"></label>
-        <label>Signals/day<input type="number" name="signals_per_day" min="0" value="{{ old('signals_per_day',$p?->signals_per_day ?? 100) }}"></label>
-        <label>Default minimum signal score<input type="number" name="minimum_signal_score" min="0" max="100" step="1" value="{{ old('minimum_signal_score',$p?->minimum_signal_score ?? 70) }}"><small>Used when a user has not saved a personal Pulse threshold.</small></label>
+        <label>Default minimum signal score<input type="number" name="minimum_signal_score" min="0" max="100" step="1" value="{{ old('minimum_signal_score',$p?->minimum_signal_score ?? 70) }}"><small>Admin/package qualification threshold. Users cannot override this in V15.</small></label>
         <label>Manual trades/day<input type="number" name="manual_trades_per_day" min="0" value="{{ old('manual_trades_per_day',$p?->manual_trades_per_day ?? 25) }}"></label>
         <label>Automatic trades/day<input type="number" name="auto_trades_per_day" min="0" value="{{ old('auto_trades_per_day',$p?->auto_trades_per_day ?? 10) }}"></label>
         <label>Max open positions<input type="number" name="max_open_trades" min="0" value="{{ old('max_open_trades',$p?->max_open_trades ?? 5) }}"></label>
-        <label>Max selected markets<input type="number" name="max_selected_pairs" min="1" value="{{ old('max_selected_pairs',$p?->max_selected_pairs ?? 20) }}"></label>
+        <label>Market safety ceiling<input type="number" name="max_selected_pairs" min="1" value="{{ old('max_selected_pairs',$p?->max_selected_pairs ?? 20) }}"></label>
     </div>
 </div>
 
 <div class="admin-plan-section full admin-plan-pair-scope" data-plan-pair-scope>
     <div class="admin-plan-section-head">
-        <div><h3>Binance Futures market access</h3><p>Choose whether this package can use the full synchronized Binance USD-M perpetual catalog or only selected markets. The separate “Max selected markets” value still limits how many a user can activate at one time.</p></div>
+        <div><h3>Binance Futures market access</h3><p>Choose whether this package can use the full synchronized Binance USD-M perpetual catalog or only selected markets. The separate “Market safety ceiling” value still acts as a safety ceiling for automatic package-universe scanning.</p></div>
         <span class="admin-scope-count">{{ number_format($pairs->count()) }} synced markets</span>
     </div>
     @php
@@ -86,8 +84,8 @@
                     'reports' => 'Access trading and performance reports.',
                     'binance' => 'Save, verify and manage Binance API connections.',
                     'alerts' => 'View Pulse account, market and risk alerts.',
-                    'plan_view' => 'View the assigned plan, limits and availability.',
-                    'settings' => 'Configure markets, risk and execution preferences.',
+                    'plan_view' => 'View the assigned package, payment status and availability.',
+                    'settings' => 'Configure user risk and execution preferences; signal intelligence remains Admin controlled.',
                     'mobile_api' => 'Use authenticated Pulse endpoints from the future mobile app.',
                     default => ''
                 } }}</small></span>

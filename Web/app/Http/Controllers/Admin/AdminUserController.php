@@ -52,13 +52,14 @@ class AdminUserController extends Controller
             'users' => $query->paginate(35)->withQueryString(),
             'plans' => PulsePlan::query()->orderBy('sort_order')->orderBy('name')->get(),
             'summary' => [
-                'all' => User::count(),
-                'active' => User::where('status', 'active')->count(),
-                'private' => User::where('role', 'private_member')->where('status', 'active')->count(),
-                'pulse' => UserServiceAccess::query()->where('service', 'pulse')->where('status', 'active')->where(fn ($q) => $q->whereNull('ends_at')->orWhere('ends_at', '>', $now))->count(),
-                'pending' => User::where('status', 'pending')->count(),
-                'suspended' => User::where('status', 'suspended')->count(),
-                'deleted' => User::onlyTrashed()->count(),
+                'All accounts' => User::count(),
+                'Standard users' => User::where('role', 'user')->where('status', 'active')->count(),
+                'Pulse customers' => UserServiceAccess::query()->where('service', 'pulse')->where('status', 'active')->where(fn ($q) => $q->whereNull('ends_at')->orWhere('ends_at', '>', $now))->count(),
+                'Private members' => User::where('role', 'private_member')->where('status', 'active')->count(),
+                'Administrators' => User::where('role', 'admin')->where('status', 'active')->count(),
+                'Pending accounts' => User::where('status', 'pending')->count(),
+                'Suspended accounts' => User::where('status', 'suspended')->count(),
+                'Deleted accounts' => User::onlyTrashed()->count(),
             ],
         ]);
     }
@@ -176,8 +177,8 @@ class AdminUserController extends Controller
             'access' => $access,
             'plans' => PulsePlan::query()->where('is_active', true)->orderBy('sort_order')->get(),
             'usage' => [
-                'Scans today' => PulseScannerRun::query()->where('user_id', $user->id)->whereDate('created_at', $today)->count(),
-                'Signals today' => PulseSignal::query()->where('user_id', $user->id)->whereDate('generated_at', $today)->count(),
+                'Best Signal runs today' => PulseScannerRun::query()->where('user_id', $user->id)->whereDate('created_at', $today)->count(),
+                'Signals unlocked today' => PulseSignal::query()->where('user_id', $user->id)->whereDate('generated_at', $today)->count(),
                 'Trades today' => PulseTrade::query()->where('user_id', $user->id)->whereDate('created_at', $today)->count(),
                 'Open trades' => PulseTrade::query()->where('user_id', $user->id)->whereIn('status', ['submitting','pending','open','closing','protection_failed'])->count(),
             ],

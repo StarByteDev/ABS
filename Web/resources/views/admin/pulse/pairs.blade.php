@@ -45,7 +45,7 @@
         @empty<tr><td colspan="7">No markets match these filters.</td></tr>@endforelse
         </tbody>
     </table></div>
-    <div class="admin-market-pagination">{{ $pairs->links() }}</div>
+    <div class="admin-market-pagination">{{ $pairs->onEachSide(1)->links('vendor.pagination.abs-admin') }}</div>
 </section>
 
 <details class="enterprise-surface enterprise-plan-editor"><summary><div><h2>Add market manually</h2><p>Normally use Binance Sync. Manual entry is available for controlled testing or exchange-listing preparation.</p></div><span>Open editor</span></summary><form method="POST" action="{{ route('admin.pulse.pairs.store') }}" class="admin-form-grid">@csrf @include('admin.pulse.partials.pair-fields',['pair'=>null])<div class="full admin-page-actions"><button class="button button-primary">Add Market</button></div></form></details>

@@ -16,7 +16,7 @@ class PulsePlan extends Model
         'reports' => 'Reports & performance',
         'binance' => 'Binance API connection',
         'alerts' => 'Alerts',
-        'plan_view' => 'Plan & limits',
+        'plan_view' => 'Plan & access',
         'settings' => 'Pulse settings',
         'mobile_api' => 'Mobile API',
         'testnet_trading' => 'Practice trading',
@@ -25,9 +25,13 @@ class PulsePlan extends Model
         'auto_trading' => 'Automatic trading',
     ];
 
+    // Legacy V14 daily scan/signal quota columns may still exist on upgraded
+    // databases, but V15.0.3 never uses or serializes them.
+    protected $hidden = ['scanner_runs_per_day', 'signals_per_day'];
+
     protected $fillable = [
         'name', 'slug', 'description', 'monthly_price', 'currency',
-        'scanner_runs_per_day', 'signals_per_day', 'minimum_signal_score', 'manual_trades_per_day', 'auto_trades_per_day',
+        'minimum_signal_score', 'manual_trades_per_day', 'auto_trades_per_day',
         'max_open_trades', 'max_selected_pairs', 'pair_access_mode', 'allow_testnet_trading',
         'allow_manual_trading', 'allow_live_trading', 'allow_auto_trading',
         'allow_mobile_api', 'capabilities', 'is_active', 'sort_order',
@@ -90,9 +94,8 @@ class PulsePlan extends Model
     }
 
     /**
-     * Return the commercial rate that should be used when a legacy database
-     * still contains a zero/missing price for one of the canonical paid plans.
-     * Administrator-managed non-zero prices always win.
+     * Direct USDT package price displayed to customers and captured in the
+     * membership-payment request before Admin verification.
      */
     public function effectiveMonthlyPrice(): float
     {
@@ -107,6 +110,7 @@ class PulsePlan extends Model
             default => $stored,
         };
     }
+
 
     public function allows(string $capability, bool $default = true): bool
     {

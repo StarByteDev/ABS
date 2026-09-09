@@ -56,11 +56,15 @@ class PulseAutomationService
         ]);
 
         try {
-            $scannerRun = $this->scanner->run($user, $settings->selected_pairs, (string) config('pulse.scanner.timeframe', '15m'));
-            $signals = PulseSignal::query()->where('user_id', $user->id)->where('status', 'active')
-                ->where('score', '>=', (float) $settings->minimum_signal_score)
-                ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-                ->latest('generated_at')->limit((int) config('pulse.automation.max_signals_per_user', 1))->get();
+            // V15 automation consumes only the Admin-controlled Best Signal returned
+            // by the one-click scanner. User pair/threshold fields are legacy storage
+            // and must never influence automatic signal selection.
+            $scannerRun = $this->scanner->run($user, null, 'all');
+            $scannerRun->loadMissing('bestSignal');
+            $signals = collect();
+            if ($scannerRun->bestSignal && $scannerRun->bestSignal->isActionable()) {
+                $signals = collect([$scannerRun->bestSignal]);
+            }
 
             $created = 0;
             $errors = [];

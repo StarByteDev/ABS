@@ -287,9 +287,14 @@ class AdminPulseController extends Controller
             'slug' => ['nullable', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:3000'],
             'monthly_price' => ['required', 'numeric', 'min:0'],
-            'currency' => ['required', 'string', 'max:8'],
-            'scanner_runs_per_day' => ['required', 'integer', 'min:0'],
-            'signals_per_day' => ['required', 'integer', 'min:0'],
+            'currency' => ['nullable', 'string', 'max:8'],
+            'access_days' => ['required', 'integer', 'min:1', 'max:3650'],
+            'request_enabled' => ['nullable', 'boolean'],
+            'requires_payment' => ['nullable', 'boolean'],
+            'is_public' => ['nullable', 'boolean'],
+            'is_trial' => ['nullable', 'boolean'],
+            'badge' => ['nullable', 'string', 'max:50'],
+            'is_featured' => ['nullable', 'boolean'],
             'minimum_signal_score' => ['sometimes', 'numeric', 'min:0', 'max:100'],
             'manual_trades_per_day' => ['required', 'integer', 'min:0'],
             'auto_trades_per_day' => ['required', 'integer', 'min:0'],
@@ -326,6 +331,12 @@ class AdminPulseController extends Controller
         $data['allow_auto_trading'] = $matrix['auto_trading'] ?? false;
         $data['allow_mobile_api'] = $matrix['mobile_api'] ?? false;
         $data['is_active'] = $request->boolean('is_active');
+        $data['is_trial'] = $request->boolean('is_trial');
+        $data['is_public'] = $request->boolean('is_public');
+        $data['request_enabled'] = $request->boolean('request_enabled') && ! $data['is_trial'];
+        $data['requires_payment'] = $request->boolean('requires_payment') && ! $data['is_trial'];
+        $data['is_featured'] = $request->boolean('is_featured');
+        $data['currency'] = 'USDT';
         return $data;
     }
 

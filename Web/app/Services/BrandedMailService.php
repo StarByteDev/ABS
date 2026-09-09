@@ -79,10 +79,10 @@ class BrandedMailService
             'eyebrow' => 'ADMIN SUBSCRIPTION ALERT',
             'title' => 'New Pulse package subscription',
             'greeting' => 'Hello Admin,',
-            'intro' => $request->user->name.' submitted a Pulse package subscription request.',
+            'intro' => $request->user->name.' submitted a Pulse package payment for verification.',
             'body' => $request->status === 'approved'
                 ? 'The request was automatically approved by the existing ABS membership rules. Review the subscription if needed.'
-                : 'Review the payment evidence and subscription request from Memberships & Payments before approval.',
+                : 'Verify the submitted USDT transaction. When approved, the selected Pulse package is activated for the approved access period.',
             'facts' => array_filter([
                 'User' => $request->user->name,
                 'Email' => $request->user->email,
@@ -95,7 +95,7 @@ class BrandedMailService
                 'Source' => $source === 'mobile_api' ? 'Mobile API / Flutter' : 'Website',
                 'Submitted at' => $request->created_at?->format('d M Y H:i:s'),
             ]),
-            'buttonText' => 'Review Membership Request',
+            'buttonText' => 'Verify Package Payment',
             'buttonUrl' => route('admin.pulse.memberships', ['q' => $request->user->email]),
             'notice' => 'This is an administrator event notification. Change the recipient or disable this alert from Admin → Email Communications.',
         ], 'admin_new_package_subscription', $request->user, ['source' => $source, 'membership_request_id' => $request->id]);
@@ -212,7 +212,7 @@ class BrandedMailService
             ],
             'buttonText' => 'View Plan Requests',
             'buttonUrl' => route('pulse.membership.index'),
-            'notice' => 'If you submitted a USDT transfer, keep the transaction reference available until verification is complete.',
+            'notice' => 'Keep the USDT transaction reference available until Admin verification is complete. Your selected Pulse package activates only after approval.',
         ], 'plan_request_received', $request->user);
     }
 

@@ -45,7 +45,7 @@
         <div class="pp-head-actions">
             <a class="pp-button" href="{{ route('pulse.signals.index', ['status' => 'history']) }}">@include('pulse.partials.icon', ['name' => 'history']) Signal History</a>
             <?php if ($can('scanner')): ?>
-                <a class="pp-button primary" href="{{ route('pulse.scanner') }}">@include('pulse.partials.icon', ['name' => 'pulse']) Run Market Scan</a>
+                <a class="pp-button primary" href="{{ route('pulse.scanner') }}">@include('pulse.partials.icon', ['name' => 'pulse']) Find Best Signal</a>
             <?php else: ?>
                 <span class="pp-button disabled" aria-disabled="true">@include('pulse.partials.icon', ['name' => 'pulse']) Scanner Not Included</span>
             <?php endif; ?>
@@ -65,28 +65,8 @@
     </section>
 
     <section class="pp-card pp-signals-filters">
-        <h2>Signal Filters</h2>
-        <form method="GET" action="{{ route('pulse.signals.index') }}" class="pp-filter-row">
-            <label class="pp-field">Pair
-                <select name="symbol"><option value="all">All Pairs</option><?php foreach ($page['symbols'] as $symbol): ?><option value="{{ $symbol }}" {{ request('symbol') === $symbol ? 'selected' : '' }}>{{ str_replace('USDT', '/USDT', $symbol) }}</option><?php endforeach; ?></select>
-            </label>
-            <label class="pp-field">Direction
-                <select name="direction"><option value="all">All</option><option value="LONG" {{ request('direction') === 'LONG' ? 'selected' : '' }}>Long</option><option value="SHORT" {{ request('direction') === 'SHORT' ? 'selected' : '' }}>Short</option></select>
-            </label>
-            <label class="pp-field">Minimum Score
-                <input type="number" name="min_score" min="0" max="100" step="1" value="{{ number_format((float) data_get($page, 'filters.min_score', $page['effective_minimum_score']), 0, '.', '') }}">
-            </label>
-            <label class="pp-field">Timeframe
-                <select name="timeframe"><option value="all">All</option><?php foreach ($page['timeframes'] as $timeframe): ?><option value="{{ $timeframe }}" {{ request('timeframe') === $timeframe ? 'selected' : '' }}>{{ strtoupper($timeframe) }}</option><?php endforeach; ?></select>
-            </label>
-            <label class="pp-field">Strategy
-                <select name="strategy"><option value="all" {{ request('strategy', 'all') === 'all' ? 'selected' : '' }}>All Included Strategies</option><?php foreach ($page['strategy_options'] as $strategy): ?><option value="{{ $strategy->slug }}" {{ request('strategy') === $strategy->slug ? 'selected' : '' }}>{{ $strategy->name }}</option><?php endforeach; ?></select>
-            </label>
-            <label class="pp-field">Status
-                <select name="status"><option value="active" {{ request('status', 'active') === 'active' ? 'selected' : '' }}>Active</option><option value="all" {{ request('status') === 'all' ? 'selected' : '' }}>All</option><option value="history" {{ request('status') === 'history' ? 'selected' : '' }}>History</option></select>
-            </label>
-            <div class="pp-filter-actions"><a class="pp-button" href="{{ route('pulse.signals.index') }}">Reset</a><button class="pp-button primary" type="submit">Apply Filters</button></div>
-        </form>
+        <div class="pp-section-head"><h2>Signal View</h2><span>Signal generation settings are Admin controlled in ABS V15</span></div>
+        <div class="pp-filter-chips"><a class="pp-chip" href="{{ route('pulse.signals.index',['status'=>'active']) }}">Active</a><a class="pp-chip" href="{{ route('pulse.signals.index',['status'=>'all']) }}">All Signals</a><a class="pp-chip" href="{{ route('pulse.signals.index',['status'=>'history']) }}">History</a></div>
     </section>
 
     <section class="pp-card pp-signals-queue">
@@ -233,6 +213,15 @@
                     </article>
                 </div>
             </div>
+            <article class="pp-card" style="margin-top:16px">
+                <div class="pp-section-head"><h3>V15 Signal Tools</h3><span>Included with package · {{ number_format((int)($selected['share_count'] ?? 0)) }} shares</span></div>
+                <div class="pp-decision-actions">
+                    <button class="pp-button" type="button" data-pulse-share data-url="{{ route('pulse.signals.share',$selected['id']) }}">@include('pulse.partials.icon',['name'=>'share']) Share Signal</button>
+                    <button class="pp-button" type="button" data-pulse-explain data-url="{{ route('pulse.signals.explain',$selected['id']) }}">AI Explain</button>
+                </div>
+                <div class="pulse-legal-note" data-pulse-ai-output style="margin-top:12px">{{ $selected['ai_explanation'] ?: 'AI explanation is optional and controlled by Admin. It explains the existing signal; it never changes scoring, confidence or trade levels.' }}</div>
+                <div class="pulse-legal-note" data-pulse-share-output hidden></div>
+            </article>
         <?php else: ?>
             <div class="pp-empty">Select an active signal to review its evidence, protected entry plan and execution action.</div>
         <?php endif; ?>
@@ -547,6 +536,36 @@
         document.addEventListener('keydown', function (event) {
             if (event.key === 'Escape' && !overlay.hidden) closeTrade(overlay);
         });
+    });
+})();
+</script>
+@endpush
+
+@push('scripts')
+<script>
+(function(){
+    function csrf(){ return document.querySelector('meta[name="csrf-token"]')?.content || ''; }
+    document.addEventListener('click', async function(event){
+        var share=event.target.closest('[data-pulse-share]');
+        if(share){
+            share.disabled=true;
+            try{
+                var response=await fetch(share.dataset.url,{method:'POST',headers:{'X-CSRF-TOKEN':csrf(),'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify({channel:navigator.share?'native':'copy'})});
+                var json=await response.json(); if(!response.ok) throw new Error(json.message||'Unable to create share card.');
+                var text=(json.data?.text||'')+'\n'+(json.data?.url||'');
+                if(navigator.share) await navigator.share({title:json.data?.title||'ABS Pulse Signal',text:json.data?.text||'',url:json.data?.url||location.href});
+                else await navigator.clipboard.writeText(text);
+                var out=document.querySelector('[data-pulse-share-output]'); if(out){out.hidden=false;out.textContent='Share content ready. '+(navigator.share?'Share sheet opened.':'Copied to clipboard.');}
+            }catch(e){ var out=document.querySelector('[data-pulse-share-output]'); if(out){out.hidden=false;out.textContent=e.message;} } finally{share.disabled=false;}
+        }
+        var ai=event.target.closest('[data-pulse-explain]');
+        if(ai){
+            ai.disabled=true; var out=document.querySelector('[data-pulse-ai-output]'); if(out) out.textContent='Generating explanation…';
+            try{
+                var response=await fetch(ai.dataset.url,{method:'POST',headers:{'X-CSRF-TOKEN':csrf(),'Accept':'application/json'}}); var json=await response.json();
+                if(!response.ok) throw new Error(json.message||'AI explanation unavailable.'); if(out) out.textContent=json.data?.explanation||'Explanation ready.';
+            }catch(e){ if(out) out.textContent=e.message; } finally{ai.disabled=false;}
+        }
     });
 })();
 </script>

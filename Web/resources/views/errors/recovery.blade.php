@@ -3,6 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#07111f">
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     <title>ABS Database Recovery</title>
     <style>
         :root{color-scheme:dark;--bg:#050916;--panel:#0b1226;--line:#26325b;--text:#f7f9ff;--muted:#aeb8d2;--gold:#e8b337;--cyan:#58c8ff;--green:#7ee787;--red:#ff6b74}
@@ -15,7 +17,7 @@
     <div class="brand"><div class="mark">ABS</div><div><b>ALPHA BLOCK SOLUTIONS</b><small>SECURE DATABASE RECOVERY</small></div></div>
 
     <div class="card hero">
-        <span class="tag">V14.9.2 Recovery</span>
+        <span class="tag">V15.0.9 Recovery</span>
         <h1>Repair the current database, initialize an empty database or restore an ABS backup.</h1>
         <p>This recovery page works before user/admin tables exist. It never asks for your MySQL password or APP_KEY in the browser. The database credentials continue to come from your private <code>.env</code>.</p>
 

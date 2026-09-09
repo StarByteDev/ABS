@@ -12,7 +12,7 @@ const ignoredPrefixes = [
 
 function walk(directory) {
     return fs.readdirSync(directory, {withFileTypes: true}).flatMap(entry => {
-        if (entry.isDirectory() && ignoredDirectories.has(entry.name)) return [];
+        if (entry.isDirectory() && directory === root && ignoredDirectories.has(entry.name)) return [];
         const absolute = path.join(directory, entry.name);
         return entry.isDirectory() ? walk(absolute) : [absolute];
     });
@@ -30,7 +30,7 @@ function packageFiles() {
 
 const buildVersion = fs.readFileSync(path.join(root, 'BUILD_VERSION.txt'), 'utf8').trim();
 const manifestVersion = buildVersion.replace(/\s+Build$/i, '');
-const releaseDate = '2026-08-29';
+const releaseDate = '2026-09-09';
 const manifestSources = packageFiles().filter(file => ![buildManifestPath, hashManifestPath].includes(file));
 const buildLines = [
     `${manifestVersion} — BUILD MANIFEST`,

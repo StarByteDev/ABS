@@ -1,1645 +1,1234 @@
 openapi: 3.1.0
 info:
   title: Alpha Block Solutions API
-  version: 14.9.2
-  description: Production mobile/API contract for Alpha Block Solutions V14.9.2, including account lifecycle, market intelligence,
-    CMS content, premium Pulse page parity, private-member reporting, notification preferences and device registration.
+  version: 15.1.5
+  description: >-
+    Production API contract for Alpha Block Solutions V15.1.5. Paid Pulse package
+    access uses direct USDT payment requests verified by an administrator. The public
+    rewarded Free Signal experience is a guest web flow at /pulse/free-signal and is
+    intentionally outside the authenticated mobile API. ABS News includes live headlines and an economic calendar API with previous, forecast and actual values plus simplified crypto-impact context.
 servers:
-- url: https://YOUR-DOMAIN.COM/api/v1
-  description: Production
-- url: http://127.0.0.1:8000/api/v1
-  description: Local development
+  - url: https://YOUR-DOMAIN.COM/api/v1
+    description: Production
+  - url: http://127.0.0.1:8000/api/v1
+    description: Local development
 paths:
   /auth/register:
     post:
-      summary: Register a user
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - name
-              - email
-              - password
-              properties:
-                name:
-                  type: string
-                email:
-                  type: string
-                  format: email
-                password:
-                  type: string
-                  format: password
+      operationId: post_auth_register
+      summary: POST /auth/register
       responses:
+        '200':
+          description: Success
         '201':
           description: Created
         '422':
-          description: Validation error
+          description: Validation or business-rule error
   /auth/login:
     post:
-      summary: Login and issue a bearer token
+      operationId: post_auth_login
+      summary: POST /auth/login
       responses:
         '200':
-          description: Authenticated
-        '422':
-          description: Invalid credentials
-  /auth/me:
-    get:
-      summary: Current user
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: User
-  /auth/logout:
-    post:
-      summary: Delete current token
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Logged out
-  /dashboard:
-    get:
-      summary: Mobile dashboard payload
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Dashboard
-  /profile:
-    patch:
-      summary: Update profile
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Updated
-        '422':
-          description: Validation error
-  /market/overview:
-    get:
-      summary: Core live market and global overview
-      parameters:
-      - in: query
-        name: refresh
-        required: false
-        schema:
-          type: boolean
-          default: false
-      responses:
-        '200':
-          description: Market overview including provider source and availability status
-  /market/movers:
-    get:
-      summary: Top gainers and losers
-      parameters:
-      - in: query
-        name: limit
-        schema:
-          type: integer
-          default: 5
-          minimum: 1
-          maximum: 20
-      - in: query
-        name: refresh
-        required: false
-        schema:
-          type: boolean
-          default: false
-      responses:
-        '200':
-          description: Movers including provider source and availability status
-  /market/chart/{symbol}:
-    get:
-      summary: Candlestick chart data
-      parameters:
-      - in: path
-        name: symbol
-        required: true
-        schema:
-          type: string
-          example: BTCUSDT
-      - in: query
-        name: interval
-        schema:
-          type: string
-          enum:
-          - 5m
-          - 15m
-          - 1h
-          - 4h
-          - 1d
-          default: 1h
-      - in: query
-        name: limit
-        schema:
-          type: integer
-          default: 80
-          minimum: 10
-          maximum: 500
-      - in: query
-        name: refresh
-        required: false
-        schema:
-          type: boolean
-          default: false
-      responses:
-        '200':
-          description: Candles including provider source and availability status
-  /products:
-    get:
-      summary: Products
-      responses:
-        '200':
-          description: Products
-  /news:
-    get:
-      summary: Published original ABS editorial news
-      parameters:
-      - in: query
-        name: featured
-        required: false
-        schema:
-          type: boolean
-          default: false
-        description: Return only articles selected for Latest Market Headlines.
-      - in: query
-        name: category
-        required: false
-        schema:
-          type: string
-      - in: query
-        name: per_page
-        required: false
-        schema:
-          type: integer
-          default: 15
-          minimum: 1
-          maximum: 50
-      responses:
-        '200':
-          description: Paginated ABS editorial news with featured articles ordered first
-  /news/live:
-    get:
-      summary: Source-attributed publisher headlines
-      responses:
-        '200':
-          description: External headline metadata and original-source URLs
-  /news/{slug}:
-    get:
-      summary: News article
-      parameters:
-      - in: path
-        name: slug
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Article
-        '404':
-          description: Not found
-  /legal/{type}:
-    get:
-      summary: Public legal content
-      parameters:
-      - in: path
-        name: type
-        required: true
-        schema:
-          type: string
-          enum:
-          - privacy
-          - terms
-          - risk
-          - disclaimer
-      responses:
-        '200':
-          description: Legal content
-        '404':
-          description: Unknown legal type
-  /search:
-    get:
-      summary: Search public content
-      parameters:
-      - in: query
-        name: q
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Results
-  /watchlist:
-    get:
-      summary: Watchlist
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Items
-    post:
-      summary: Add or update watchlist item
-      security:
-      - sanctum: []
-      responses:
+          description: Success
         '201':
-          description: Saved
-  /watchlist/{symbol}:
-    delete:
-      summary: Remove watchlist item
-      security:
-      - sanctum: []
-      parameters:
-      - in: path
-        name: symbol
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Removed
-  /notifications:
-    get:
-      summary: Notifications
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Notifications
-  /notifications/{id}/read:
-    post:
-      summary: Mark notification read
-      security:
-      - sanctum: []
-      parameters:
-      - in: path
-        name: id
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Updated
-  /newsletter:
-    post:
-      summary: Subscribe
-      responses:
-        '201':
-          description: Subscribed
-  /private/account:
-    get:
-      summary: Private member account overview
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Account
-        '403':
-          description: Private access denied
-  /private/statements/{statement}:
-    get:
-      summary: Private member monthly statement
-      security:
-      - sanctum: []
-      parameters:
-      - in: path
-        name: statement
-        required: true
-        schema:
-          type: integer
-      responses:
-        '200':
-          description: Statement
-        '403':
-          description: Not authorized
-  /pulse/access:
-    get:
-      tags:
-      - Pulse
-      summary: Current user Pulse access, assigned plan and effective capability matrix
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Access payload
-  /pulse/plans:
-    get:
-      tags:
-      - Pulse
-      summary: Active administrator-created Pulse plans, limits, strategies and capability matrix
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Plans
-  /pulse/membership:
-    get:
-      tags:
-      - Pulse
-      summary: Current membership, public plans, request history, assigned offers and authenticated payment configuration
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Membership payload
-  /pulse/membership/quote:
-    post:
-      tags:
-      - Pulse
-      summary: Validate a public membership and optional coupon or gift voucher
-      security:
-      - sanctum: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - pulse_plan_id
-              properties:
-                pulse_plan_id:
-                  type: integer
-                promotion_code:
-                  type: string
-      responses:
-        '200':
-          description: Membership quote and payment configuration
+          description: Created
         '422':
-          description: Validation or promotion error
-  /pulse/membership/requests:
-    post:
-      tags:
-      - Pulse
-      summary: Submit a manual-USDT Pulse membership request
-      security:
-      - sanctum: []
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required:
-              - pulse_plan_id
-              properties:
-                pulse_plan_id:
-                  type: integer
-                promotion_code:
-                  type: string
-                payment_reference:
-                  type: string
-                payment_proof:
-                  type: string
-                  format: binary
-                user_notes:
-                  type: string
-      responses:
-        '201':
-          description: Membership request created or full gift voucher activated
-        '422':
-          description: Validation or payment configuration error
-  /pulse/membership/requests/{membershipRequest}:
-    patch:
-      tags:
-      - Pulse
-      summary: Cancel an owned open membership request
-      security:
-      - sanctum: []
-      parameters:
-      - in: path
-        name: membershipRequest
-        required: true
-        schema:
-          type: integer
-      responses:
-        '200':
-          description: Request cancelled
-        '403':
-          description: Not the request owner
-        '422':
-          description: Request is already closed
-  /pulse/dashboard:
-    get:
-      tags:
-      - Pulse
-      summary: Pulse dashboard data plus effective capability matrix for the authenticated user
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Pulse dashboard
-        '403':
-          description: Pulse access denied
-  /pulse/usage:
-    get:
-      tags:
-      - Pulse
-      summary: Today's plan-aware scanner and signal usage, remaining allowances and reset time
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Daily Pulse usage and remaining quotas
-        '403':
-          description: Pulse access denied
-  /pulse/pairs:
-    get:
-      tags:
-      - Pulse
-      summary: Plan-aware active Binance USD-M perpetual Futures market catalog, exchange filters and current selections
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Pairs
-  /pulse/settings:
-    get:
-      tags:
-      - Pulse
-      summary: Current user Pulse execution, risk, notification and pair-selection cooldown settings
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Settings
-    put:
-      tags:
-      - Pulse
-      summary: Update current user Pulse settings
-      security:
-      - sanctum: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                environment:
-                  type: string
-                  enum:
-                  - testnet
-                  - live
-                execution_mode:
-                  type: string
-                  enum:
-                  - signal_only
-                  - manual
-                  - automatic
-                auto_trade_enabled:
-                  type: boolean
-                emergency_stop:
-                  type: boolean
-                default_leverage:
-                  type: integer
-                  minimum: 1
-                  maximum: 20
-                margin_type:
-                  type: string
-                  enum:
-                  - ISOLATED
-                  - CROSSED
-                position_mode:
-                  type: string
-                  enum:
-                  - BOTH
-                  - LONG
-                  - SHORT
-                sizing_mode:
-                  type: string
-                  enum:
-                  - fixed_notional
-                  - fixed_quantity
-                fixed_notional:
-                  type: number
-                fixed_quantity:
-                  type: number
-                minimum_signal_score:
-                  type: number
-                  description: Personal scanner/signal threshold. This saved profile value overrides the package default.
-                selected_pairs:
-                  type: array
-                  items:
-                    type: string
-      responses:
-        '200':
-          description: Updated
-        '422':
-          description: Validation or permission failure
-        '423':
-          description: Trading-pair selection is still inside the 50-hour cooldown
-  /pulse/scanner/runs:
-    get:
-      tags:
-      - Pulse
-      summary: Paginated scanner history for the current user
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Scanner runs
-  /pulse/scanner/overview:
-    get:
-      tags:
-      - Pulse
-      summary: Screen-ready Market Scanner summary, filters, setup rows, market conditions and scan quality
-      security:
-      - sanctum: []
-      parameters:
-      - in: query
-        name: min_score
-        schema:
-          type: number
-          minimum: 0
-          maximum: 100
-      - in: query
-        name: direction
-        schema:
-          type: string
-          enum: [all, long, short]
-      - in: query
-        name: strategy
-        description: Strategy slug from the authenticated user's included 15-strategy package catalog, or all
-        schema:
-          type: string
-      - in: query
-        name: timeframe
-        schema:
-          type: string
-          enum: [all, 15m, 4h]
-      responses:
-        '200':
-          description: Scanner screen payload
-        '403':
-          description: Pulse scanner access denied
-  /pulse/scanner/run:
-    post:
-      tags:
-      - Pulse
-      summary: Run the explainable multi-strategy scanner across the user's saved selected markets
-      security:
-      - sanctum: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                symbols:
-                  type: array
-                  maxItems: 1000
-                  description: Optional targeted subset of package-allowed symbols. Omit to scan the user's saved selected markets.
-                  items:
-                    type: string
-                timeframe:
-                  type: string
-                  enum: [all, 15m, 4h]
-                  example: all
-                  description: Use all for one quota-safe 15M + 4H scan; each returned result keeps its actual timeframe.
-      responses:
-        '201':
-          description: Scanner completed
-        '422':
-          description: Limit, permission or provider failure
-  /pulse/signals:
-    get:
-      tags:
-      - Pulse
-      summary: Paginated user-specific Pulse signals
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Signals
-  /pulse/signals/overview:
-    get:
-      tags:
-      - Pulse
-      summary: Screen-ready signal queue, engagement summary, selected evidence and risk snapshot
-      security:
-      - sanctum: []
-      parameters:
-      - in: query
-        name: selected
-        schema:
-          type: integer
-      - in: query
-        name: status
-        schema:
-          type: string
-      - in: query
-        name: direction
-        schema:
-          type: string
-      - in: query
-        name: min_score
-        schema:
-          type: number
-      responses:
-        '200':
-          description: Signals screen payload
-        '403':
-          description: Pulse signals access denied
-  /pulse/signals/{signal}:
-    get:
-      tags:
-      - Pulse
-      summary: Signal detail and strategy breakdown
-      security:
-      - sanctum: []
-      parameters:
-      - in: path
-        name: signal
-        required: true
-        schema:
-          type: integer
-      responses:
-        '200':
-          description: Signal
-        '403':
-          description: Not owned by user
-  /pulse/signals/{signal}/execute:
-    post:
-      tags:
-      - Pulse
-      summary: Submit a user-authorized Binance USD-M Futures order from a signal
-      description: Live execution remains unavailable unless installation, system, plan and user live-trading gates are all
-        enabled. Exchange-side TP/SL uses Binance conditional Algo orders.
-      security:
-      - sanctum: []
-      parameters:
-      - in: path
-        name: signal
-        required: true
-        schema:
-          type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - environment
-              - order_type
-              - leverage
-              - stop_loss
-              - take_profit
-              - position_side
-              - confirmed_review
-              properties:
-                environment:
-                  type: string
-                  enum:
-                  - testnet
-                  - live
-                order_type:
-                  type: string
-                  enum:
-                  - MARKET
-                  - LIMIT
-                quantity:
-                  type: number
-                notional:
-                  type: number
-                leverage:
-                  type: integer
-                price:
-                  type: number
-                stop_loss:
-                  type: number
-                take_profit:
-                  type: number
-                position_side:
-                  type: string
-                  enum:
-                  - BOTH
-                  - LONG
-                  - SHORT
-                time_in_force:
-                  type: string
-                  enum:
-                  - GTC
-                  - IOC
-                  - FOK
-                  default: GTC
-                client_reference:
-                  type: string
-                  maxLength: 36
-                  pattern: '^[.A-Za-z0-9_:/-]+$'
-                confirmed_review:
-                  type: boolean
-                  const: true
-      responses:
-        '201':
-          description: Local and exchange order workflow created
-        '422':
-          description: Risk, permission, precision, balance, exchange or protection failure
-  /pulse/signals/{signal}/dismiss:
-    patch:
-      tags:
-      - Pulse
-      summary: Dismiss an owned active signal while retaining it in signal history
-      security:
-      - sanctum: []
-      parameters:
-      - in: path
-        name: signal
-        required: true
-        schema:
-          type: integer
-      responses:
-        '200':
-          description: Signal dismissed
-        '403':
-          description: Signal is not owned by the current user
-  /pulse/trades:
-    get:
-      tags:
-      - Pulse
-      summary: Paginated current-user Pulse trades
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Trades
-  /pulse/trades/{trade}:
-    get:
-      tags:
-      - Pulse
-      summary: Current-user trade detail
-      security:
-      - sanctum: []
-      parameters:
-      - in: path
-        name: trade
-        required: true
-        schema:
-          type: integer
-      responses:
-        '200':
-          description: Trade
-        '403':
-          description: Not owned by user
-  /pulse/trades/{trade}/close:
-    post:
-      tags:
-      - Pulse
-      summary: Cancel protection/orders and request a reduce-only position close on Binance
-      security:
-      - sanctum: []
-      parameters:
-      - in: path
-        name: trade
-        required: true
-        schema:
-          type: integer
-      responses:
-        '200':
-          description: Close request processed
-        '422':
-          description: Exchange or state failure
-  /pulse/trades/sync:
-    post:
-      tags:
-      - Pulse
-      summary: Reconcile current-user local trade records with Binance orders, positions, fills, commission and realized P&L
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Reconciliation result
-  /pulse/emergency-stop:
-    post:
-      tags:
-      - Pulse
-      summary: Disable automatic execution and attempt to cancel or close active current-user trading activity
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Emergency stop result
-  /pulse/orders:
-    get:
-      tags:
-      - Pulse
-      summary: Current-user Binance account, positions, normal orders and conditional Algo orders
-      security:
-      - sanctum: []
-      parameters:
-      - in: query
-        name: environment
-        schema:
-          type: string
-          enum:
-          - testnet
-          - live
-      responses:
-        '200':
-          description: Exchange snapshot
-        '422':
-          description: Connection unavailable
-  /pulse/reports:
-    get:
-      tags:
-      - Pulse
-      summary: Current-user Pulse trade report grouped by symbol
-      security:
-      - sanctum: []
-      parameters:
-      - in: query
-        name: from
-        schema:
-          type: string
-          format: date
-      - in: query
-        name: to
-        schema:
-          type: string
-          format: date
-      responses:
-        '200':
-          description: Report
-  /pulse/reports/signals:
-    get:
-      tags: [Pulse]
-      summary: Signal-validation performance using permanent daily aggregates plus recent detailed validation
-      security: [{sanctum: []}]
-      parameters:
-      - in: query
-        name: from
-        schema: {type: string, format: date}
-      - in: query
-        name: to
-        schema: {type: string, format: date}
-      responses:
-        '200': {description: Signal-performance report}
-  /pulse/reports/strategies:
-    get:
-      tags: [Pulse]
-      summary: Strategy performance separated by strategy version, timeframe and direction
-      security: [{sanctum: []}]
-      responses:
-        '200': {description: Strategy-performance report}
-  /pulse/reports/learning:
-    get:
-      tags: [Pulse]
-      summary: Evidence-protected strategy learning state with recency weighting and hierarchical fallback
-      security: [{sanctum: []}]
-      responses:
-        '200': {description: Strategy learning state}
-  /pulse/market-data/health:
-    get:
-      tags: [Pulse]
-      summary: Central market-data scheduler freshness and architecture health
-      security: [{sanctum: []}]
-      responses:
-        '200': {description: Central market-data health}
-  /pulse/market-data/prices:
-    get:
-      tags: [Pulse]
-      summary: Centrally cached Binance Futures prices for package-approved symbols; does not trigger a Binance request
-      security: [{sanctum: []}]
-      parameters:
-      - in: query
-        name: symbols[]
-        schema: {type: array, items: {type: string}}
-      responses:
-        '200': {description: Central price snapshot}
-  /pulse/signals/{signal}/validation:
-    get:
-      tags: [Pulse]
-      summary: Current-user signal validation lifecycle and recent MFE/MAE outcome detail
-      security: [{sanctum: []}]
-      parameters:
-      - in: path
-        name: signal
-        required: true
-        schema: {type: integer}
-      responses:
-        '200': {description: Signal validation}
-        '403': {description: Signal is not owned by current user}
-
-  /pulse/binance/connections:
-    get:
-      tags:
-      - Pulse
-      summary: Masked current-user Binance connections
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Connections
-    post:
-      tags:
-      - Pulse
-      summary: Encrypt and save a current-user Binance connection
-      security:
-      - sanctum: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - environment
-              - label
-              - api_key
-              - api_secret
-              properties:
-                environment:
-                  type: string
-                  enum:
-                  - testnet
-                  - live
-                label:
-                  type: string
-                api_key:
-                  type: string
-                api_secret:
-                  type: string
-      responses:
-        '201':
-          description: Saved
-        '422':
-          description: Environment or validation failure
-  /pulse/binance/connections/{connection}/test:
-    post:
-      tags:
-      - Pulse
-      summary: Verify Binance connectivity and trading permission without placing an order
-      security:
-      - sanctum: []
-      parameters:
-      - in: path
-        name: connection
-        required: true
-        schema:
-          type: integer
-      responses:
-        '200':
-          description: Verified
-        '422':
-          description: Binance rejected or unavailable
-  /pulse/binance/connections/{connection}/activate:
-    post:
-      tags:
-      - Pulse
-      summary: Activate one verified Binance Testnet or Live USD-M Futures connection as the current trading environment
-      security:
-      - sanctum: []
-      parameters:
-      - in: path
-        name: connection
-        required: true
-        schema:
-          type: integer
-      responses:
-        '200':
-          description: Active environment changed
-        '403':
-          description: Environment is not permitted by system or user package
-        '422':
-          description: Connection must pass verification and trading-permission checks first
-  /pulse/binance/connections/{connection}:
-    delete:
-      tags:
-      - Pulse
-      summary: Delete a current-user encrypted Binance connection
-      security:
-      - sanctum: []
-      parameters:
-      - in: path
-        name: connection
-        required: true
-        schema:
-          type: integer
-      responses:
-        '204':
-          description: Deleted
-  /pulse/alerts:
-    get:
-      tags:
-      - Pulse
-      summary: Paginated current-user Pulse alerts
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Alerts
-  /pulse/alerts/{alert}/read:
-    patch:
-      tags:
-      - Pulse
-      summary: Mark a current-user Pulse alert as read
-      security:
-      - sanctum: []
-      parameters:
-      - in: path
-        name: alert
-        required: true
-        schema:
-          type: integer
-      responses:
-        '200':
-          description: Updated
-  /pulse/alerts/read-all:
-    patch:
-      tags:
-      - Pulse
-      summary: Mark all current-user Pulse alerts as read
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Updated
-  /admin/pulse/dashboard:
-    get:
-      tags:
-      - Pulse Admin
-      summary: Pulse administration counters and plans
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Admin dashboard
-        '403':
-          description: Admin role required
-  /admin/pulse/access:
-    get:
-      tags:
-      - Pulse Admin
-      summary: Users and their Pulse plan/access records
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Paginated users
-  /admin/pulse/access/{user}:
-    put:
-      tags:
-      - Pulse Admin
-      summary: Assign a Pulse plan, change access status and apply optional user-level restrictions
-      security:
-      - sanctum: []
-      parameters:
-      - in: path
-        name: user
-        required: true
-        schema:
-          type: integer
-      responses:
-        '200':
-          description: Updated
-        '403':
-          description: Admin role required
-  /admin/pulse/plans:
-    get:
-      tags:
-      - Pulse Admin
-      summary: Pulse plans and feature configuration
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Plans
-    post:
-      tags:
-      - Pulse Admin
-      summary: Create a Pulse plan with limits, default signal threshold, 15-strategy assignments, Binance Futures pair scope and capability switches
-      security:
-      - sanctum: []
-      responses:
-        '201':
-          description: Plan created
-        '422':
-          description: Validation error
-  /admin/pulse/strategies:
-    get:
-      tags:
-      - Pulse Admin
-      summary: Pulse strategies
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Strategies
-    post:
-      tags:
-      - Pulse Admin
-      summary: Create a Pulse strategy
-      security:
-      - sanctum: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [name, timeframe, weight, minimum_score, sort_order]
-              properties:
-                name: {type: string, maxLength: 100}
-                slug: {type: string, maxLength: 100}
-                description: {type: string, maxLength: 3000}
-                timeframe: {type: string, enum: [5m, 15m, 30m, 1h, 4h, 1d]}
-                weight: {type: number, minimum: 0, maximum: 10}
-                minimum_score: {type: number, minimum: 0, maximum: 100}
-                settings: {type: object}
-                is_enabled: {type: boolean}
-                sort_order: {type: integer, minimum: 0}
-      responses:
-        '201': {description: Strategy created}
-        '422': {description: Validation error}
-  /admin/pulse/pairs:
-    get:
-      tags:
-      - Pulse Admin
-      summary: Pulse pairs and exchange filters
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Pairs
-    post:
-      tags:
-      - Pulse Admin
-      summary: Create a Pulse trading pair
-      security:
-      - sanctum: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [symbol, base_asset, quote_asset, sort_order, price_precision, quantity_precision]
-              properties:
-                symbol: {type: string, maxLength: 30}
-                base_asset: {type: string, maxLength: 20}
-                quote_asset: {type: string, maxLength: 20}
-                is_enabled: {type: boolean}
-                sort_order: {type: integer, minimum: 0}
-                price_precision: {type: integer, minimum: 0, maximum: 12}
-                quantity_precision: {type: integer, minimum: 0, maximum: 12}
-                tick_size: {type: number, minimum: 0}
-                step_size: {type: number, minimum: 0}
-                minimum_quantity: {type: number, minimum: 0}
-                minimum_notional: {type: number, minimum: 0}
-      responses:
-        '201': {description: Pair created}
-        '422': {description: Validation error}
-  /admin/pulse/signals:
-    get:
-      tags:
-      - Pulse Admin
-      summary: All Pulse signals
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Signals
-  /admin/pulse/trades:
-    get:
-      tags:
-      - Pulse Admin
-      summary: All Pulse trades
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Trades
-  /admin/pulse/logs:
-    get:
-      tags:
-      - Pulse Admin
-      summary: Pulse audit logs
-      security:
-      - sanctum: []
-      responses:
-        '200':
-          description: Audit logs
-  /admin/pulse/plans/{plan}:
-    put:
-      summary: Update a Pulse plan, limits, default signal threshold, strategies and capability switches
-      security: &id001
-      - sanctum: []
-      responses:
-        '200':
-          description: Success
-        '401':
-          description: Unauthenticated
-        '403':
-          description: Forbidden
-    delete:
-      summary: Delete a Pulse plan
-      security: *id001
-      responses:
-        '200':
-          description: Success
-        '401':
-          description: Unauthenticated
-        '403':
-          description: Forbidden
-  /admin/pulse/strategies/{strategy}:
-    put:
-      summary: Update a Pulse strategy
-      security: *id001
-      responses:
-        '200':
-          description: Success
-        '401':
-          description: Unauthenticated
-        '403':
-          description: Forbidden
-    delete:
-      summary: Delete a Pulse strategy
-      security: *id001
-      responses:
-        '200':
-          description: Success
-        '401':
-          description: Unauthenticated
-        '403':
-          description: Forbidden
-  /admin/pulse/pairs/{pair}:
-    put:
-      summary: Update a Pulse pair
-      security: *id001
-      responses:
-        '200':
-          description: Success
-        '401':
-          description: Unauthenticated
-        '403':
-          description: Forbidden
-  /admin/pulse/pairs/sync:
-    post:
-      summary: Synchronize Binance USD-M pair filters
-      security: *id001
-      responses:
-        '200':
-          description: Success
-        '401':
-          description: Unauthenticated
-        '403':
-          description: Forbidden
-  /admin/pulse/signals/{signal}:
-    put:
-      summary: Update a Pulse signal status
-      security: *id001
-      responses:
-        '200':
-          description: Success
-        '401':
-          description: Unauthenticated
-        '403':
-          description: Forbidden
-  /admin/pulse/settings:
-    get:
-      summary: Read Pulse system settings
-      security: *id001
-      responses:
-        '200':
-          description: Success
-        '401':
-          description: Unauthenticated
-        '403':
-          description: Forbidden
-    put:
-      summary: Update Pulse system settings
-      security: *id001
-      responses:
-        '200':
-          description: Success
-        '401':
-          description: Unauthenticated
-        '403':
-          description: Forbidden
-  /admin/pulse/alerts/broadcast:
-    post:
-      summary: Broadcast a Pulse administrator alert
-      security: *id001
-      responses:
-        '200':
-          description: Success
-        '401':
-          description: Unauthenticated
-        '403':
-          description: Forbidden
+          description: Validation or business-rule error
   /auth/activation/resend:
     post:
-      summary: Resend account activation email
+      operationId: post_auth_activation_resend
+      summary: POST /auth/activation/resend
       responses:
         '200':
           description: Success
+        '201':
+          description: Created
         '422':
-          description: Validation error
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
+          description: Validation or business-rule error
   /auth/forgot-password:
     post:
-      summary: Request branded password reset email
+      operationId: post_auth_forgot_password
+      summary: POST /auth/forgot-password
       responses:
         '200':
           description: Success
+        '201':
+          description: Created
         '422':
-          description: Validation error
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
+          description: Validation or business-rule error
   /auth/reset-password:
     post:
-      summary: Reset account password
+      operationId: post_auth_reset_password
+      summary: POST /auth/reset-password
       responses:
         '200':
           description: Success
+        '201':
+          description: Created
         '422':
-          description: Validation error
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
-  /auth/logout-all:
-    post:
-      summary: Revoke all API sessions
-      responses:
-        '200':
-          description: Success
-        '422':
-          description: Validation error
-      security: &id002
-      - sanctum: []
-  /auth/sessions:
-    get:
-      summary: List current API token sessions
-      responses:
-        '200':
-          description: Success
-        '422':
-          description: Validation error
-      security: *id002
-  /auth/sessions/{token}:
-    delete:
-      summary: Revoke a specific API session
-      responses:
-        '200':
-          description: Success
-        '422':
-          description: Validation error
-      security: *id002
+          description: Validation or business-rule error
   /bootstrap:
     get:
-      summary: Mobile application bootstrap and version/settings payload
+      operationId: get_bootstrap
+      summary: GET /bootstrap
       responses:
         '200':
           description: Success
+        '201':
+          description: Created
         '422':
-          description: Validation error
+          description: Validation or business-rule error
+  /market/overview:
+    get:
+      operationId: get_market_overview
+      summary: GET /market/overview
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /market/movers:
+    get:
+      operationId: get_market_movers
+      summary: GET /market/movers
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /market/chart/{symbol}:
+    get:
+      operationId: get_market_chart_symbol
+      summary: GET /market/chart/{symbol}
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /products:
+    get:
+      operationId: get_products
+      summary: GET /products
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
   /products/{product}:
     get:
-      summary: Get a published ABS product/service
+      operationId: get_products_product_slug
+      summary: GET /products/{product:slug}
       responses:
         '200':
           description: Success
+        '201':
+          description: Created
         '422':
-          description: Validation error
+          description: Validation or business-rule error
+  /news:
+    get:
+      operationId: get_news
+      summary: GET /news
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /news/live:
+    get:
+      operationId: get_news_live
+      summary: GET /news/live
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /news/{article}:
+    get:
+      operationId: get_news_article_slug
+      summary: GET /news/{article:slug}
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
   /research:
     get:
-      summary: List published research reports
+      operationId: get_research
+      summary: GET /research
       responses:
         '200':
           description: Success
+        '201':
+          description: Created
         '422':
-          description: Validation error
+          description: Validation or business-rule error
   /research/{report}:
     get:
-      summary: Get a published research report
+      operationId: get_research_report_slug
+      summary: GET /research/{report:slug}
       responses:
         '200':
           description: Success
+        '201':
+          description: Created
         '422':
-          description: Validation error
+          description: Validation or business-rule error
   /learning:
     get:
-      summary: List published learning material
+      operationId: get_learning
+      summary: GET /learning
       responses:
         '200':
           description: Success
+        '201':
+          description: Created
         '422':
-          description: Validation error
+          description: Validation or business-rule error
   /learning/{lesson}:
     get:
-      summary: Get a published learning article
+      operationId: get_learning_lesson_slug
+      summary: GET /learning/{lesson:slug}
       responses:
         '200':
           description: Success
+        '201':
+          description: Created
         '422':
-          description: Validation error
+          description: Validation or business-rule error
   /economic-calendar:
     get:
-      summary: List upcoming economic calendar events
+      operationId: get_economic_calendar
+      summary: GET /economic-calendar
       responses:
         '200':
           description: Success
+        '201':
+          description: Created
         '422':
-          description: Validation error
+          description: Validation or business-rule error
   /content/settings:
     get:
-      summary: Read public website and mobile settings
+      operationId: get_content_settings
+      summary: GET /content/settings
       responses:
         '200':
           description: Success
+        '201':
+          description: Created
         '422':
-          description: Validation error
+          description: Validation or business-rule error
+  /legal/{type}:
+    get:
+      operationId: get_legal_type
+      summary: GET /legal/{type}
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /newsletter:
+    post:
+      operationId: post_newsletter
+      summary: POST /newsletter
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
   /contact:
     post:
-      summary: Submit a support/contact enquiry
+      operationId: post_contact
+      summary: POST /contact
       responses:
         '200':
           description: Success
+        '201':
+          description: Created
         '422':
-          description: Validation error
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
+          description: Validation or business-rule error
+  /search:
+    get:
+      operationId: get_search
+      summary: GET /search
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /auth/me:
+    get:
+      operationId: get_auth_me
+      summary: GET /auth/me
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /auth/logout:
+    post:
+      operationId: post_auth_logout
+      summary: POST /auth/logout
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /auth/logout-all:
+    post:
+      operationId: post_auth_logout_all
+      summary: POST /auth/logout-all
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /auth/sessions:
+    get:
+      operationId: get_auth_sessions
+      summary: GET /auth/sessions
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /auth/sessions/{token}:
+    delete:
+      operationId: delete_auth_sessions_token
+      summary: DELETE /auth/sessions/{token}
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /dashboard:
+    get:
+      operationId: get_dashboard
+      summary: GET /dashboard
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /profile:
+    patch:
+      operationId: patch_profile
+      summary: PATCH /profile
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /notifications:
+    get:
+      operationId: get_notifications
+      summary: GET /notifications
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /notifications/{id}/read:
+    post:
+      operationId: post_notifications_id_read
+      summary: POST /notifications/{id}/read
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
   /notification-preferences:
     get:
-      summary: Read user notification preferences
+      operationId: get_notification_preferences
+      summary: GET /notification-preferences
       responses:
         '200':
           description: Success
+        '201':
+          description: Created
         '422':
-          description: Validation error
-      security: *id002
+          description: Validation or business-rule error
     put:
-      summary: Update user notification preferences
+      operationId: put_notification_preferences
+      summary: PUT /notification-preferences
       responses:
         '200':
           description: Success
+        '201':
+          description: Created
         '422':
-          description: Validation error
-      security: *id002
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
+          description: Validation or business-rule error
   /devices:
     get:
-      summary: List registered mobile devices
+      operationId: get_devices
+      summary: GET /devices
       responses:
         '200':
           description: Success
+        '201':
+          description: Created
         '422':
-          description: Validation error
-      security: *id002
+          description: Validation or business-rule error
     post:
-      summary: Register/update a mobile device and push token
+      operationId: post_devices
+      summary: POST /devices
       responses:
         '200':
           description: Success
+        '201':
+          description: Created
         '422':
-          description: Validation error
-      security: *id002
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
+          description: Validation or business-rule error
   /devices/{device}:
     put:
-      summary: Update a registered mobile device
+      operationId: put_devices_device
+      summary: PUT /devices/{device}
       responses:
         '200':
           description: Success
+        '201':
+          description: Created
         '422':
-          description: Validation error
-      security: *id002
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
+          description: Validation or business-rule error
     delete:
-      summary: Remove a registered mobile device
+      operationId: delete_devices_device
+      summary: DELETE /devices/{device}
       responses:
         '200':
           description: Success
+        '201':
+          description: Created
         '422':
-          description: Validation error
-      security: *id002
-  /pulse/strategies:
+          description: Validation or business-rule error
+  /watchlist:
     get:
-      summary: List the complete 15-strategy Pulse catalog with included or locked-by-plan status
+      operationId: get_watchlist
+      summary: GET /watchlist
       responses:
         '200':
           description: Success
+        '201':
+          description: Created
         '422':
-          description: Validation error
-      security: *id002
-  /pulse/strategies/overview:
-    get:
-      summary: Screen-ready 15-strategy catalog, package inclusion, contribution, performance and health controls
-      parameters:
-      - in: query
-        name: period
-        schema:
-          type: string
-          enum: [7d, 30d, 90d, all]
-          default: 30d
+          description: Validation or business-rule error
+    post:
+      operationId: post_watchlist
+      summary: POST /watchlist
       responses:
         '200':
-          description: Strategy screen payload
-        '403':
-          description: Pulse strategy access denied
-      security: *id002
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /watchlist/{symbol}:
+    delete:
+      operationId: delete_watchlist_symbol
+      summary: DELETE /watchlist/{symbol}
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/access:
+    get:
+      operationId: get_pulse_access
+      summary: GET /pulse/access
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/plans:
+    get:
+      operationId: get_pulse_plans
+      summary: List Admin-configured direct-USDT Pulse packages
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/membership:
+    get:
+      operationId: get_pulse_membership
+      summary: GET /pulse/membership
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/membership/quote:
+    post:
+      operationId: post_pulse_membership_quote
+      summary: Quote the selected direct-USDT Pulse package
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/membership/requests:
+    post:
+      operationId: post_pulse_membership_requests
+      summary: Submit direct USDT package payment for Admin verification
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/membership/requests/{membershipRequest}:
+    patch:
+      operationId: patch_pulse_membership_requests_membershipRequest
+      summary: PATCH /pulse/membership/requests/{membershipRequest}
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/dashboard:
+    get:
+      operationId: get_pulse_dashboard
+      summary: GET /pulse/dashboard
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/usage:
+    get:
+      operationId: get_pulse_usage
+      summary: Return active-package access and scanner usage compatibility summary
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/pairs:
+    get:
+      operationId: get_pulse_pairs
+      summary: GET /pulse/pairs
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
   /pulse/execution/readiness:
     get:
-      summary: Read Pulse execution readiness and safety gates
+      operationId: get_pulse_execution_readiness
+      summary: GET /pulse/execution/readiness
       responses:
         '200':
           description: Success
+        '201':
+          description: Created
         '422':
-          description: Validation error
-      security: *id002
+          description: Validation or business-rule error
   /pulse/execution/ticket:
     get:
-      summary: Screen-ready trade ticket, calculation, account exposure and pre-trade safeguards
-      parameters:
-      - in: query
-        name: signal_id
-        schema:
-          type: integer
+      operationId: get_pulse_execution_ticket
+      summary: GET /pulse/execution/ticket
       responses:
         '200':
-          description: Trade execution screen payload
-        '403':
-          description: Pulse execution access denied
-      security: *id002
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
   /pulse/positions:
     get:
-      summary: Read current Pulse position state
+      operationId: get_pulse_positions
+      summary: GET /pulse/positions
       responses:
         '200':
           description: Success
+        '201':
+          description: Created
         '422':
-          description: Validation error
-      security: *id002
+          description: Validation or business-rule error
   /pulse/risk-controls:
     get:
-      summary: Read user Pulse risk controls
+      operationId: get_pulse_risk_controls
+      summary: GET /pulse/risk-controls
       responses:
         '200':
           description: Success
+        '201':
+          description: Created
         '422':
-          description: Validation error
-      security: *id002
+          description: Validation or business-rule error
     put:
-      summary: Update user Pulse risk controls
+      operationId: put_pulse_risk_controls
+      summary: PUT /pulse/risk-controls
       responses:
         '200':
           description: Success
+        '201':
+          description: Created
         '422':
-          description: Validation error
-      security: *id002
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
-components:
-  securitySchemes:
-    sanctum:
-      type: http
-      scheme: bearer
-      bearerFormat: Sanctum
+          description: Validation or business-rule error
+  /pulse/settings:
+    get:
+      operationId: get_pulse_settings
+      summary: GET /pulse/settings
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+    put:
+      operationId: put_pulse_settings
+      summary: PUT /pulse/settings
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/scanner/runs:
+    get:
+      operationId: get_pulse_scanner_runs
+      summary: GET /pulse/scanner/runs
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/scanner/overview:
+    get:
+      operationId: get_pulse_scanner_overview
+      summary: GET /pulse/scanner/overview
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/scanner/run:
+    post:
+      operationId: post_pulse_scanner_run
+      summary: Run the Admin-controlled Pulse scanner for the authenticated member
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/signals:
+    get:
+      operationId: get_pulse_signals
+      summary: GET /pulse/signals
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/signals/overview:
+    get:
+      operationId: get_pulse_signals_overview
+      summary: GET /pulse/signals/overview
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/signals/{signal}/dismiss:
+    patch:
+      operationId: patch_pulse_signals_signal_dismiss
+      summary: PATCH /pulse/signals/{signal}/dismiss
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/signals/{signal}/execute:
+    post:
+      operationId: post_pulse_signals_signal_execute
+      summary: POST /pulse/signals/{signal}/execute
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/signals/{signal}/share:
+    post:
+      operationId: post_pulse_signals_signal_share
+      summary: POST /pulse/signals/{signal}/share
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/signals/{signal}/explain:
+    post:
+      operationId: post_pulse_signals_signal_explain
+      summary: POST /pulse/signals/{signal}/explain
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/signals/{signal}:
+    get:
+      operationId: get_pulse_signals_signal
+      summary: GET /pulse/signals/{signal}
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/trades:
+    get:
+      operationId: get_pulse_trades
+      summary: GET /pulse/trades
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/trades/{trade}:
+    get:
+      operationId: get_pulse_trades_trade
+      summary: GET /pulse/trades/{trade}
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/trades/{trade}/close:
+    post:
+      operationId: post_pulse_trades_trade_close
+      summary: POST /pulse/trades/{trade}/close
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/trades/sync:
+    post:
+      operationId: post_pulse_trades_sync
+      summary: POST /pulse/trades/sync
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/emergency-stop:
+    post:
+      operationId: post_pulse_emergency_stop
+      summary: POST /pulse/emergency-stop
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/orders:
+    get:
+      operationId: get_pulse_orders
+      summary: GET /pulse/orders
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/reports:
+    get:
+      operationId: get_pulse_reports
+      summary: GET /pulse/reports
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/reports/signals:
+    get:
+      operationId: get_pulse_reports_signals
+      summary: GET /pulse/reports/signals
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/reports/learning:
+    get:
+      operationId: get_pulse_reports_learning
+      summary: GET /pulse/reports/learning
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/market-data/health:
+    get:
+      operationId: get_pulse_market_data_health
+      summary: GET /pulse/market-data/health
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/market-data/prices:
+    get:
+      operationId: get_pulse_market_data_prices
+      summary: GET /pulse/market-data/prices
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/signals/{signal}/validation:
+    get:
+      operationId: get_pulse_signals_signal_validation
+      summary: GET /pulse/signals/{signal}/validation
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/binance/connections:
+    get:
+      operationId: get_pulse_binance_connections
+      summary: GET /pulse/binance/connections
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+    post:
+      operationId: post_pulse_binance_connections
+      summary: POST /pulse/binance/connections
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/binance/connections/{connection}/test:
+    post:
+      operationId: post_pulse_binance_connections_connection_test
+      summary: POST /pulse/binance/connections/{connection}/test
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/binance/connections/{connection}/activate:
+    post:
+      operationId: post_pulse_binance_connections_connection_activate
+      summary: POST /pulse/binance/connections/{connection}/activate
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/binance/connections/{connection}:
+    delete:
+      operationId: delete_pulse_binance_connections_connection
+      summary: DELETE /pulse/binance/connections/{connection}
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/alerts:
+    get:
+      operationId: get_pulse_alerts
+      summary: GET /pulse/alerts
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/alerts/{alert}/read:
+    patch:
+      operationId: patch_pulse_alerts_alert_read
+      summary: PATCH /pulse/alerts/{alert}/read
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /pulse/alerts/read-all:
+    patch:
+      operationId: patch_pulse_alerts_read_all
+      summary: PATCH /pulse/alerts/read-all
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /admin/pulse/dashboard:
+    get:
+      operationId: get_admin_pulse_dashboard
+      summary: GET /admin/pulse/dashboard
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /admin/pulse/access:
+    get:
+      operationId: get_admin_pulse_access
+      summary: GET /admin/pulse/access
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /admin/pulse/access/{user}:
+    put:
+      operationId: put_admin_pulse_access_user
+      summary: PUT /admin/pulse/access/{user}
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /admin/pulse/plans:
+    get:
+      operationId: get_admin_pulse_plans
+      summary: GET /admin/pulse/plans
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+    post:
+      operationId: post_admin_pulse_plans
+      summary: POST /admin/pulse/plans
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /admin/pulse/plans/{plan}:
+    put:
+      operationId: put_admin_pulse_plans_plan
+      summary: PUT /admin/pulse/plans/{plan}
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+    delete:
+      operationId: delete_admin_pulse_plans_plan
+      summary: DELETE /admin/pulse/plans/{plan}
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /admin/pulse/strategies:
+    get:
+      operationId: get_admin_pulse_strategies
+      summary: GET /admin/pulse/strategies
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+    post:
+      operationId: post_admin_pulse_strategies
+      summary: POST /admin/pulse/strategies
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /admin/pulse/strategies/{strategy}:
+    put:
+      operationId: put_admin_pulse_strategies_strategy
+      summary: PUT /admin/pulse/strategies/{strategy}
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+    delete:
+      operationId: delete_admin_pulse_strategies_strategy
+      summary: DELETE /admin/pulse/strategies/{strategy}
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /admin/pulse/pairs:
+    get:
+      operationId: get_admin_pulse_pairs
+      summary: GET /admin/pulse/pairs
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+    post:
+      operationId: post_admin_pulse_pairs
+      summary: POST /admin/pulse/pairs
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /admin/pulse/pairs/{pair}:
+    put:
+      operationId: put_admin_pulse_pairs_pair
+      summary: PUT /admin/pulse/pairs/{pair}
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /admin/pulse/pairs/sync:
+    post:
+      operationId: post_admin_pulse_pairs_sync
+      summary: POST /admin/pulse/pairs/sync
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /admin/pulse/signals:
+    get:
+      operationId: get_admin_pulse_signals
+      summary: GET /admin/pulse/signals
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /admin/pulse/signals/{signal}:
+    put:
+      operationId: put_admin_pulse_signals_signal
+      summary: PUT /admin/pulse/signals/{signal}
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /admin/pulse/trades:
+    get:
+      operationId: get_admin_pulse_trades
+      summary: GET /admin/pulse/trades
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /admin/pulse/settings:
+    get:
+      operationId: get_admin_pulse_settings
+      summary: GET /admin/pulse/settings
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+    put:
+      operationId: put_admin_pulse_settings
+      summary: PUT /admin/pulse/settings
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /admin/pulse/alerts/broadcast:
+    post:
+      operationId: post_admin_pulse_alerts_broadcast
+      summary: POST /admin/pulse/alerts/broadcast
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /admin/pulse/logs:
+    get:
+      operationId: get_admin_pulse_logs
+      summary: GET /admin/pulse/logs
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /private/account:
+    get:
+      operationId: get_private_account
+      summary: GET /private/account
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error
+  /private/statements/{statement}:
+    get:
+      operationId: get_private_statements_statement
+      summary: GET /private/statements/{statement}
+      responses:
+        '200':
+          description: Success
+        '201':
+          description: Created
+        '422':
+          description: Validation or business-rule error

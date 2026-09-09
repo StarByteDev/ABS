@@ -118,6 +118,7 @@ class DatabaseSeeder extends Seeder
         SiteSetting::firstOrCreate(['key' => 'admin_notification_email'], ['value' => 'i@armansabir.com', 'type' => 'string', 'group' => 'communications']);
         SiteSetting::firstOrCreate(['key' => 'admin_notify_new_registration'], ['value' => '1', 'type' => 'boolean', 'group' => 'communications']);
         SiteSetting::firstOrCreate(['key' => 'admin_notify_new_subscription'], ['value' => '1', 'type' => 'boolean', 'group' => 'communications']);
+        SiteSetting::firstOrCreate(['key' => 'economic_calendar_auto_sync'], ['value' => '1', 'type' => 'boolean', 'group' => 'integrations']);
 
         $this->seedPulse($admin);
     }
@@ -139,15 +140,21 @@ class DatabaseSeeder extends Seeder
             }
         }
 
-        // V13.7 publishes two customer membership packages and keeps Trial as a
-        // concise onboarding entitlement instead of a third pricing card.
+        // V15.1.x publishes direct-USDT duration packages. Trial is retained as a hidden onboarding entitlement rather than a paid card.
         $fullCapabilities = array_fill_keys(array_keys(PulsePlan::CAPABILITIES), true);
         $intelligenceCapabilities = array_fill_keys(array_keys(PulsePlan::CAPABILITIES), false);
-        foreach (['scanner','signals','reports','alerts','plan_view','settings','mobile_api'] as $capability) {
+        foreach (['scanner','signals','alerts','plan_view','settings','mobile_api'] as $capability) {
             $intelligenceCapabilities[$capability] = true;
         }
-
-        $professionalCapabilities = $fullCapabilities;
+        $flexCapabilities = $intelligenceCapabilities;
+        $flexCapabilities['reports'] = true;
+        $momentumCapabilities = $flexCapabilities;
+        foreach (['orders','trades','binance','testnet_trading','manual_trading'] as $capability) {
+            $momentumCapabilities[$capability] = true;
+        }
+        // V15.1.0 uses direct USDT package payments. Paid package requests are
+        // verified by Admin before access is activated. There is no points wallet
+        // and no per-signal charge for members with active package access.
         $plans = [
             [
                 'name' => 'Pulse Trial',
@@ -155,8 +162,6 @@ class DatabaseSeeder extends Seeder
                 'description' => 'Explore Pulse market intelligence, signals, risk controls and trading tools through a guided evaluation experience.',
                 'monthly_price' => 0,
                 'currency' => 'USDT',
-                'scanner_runs_per_day' => 50,
-                'signals_per_day' => 100,
                 'manual_trades_per_day' => 25,
                 'auto_trades_per_day' => 10,
                 'max_open_trades' => 5,
@@ -178,17 +183,15 @@ class DatabaseSeeder extends Seeder
                 'is_featured' => false,
             ],
             [
-                'name' => 'Pulse Intelligence',
-                'slug' => 'pulse-intelligence',
-                'description' => 'Market scanning, explainable strategy scoring, signal review, alerts and reporting without exchange execution.',
-                'monthly_price' => 29,
+                'name' => 'Pulse Day Pass',
+                'slug' => 'pulse-day-pass',
+                'description' => 'Twenty-four hours of Pulse market intelligence and qualified signal access.',
+                'monthly_price' => 5.00,
                 'currency' => 'USDT',
-                'scanner_runs_per_day' => 5,
-                'signals_per_day' => 10,
                 'manual_trades_per_day' => 0,
                 'auto_trades_per_day' => 0,
                 'max_open_trades' => 0,
-                'max_selected_pairs' => 5,
+                'max_selected_pairs' => 10,
                 'allow_testnet_trading' => false,
                 'allow_manual_trading' => false,
                 'allow_live_trading' => false,
@@ -201,36 +204,86 @@ class DatabaseSeeder extends Seeder
                 'is_public' => true,
                 'request_enabled' => true,
                 'requires_payment' => true,
-                'access_days' => 30,
-                'badge' => null,
+                'access_days' => 1,
+                'badge' => '24-Hour Access',
                 'is_featured' => false,
             ],
             [
-                'name' => 'Pulse Professional',
-                'slug' => 'pulse-professional',
-                'description' => 'Expanded limits, advanced market intelligence and permission-ready trading workflows protected by platform safety controls.',
-                'monthly_price' => 79,
+                'name' => 'Pulse Flex',
+                'slug' => 'pulse-flex',
+                'description' => 'Three days of broader market coverage with signals, alerts and performance reporting.',
+                'monthly_price' => 12.00,
                 'currency' => 'USDT',
-                'scanner_runs_per_day' => 100,
-                'signals_per_day' => 200,
-                'manual_trades_per_day' => 50,
-                'auto_trades_per_day' => 25,
-                'max_open_trades' => 5,
-                'max_selected_pairs' => 20,
-                'allow_testnet_trading' => true,
-                'allow_manual_trading' => true,
-                'allow_live_trading' => true,
-                'allow_auto_trading' => true,
+                'manual_trades_per_day' => 0,
+                'auto_trades_per_day' => 0,
+                'max_open_trades' => 0,
+                'max_selected_pairs' => 40,
+                'allow_testnet_trading' => false,
+                'allow_manual_trading' => false,
+                'allow_live_trading' => false,
+                'allow_auto_trading' => false,
                 'allow_mobile_api' => true,
-                'capabilities' => $professionalCapabilities,
+                'capabilities' => $flexCapabilities,
                 'is_active' => true,
                 'sort_order' => 20,
                 'is_trial' => false,
                 'is_public' => true,
                 'request_enabled' => true,
                 'requires_payment' => true,
+                'access_days' => 3,
+                'badge' => 'Flexible Access',
+                'is_featured' => false,
+            ],
+            [
+                'name' => 'Pulse Momentum',
+                'slug' => 'pulse-momentum',
+                'description' => 'Seven days of wider Pulse coverage, reporting and protected Practice execution workflows.',
+                'monthly_price' => 25.00,
+                'currency' => 'USDT',
+                'manual_trades_per_day' => 25,
+                'auto_trades_per_day' => 0,
+                'max_open_trades' => 3,
+                'max_selected_pairs' => 150,
+                'allow_testnet_trading' => true,
+                'allow_manual_trading' => true,
+                'allow_live_trading' => false,
+                'allow_auto_trading' => false,
+                'allow_mobile_api' => true,
+                'capabilities' => $momentumCapabilities,
+                'is_active' => true,
+                'sort_order' => 30,
+                'is_trial' => false,
+                'is_public' => true,
+                'request_enabled' => true,
+                'requires_payment' => true,
+                'access_days' => 7,
+                'badge' => 'Most Popular',
+                'is_featured' => false,
+            ],
+            [
+                'name' => 'Pulse Professional',
+                'slug' => 'pulse-professional',
+                'description' => 'Thirty days of maximum Pulse coverage and permission-ready trading workflows.',
+                'monthly_price' => 79.00,
+                'currency' => 'USDT',
+                'manual_trades_per_day' => 50,
+                'auto_trades_per_day' => 25,
+                'max_open_trades' => 5,
+                'max_selected_pairs' => 500,
+                'allow_testnet_trading' => true,
+                'allow_manual_trading' => true,
+                'allow_live_trading' => true,
+                'allow_auto_trading' => true,
+                'allow_mobile_api' => true,
+                'capabilities' => $fullCapabilities,
+                'is_active' => true,
+                'sort_order' => 40,
+                'is_trial' => false,
+                'is_public' => true,
+                'request_enabled' => true,
+                'requires_payment' => true,
                 'access_days' => 30,
-                'badge' => 'Professional',
+                'badge' => 'Best Value',
                 'is_featured' => true,
             ],
         ];
@@ -243,19 +296,16 @@ class DatabaseSeeder extends Seeder
             if ($model->wasRecentlyCreated) $newPlanIds[] = $model->id;
         }
 
-        // V14.6.13: repair legacy paid-plan rows that were created with a zero
-        // price in earlier local databases. Only the two canonical paid plans
-        // are repaired, and only when their stored price is missing/zero.
-        // Administrator-managed non-zero prices are preserved.
-        foreach (['pulse-intelligence' => 29.0, 'pulse-professional' => 79.0] as $slug => $defaultPrice) {
-            $planModel = $planModels[$slug] ?? null;
-            if ($planModel && (float) $planModel->monthly_price <= 0.0) {
-                $planModel->forceFill([
-                    'monthly_price' => $defaultPrice,
-                    'currency' => $planModel->currency ?: 'USDT',
-                    'requires_payment' => true,
-                ])->save();
-            }
+        // Normalize known legacy package slugs without overwriting later Admin
+        // pricing or limits. The V15.1 migration performs the same conversion on
+        // existing production databases before the legacy economy schema is removed.
+        foreach ([
+            'spark-day-pass' => 'pulse-day-pass',
+            'spark-flex' => 'pulse-flex',
+            'spark-momentum' => 'pulse-momentum',
+        ] as $legacySlug => $directSlug) {
+            if (PulsePlan::query()->where('slug', $directSlug)->exists()) continue;
+            PulsePlan::query()->where('slug', $legacySlug)->update(['slug' => $directSlug, 'currency' => 'USDT', 'request_enabled' => true, 'requires_payment' => true]);
         }
 
         // Upgrade the known legacy Trial classification without overwriting any
@@ -266,10 +316,13 @@ class DatabaseSeeder extends Seeder
                 'is_public' => false,
                 'request_enabled' => false,
                 'requires_payment' => false,
+                'currency' => 'USDT',
             ])->save();
         }
 
-        PulsePlan::query()->whereIn('slug', ['pulse-testnet-trader'])->update(['is_public' => false, 'request_enabled' => false]);
+        PulsePlan::query()->whereIn('slug', ['pulse-intelligence', 'pulse-testnet-trader'])->update([
+            'is_public' => false, 'request_enabled' => false, 'requires_payment' => false,
+        ]);
 
         // Preserve one-time Trial history when upgrading existing V13.x databases.
         UserServiceAccess::query()
@@ -375,6 +428,7 @@ class DatabaseSeeder extends Seeder
             ['trade_email_alerts_enabled', 'false', 'boolean', 'communications', 'Send trade-event email alerts in addition to in-platform alerts. Disabled by default to avoid unnecessary email volume.'],
             ['signal_email_alerts_enabled', 'true', 'boolean', 'communications', 'Send qualified Pulse signal email alerts to users who have enabled signal email notifications.'],
             ['expiry_emails_enabled', 'true', 'boolean', 'communications', 'Send Pulse access expiry reminders and expired-access notifications.'],
+            ['expiry_reminder_days', '[7,3,1,0]', 'json', 'communications', 'UTC day thresholds used for deduplicated Pulse plan expiry reminders.'],
             ['daily_market_brief_enabled', 'false', 'boolean', 'communications', 'Send the optional Daily Market Brief to users who opt in. Disabled by default until the administrator enables it.'],
         ];
         foreach ($systemSettings as [$key, $value, $type, $group, $description]) {

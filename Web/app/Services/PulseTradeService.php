@@ -104,6 +104,10 @@ class PulseTradeService
         if (! in_array($orderType, ['MARKET', 'LIMIT'], true)) {
             throw new RuntimeException('Order type must be MARKET or LIMIT.');
         }
+        // Refresh the pair's current Binance filters before risk math and order
+        // construction. This prevents stale tick/step precision from reaching the UI
+        // or exchange when Binance changes a contract's trading rules.
+        $pair = $this->binance->refreshPairRules($pair, $environment);
         $timeInForce = strtoupper((string) ($input['time_in_force'] ?? 'GTC'));
         if (! in_array($timeInForce, ['GTC', 'IOC', 'FOK'], true)) {
             throw new RuntimeException('Time in force must be GTC, IOC or FOK.');

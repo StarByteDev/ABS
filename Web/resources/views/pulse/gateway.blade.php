@@ -9,7 +9,8 @@
             <a class="button button-primary" href="{{ route('pulse.access') }}">Open My Pulse Access</a>
             <a class="button button-ghost" href="{{ route('dashboard') }}">My ABS Account</a>
         <?php else: ?>
-            <a class="button button-primary" href="{{ route('login', ['service' => 'pulse']) }}">Login to Pulse</a>
+            <a class="button button-primary" href="{{ route('pulse.free-signal') }}">Watch Ad · Get Free Signal</a>
+            <a class="button button-ghost" href="{{ route('login', ['service' => 'pulse']) }}">Member Login</a>
             <a class="button button-ghost" href="{{ route('register', ['service' => 'pulse']) }}">Create an Account</a>
         <?php endif; ?>
     </div>
@@ -21,8 +22,8 @@
         <p>Move from market analysis to signal review, risk planning, execution and performance tracking without switching between disconnected tools.</p>
     </header>
     <div class="pulse-flow-list">
-        <article class="pulse-flow-item"><span>01</span><div><h3>Scan Markets</h3><p>Review selected USD-M Futures markets across your preferred timeframe using the strategy modules included with your Pulse plan.</p></div><strong>SCAN</strong></article>
-        <article class="pulse-flow-item"><span>02</span><div><h3>Review Signals</h3><p>See LONG, SHORT and NEUTRAL results with a confidence score, strategy evidence, entry reference, stop loss, take profit and risk-to-reward.</p></div><strong>REVIEW</strong></article>
+        <article class="pulse-flow-item"><span>01</span><div><h3>Scan Markets</h3><p>ABS reviews the Admin-defined USD-M Futures market universe across 15M and 4H automatically using the strategy intelligence assigned to your Pulse plan.</p></div><strong>SCAN</strong></article>
+        <article class="pulse-flow-item"><span>02</span><div><h3>Review Signals</h3><p>Unlock the single highest-ranked qualifying Best Signal with confidence, qualifying strategy evidence, entry reference, stop loss, take profit and risk-to-reward.</p></div><strong>REVIEW</strong></article>
         <article class="pulse-flow-item"><span>03</span><div><h3>Set Your Risk</h3><p>Choose leverage, order size, daily limits, stop-loss and take-profit preferences, maximum open positions and emergency protection.</p></div><strong>CONTROL</strong></article>
         <article class="pulse-flow-item"><span>04</span><div><h3>Connect Binance</h3><p>Securely connect your own Binance USD-M Futures account. API credentials are encrypted and never displayed after saving.</p></div><strong>CONNECT</strong></article>
         <article class="pulse-flow-item"><span>05</span><div><h3>Manage Trades</h3><p>Monitor submitted orders, open positions, protection orders, commissions and realized or unrealized profit and loss.</p></div><strong>MANAGE</strong></article>
@@ -38,8 +39,8 @@
     <ol class="pulse-access-timeline">
         <li><span>1</span><div><h3>Create your ABS account</h3><p>Use one secure account for Alpha Block Solutions and Pulse.</p></div></li>
         <li><span>2</span><div><h3>Explore Pulse</h3><p>Explore live markets, market intelligence and guided trade setups with the Pulse Trial when available.</p></div></li>
-        <li><span>3</span><div><h3>Choose your plan</h3><p>Select Pulse Intelligence or Pulse Professional based on the tools and limits you need.</p></div></li>
-        <li><span>4</span><div><h3>Set your preferences</h3><p>Configure markets, alerts, risk preferences and exchange tools included with your selected plan.</p></div></li>
+        <li><span>3</span><div><h3>Choose your package</h3><p>Select a 1-day, 3-day, 7-day or 30-day Pulse package based on the tools and market coverage you need.</p></div></li>
+        <li><span>4</span><div><h3>Use automatic intelligence</h3><p>ABS controls the market universe, 15M + 4H evaluation, strategies and qualification rules. You only manage risk, alerts and optional exchange execution preferences.</p></div></li>
     </ol>
 </section>
 
@@ -47,7 +48,7 @@
     <header class="pulse-premium-plan-heading">
         <span>PULSE PLANS</span>
         <h2>Choose the Pulse plan that fits your workflow</h2>
-        <p>Each plan defines your access, usage limits and available Pulse trading tools.</p>
+        <p>Each package is priced directly in USDT. Submit the transfer TXID and Admin activates the package after verification.</p>
     </header>
 
     <?php if (($commerce['trial_banner_enabled'] ?? false) && $trialPlan && !$hasAccount): ?>
@@ -62,7 +63,7 @@
         <?php endif; ?>
     </div>
 
-    <div class="pulse-membership-trust-row"><div><span>✓</span><p><b>Verified activation</b><small>Plan access is confirmed after payment or voucher verification.</small></p></div><div><span>◫</span><p><b>Coupons & gift vouchers</b><small>Eligible codes can be applied securely during checkout.</small></p></div><div><span>⌾</span><p><b>Secure account access</b><small>Your Pulse access stays linked to your authenticated ABS account.</small></p></div></div>
+    <div class="pulse-membership-trust-row"><div><span>✓</span><p><b>Direct USDT packages</b><small>Pay the published package amount directly in USDT.</small></p></div><div><span>◫</span><p><b>Admin verification</b><small>Submit the TXID and optional proof; access activates only after verification.</small></p></div><div><span>⌾</span><p><b>Best Signal included</b><small>No separate wallet balance or per-signal charge is used.</small></p></div></div>
 </section>
 
 <section class="pulse-safety-band">

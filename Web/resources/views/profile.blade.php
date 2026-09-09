@@ -80,7 +80,7 @@
                 <div><dt>Access expiry</dt><dd>{{ $expiry?->format('d M Y') ?? ($pulseAccessActive ? 'No fixed expiry' : '—') }}</dd></div>
                 <div><dt>Days remaining</dt><dd>{{ $daysRemaining !== null ? $daysRemaining : ($pulseAccessActive ? 'Continuous' : '—') }}</dd></div>
                 <div><dt>Max open positions</dt><dd>{{ $plan?->max_open_trades ?? '—' }}</dd></div>
-                <div><dt>Selected pairs limit</dt><dd>{{ $plan?->max_selected_pairs ?? '—' }}</dd></div>
+                <div><dt>Package market limit</dt><dd>{{ $plan?->max_selected_pairs ?? '—' }}</dd></div>
                 <div><dt>Mobile API</dt><dd class="{{ $plan?->allow_mobile_api ? 'pp-positive' : '' }}">{{ $plan?->allow_mobile_api ? 'Enabled' : 'Plan controlled' }}</dd></div>
                 <div><dt>Binance {{ $environment }}</dt><dd class="{{ $connectionReady ? 'pp-positive' : 'pp-warning' }}">{{ $connectionReady ? 'Connected' : 'Not ready' }}</dd></div>
             </dl>

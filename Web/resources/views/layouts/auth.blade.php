@@ -6,7 +6,9 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="description" content="Secure Alpha Block Solutions member access for Pulse market intelligence and private reporting.">
     <meta name="theme-color" content="#020711">
-    <link rel="icon" type="image/png" href="{{ asset('assets/brand/abs-logo-512.png') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+    <link rel="alternate icon" type="image/png" href="{{ asset('assets/brand/abs-logo-512.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('assets/brand/abs-logo-512.png') }}">
     <title>@yield('title', 'Member Portal — Alpha Block Solutions')</title>
     <link rel="stylesheet" href="{{ asset('assets/css/abs-auth.css') }}?v={{ @filemtime(public_path('assets/css/abs-auth.css')) ?: '14.3' }}">
     @stack('head')
@@ -64,6 +66,8 @@
             @yield('content')
         </section>
     </main>
+
+    <div class="auth-global-risk">Market intelligence and Pulse signals are informational only, not financial advice. Digital assets involve substantial risk. <a href="{{ route('legal.risk') }}">Risk Disclosure</a> · <a href="{{ route('legal.disclaimer') }}">Disclaimer</a></div>
 
     <footer class="auth-site-footer">
         <p>&copy; {{ now()->year }} Alpha Block Solutions. All rights reserved.</p>

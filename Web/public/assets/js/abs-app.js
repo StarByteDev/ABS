@@ -1137,3 +1137,26 @@ document.addEventListener('DOMContentLoaded', () => {
         form.querySelectorAll('input[name="environment"]').forEach((radio) => radio.addEventListener('change', () => setMode(radio.value)));
     }
 });
+
+// ABS V15.0.4 — responsive enterprise Admin navigation.
+document.addEventListener('DOMContentLoaded', () => {
+    const body = document.querySelector('.enterprise-admin-body');
+    const button = document.querySelector('[data-admin-menu]');
+    const sidebar = document.querySelector('[data-admin-sidebar]');
+    const overlay = document.querySelector('[data-admin-overlay]');
+    if (!body || !button || !sidebar) return;
+
+    const close = () => {
+        body.classList.remove('admin-nav-open');
+        button.setAttribute('aria-expanded', 'false');
+    };
+    button.addEventListener('click', () => {
+        const open = body.classList.toggle('admin-nav-open');
+        button.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    overlay?.addEventListener('click', close);
+    sidebar.addEventListener('click', (event) => {
+        if (event.target.closest('a') && window.matchMedia('(max-width: 900px)').matches) close();
+    });
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape') close(); });
+});

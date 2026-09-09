@@ -1,34 +1,13 @@
 @extends('admin.layout')
-@section('title','Pulse Strategies')
-@section('heading','Scanner Strategy Management')
+@section('title','Pulse Strategy Configuration')
+@section('heading','Strategy Configuration')
+@section('description','Control the approved scanner strategy catalog, scoring thresholds, package assignment and evaluator availability.')
 @section('content')
-<section class="panel admin-form">
-    <h2>Create strategy</h2>
-    <p>Only slugs implemented by the Pulse scanner evaluator produce scores. Unknown slugs are kept neutral rather than pretending to work.</p>
-    <form method="POST" action="{{ route('admin.pulse.strategies.store') }}" class="admin-form-grid">
-        @csrf
-        @include('admin.pulse.partials.strategy-fields',['strategy'=>null])
-        <div class="full admin-page-actions"><button class="button button-primary">Create Strategy</button></div>
-    </form>
-</section>
-
+<section class="enterprise-command-bar compact admin-report-command"><div><span class="admin-report-eyebrow">PULSE ENGINE · CONFIGURATION</span><h2>Strategy catalog and scoring controls</h2><p>Only scanner-supported slugs produce technical scores. Results, evidence and confidence impact remain available separately in Strategy Intelligence.</p></div><div class="enterprise-command-actions"><a class="button button-primary" href="{{ route('admin.pulse.intelligence') }}">Strategy Results</a><a class="button button-ghost" href="{{ route('admin.pulse.plans') }}">Package Assignment</a></div></section>
+<section class="admin-report-kpis cms-kpis"><article><span class="report-kpi-icon blue">Σ</span><div><small>Catalog strategies</small><strong>{{ number_format($summary['total']) }}</strong><em>Configured evaluators</em></div></article><article><span class="report-kpi-icon green">✓</span><div><small>Enabled</small><strong>{{ number_format($summary['enabled']) }}</strong><em>Available for scoring</em></div></article><article class="{{ $summary['disabled']?'attention':'' }}"><span class="report-kpi-icon muted">−</span><div><small>Disabled</small><strong>{{ number_format($summary['disabled']) }}</strong><em>Excluded from new scoring</em></div></article><article><span class="report-kpi-icon violet">◇</span><div><small>Assigned to packages</small><strong>{{ number_format($summary['assigned']) }}</strong><em>Commercially available</em></div></article><article><span class="report-kpi-icon cyan">T</span><div><small>Timeframes</small><strong>{{ number_format($summary['timeframes']) }}</strong><em>Configured strategy horizons</em></div></article></section>
+<section class="enterprise-surface no-pad"><div class="enterprise-section-head padded"><div><h2>Strategy catalog</h2><p>Review operational state before opening an individual configuration editor.</p></div><span class="report-period-chip">ENGINE CONTROL</span></div><div class="enterprise-table-wrap"><table class="enterprise-table"><thead><tr><th>Strategy</th><th>Timeframe</th><th>Weight</th><th>Minimum score</th><th>Packages</th><th>Status</th><th></th></tr></thead><tbody>@forelse($strategies as $strategy)<tr><td><b>{{ $strategy->name }}</b><small>{{ $strategy->slug }} · v{{ $strategy->version ?: '1.0' }}</small></td><td><span class="admin-status neutral">{{ strtoupper($strategy->timeframe) }}</span></td><td>{{ number_format((float)$strategy->weight,2) }}</td><td>{{ number_format((float)$strategy->minimum_score,1) }}</td><td>{{ number_format($strategy->plans_count) }}</td><td><span class="admin-status {{ $strategy->is_enabled?'good':'muted' }}">{{ $strategy->is_enabled?'Enabled':'Disabled' }}</span></td><td><a class="enterprise-row-action" href="#strategy-{{ $strategy->id }}">Configure ↓</a></td></tr>@empty<tr><td colspan="7">No strategies configured.</td></tr>@endforelse</tbody></table></div></section>
+<details class="enterprise-surface enterprise-plan-editor strategy-create-editor"><summary><div><h2>Create strategy</h2><p>Add a scanner-supported evaluator to the controlled strategy catalog.</p></div><span>Open editor</span></summary><form method="POST" action="{{ route('admin.pulse.strategies.store') }}" class="admin-form-grid">@csrf @include('admin.pulse.partials.strategy-fields',['strategy'=>null])<div class="full admin-page-actions"><button class="button button-primary">Create Strategy</button></div></form></details>
 @foreach($strategies as $strategy)
-<section class="panel admin-form">
-    <div class="panel-title">
-        <div><small>{{ $strategy->slug }}</small><h2>{{ $strategy->name }}</h2></div>
-        <span>{{ $strategy->plans_count }} plans</span>
-    </div>
-    <form method="POST" action="{{ route('admin.pulse.strategies.update',$strategy) }}" class="admin-form-grid">
-        @csrf
-        @method('PUT')
-        @include('admin.pulse.partials.strategy-fields',['strategy'=>$strategy])
-        <div class="full admin-page-actions"><button class="button button-primary">Save Strategy</button></div>
-    </form>
-    <form method="POST" action="{{ route('admin.pulse.strategies.destroy',$strategy) }}" class="admin-delete-form">
-        @csrf
-        @method('DELETE')
-        <button class="button button-ghost" onclick="return confirm('Delete this strategy and remove it from plans?')">Delete Strategy</button>
-    </form>
-</section>
+<details class="enterprise-surface enterprise-plan-editor strategy-editor" id="strategy-{{ $strategy->id }}"><summary><div><h2>{{ $strategy->name }}</h2><p>{{ $strategy->slug }} · {{ $strategy->plans_count }} package assignments · {{ $strategy->is_enabled?'Enabled':'Disabled' }}</p></div><span>Edit strategy</span></summary><form method="POST" action="{{ route('admin.pulse.strategies.update',$strategy) }}" class="admin-form-grid">@csrf @method('PUT') @include('admin.pulse.partials.strategy-fields',['strategy'=>$strategy])<div class="full admin-page-actions"><button class="button button-primary">Save Strategy</button></div></form><form method="POST" action="{{ route('admin.pulse.strategies.destroy',$strategy) }}" class="admin-delete-form">@csrf @method('DELETE')<button class="button button-ghost" onclick="return confirm('Delete this strategy and remove it from all packages?')">Delete Strategy</button></form></details>
 @endforeach
 @endsection

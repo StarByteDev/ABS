@@ -47,17 +47,12 @@
         ['key' => 'metaverse', 'label' => 'Metaverse', 'icon' => '✧'],
     ];
 
-    $trialPlan = $plans->firstWhere('slug', 'pulse-trial');
-    $intelligencePlan = $plans->firstWhere('slug', 'pulse-intelligence');
-    $professionalPlan = $plans->firstWhere('slug', 'pulse-professional');
+    $pulsePlans = $plans->where('is_public', true)->where('is_trial', false)->take(4)->values();
 
     $formatPlanPrice = static function ($plan): string {
         if (! $plan) return 'Contact';
-        $amount = method_exists($plan, 'effectiveMonthlyPrice')
-            ? $plan->effectiveMonthlyPrice()
-            : (is_numeric($plan->monthly_price) ? (float) $plan->monthly_price : null);
-        if ($amount === null) return 'Contact';
-        return $amount == 0.0 ? '$0' : '$'.number_format($amount, $amount == floor($amount) ? 0 : 2);
+        $price = max(0, (float) ($plan->monthly_price ?? 0));
+        return $price > 0 ? number_format($price, 2).' USDT' : 'Admin set';
     };
     $formatPrice = static function ($value): string {
         if (! is_numeric($value)) return '—';
@@ -91,7 +86,8 @@
             <p>Verified insights, disciplined analysis, and real-time market context—empowering you to make smarter decisions in digital asset markets.</p>
             <div class="final-hero-actions">
                 <a class="final-button final-button-gold" href="{{ route('pulse.entry') }}">Explore Pulse <span aria-hidden="true">→</span></a>
-                <a class="final-button final-button-outline" href="{{ route('news.index') }}">View Market News <span aria-hidden="true">→</span></a>
+                <a class="final-button final-button-outline" href="{{ route('pulse.free-signal') }}">Free Signal · Watch Ad <span aria-hidden="true">→</span></a>
+                <a class="final-button final-button-outline" href="{{ route('news.index') }}">ABS News <span aria-hidden="true">→</span></a>
             </div>
             <div class="final-trusted-by" aria-label="Market data and editorial sources">
                 <small>MARKET DATA SOURCES</small>
@@ -191,7 +187,7 @@
 </section>
 
 <section class="container final-headlines" aria-labelledby="headline-title">
-    <header class="final-section-heading"><h2 id="headline-title">Latest Verified Headlines</h2><a href="{{ route('news.index') }}">View All Market News <span>→</span></a></header>
+    <header class="final-section-heading"><h2 id="headline-title">Latest Verified Headlines</h2><a href="{{ route('news.index') }}">View All ABS News <span>→</span></a></header>
     <div class="final-headline-grid" data-live-news-list data-live-news-mode="home" data-live-news-limit="5">
         @forelse($news as $item)
             <a class="final-headline-card" data-live-news-item data-external="{{ ($item['is_external'] ?? false) ? '1' : '0' }}" href="{{ $item['url'] }}" @if($item['is_external'] ?? false) target="_blank" rel="noopener noreferrer" @endif>
@@ -268,36 +264,19 @@
 </section>
 
 <section class="container final-plans" id="plans" aria-labelledby="plans-title">
-    <header><h2 id="plans-title">Choose Your Pulse Access</h2><p>Securely managed and granted by the Alpha Block Solutions platform administrator.</p></header>
+    <header><h2 id="plans-title">Choose Your Pulse Package</h2><p>Choose 1, 3, 7 or 30 days of Pulse access. Transfer the package price in USDT and Admin activates access after transaction verification.</p></header>
     <div class="final-plan-grid final-plan-grid-four">
-        <article>
-            <span class="plan-kicker">PULSE TRIAL</span><span class="final-plan-badge trial">TRIAL</span>
-            <p>For new users to explore Pulse.</p>
-            <div class="final-plan-price"><strong>$0</strong><span>/ {{ $trialPlan?->access_days ?: 7 }}-Day Trial</span></div>
-            <ul><li>Market Pulse Access</li><li>Verified Headlines</li><li>Basic Watchlist (5)</li><li>Email Notifications</li></ul>
-            <a class="final-plan-button" href="{{ route('register') }}">Start Free Trial</a>
+        @forelse($pulsePlans as $plan)
+        <article class="{{ $plan->is_featured || $plan->slug === 'pulse-momentum' ? 'recommended' : '' }}">
+            <span class="plan-kicker">{{ strtoupper($plan->name) }}</span>@if($plan->badge)<span class="{{ $plan->is_featured || $plan->slug === 'pulse-momentum' ? 'final-recommended' : 'final-plan-badge trial' }}">{{ strtoupper($plan->badge) }}</span>@endif
+            <p>{{ $plan->description }}</p>
+            <div class="final-plan-price"><strong>{{ $formatPlanPrice($plan) }}</strong><span>/ {{ $plan->access_days }} {{ $plan->access_days === 1 ? 'day' : 'days' }}</span></div>
+            <ul><li>15-strategy 15M + 4H analysis</li><li>Up to {{ number_format((int)$plan->max_selected_pairs) }} package markets</li><li>No daily scan or signal quotas</li><li>Best Signal included with active package</li><li>Admin-managed strategy intelligence</li></ul>
+            @auth<a class="final-plan-button" href="{{ route('pulse.membership.checkout',$plan) }}">Pay with USDT</a>@else<a class="final-plan-button" href="{{ route('register',['service'=>'pulse']) }}">Get Started</a>@endauth
         </article>
-        <article class="recommended">
-            <span class="plan-kicker">PULSE INTELLIGENCE</span><span class="final-recommended">RECOMMENDED</span>
-            <p>For serious market participants.</p>
-            <div class="final-plan-price"><strong>{{ $formatPlanPrice($intelligencePlan) }}</strong><span>/ month</span></div>
-            <ul><li>Full Market Pulse Access</li><li>Verified Headlines</li><li>Advanced Watchlists (Unlimited)</li><li>Alerts &amp; Notifications</li><li>Market Sentiment</li><li>Priority Email Support</li></ul>
-            @auth<a class="final-plan-button" href="{{ $intelligencePlan ? route('pulse.membership.checkout', $intelligencePlan) : route('pulse.plans') }}">Get Started</a>@else<a class="final-plan-button" href="{{ route('register') }}">Get Started</a>@endauth
-        </article>
-        <article>
-            <span class="plan-kicker">PULSE PROFESSIONAL</span>
-            <p>For professionals and institutions.</p>
-            <div class="final-plan-price"><strong>{{ $formatPlanPrice($professionalPlan) }}</strong><span>/ month</span></div>
-            <ul><li>Everything in Intelligence</li><li>Research Reports</li><li>Advanced Tools &amp; Calculators</li><li>API Access</li><li>Priority Support</li><li>Custom Watchlists</li></ul>
-            @auth<a class="final-plan-button" href="{{ $professionalPlan ? route('pulse.membership.checkout', $professionalPlan) : route('pulse.plans') }}">Get Started</a>@else<a class="final-plan-button" href="{{ route('register') }}">Get Started</a>@endauth
-        </article>
-        <article class="enterprise-plan">
-            <span class="plan-kicker">PULSE ENTERPRISE</span>
-            <p>For teams and enterprises.</p>
-            <div class="final-plan-price"><strong class="custom-price">Custom Pricing</strong></div>
-            <ul><li>Everything in Professional</li><li>Dedicated Account Manager</li><li>Custom Integrations</li><li>Private Insights &amp; Reports</li><li>SLA &amp; Priority Support</li></ul>
-            <a class="final-plan-button" href="mailto:{{ config('brand.contact_email') }}?subject=Pulse%20Enterprise%20Enquiry">Contact Sales</a>
-        </article>
+        @empty
+        <article><span class="plan-kicker">PULSE ACCESS</span><p>Packages are being prepared.</p><a class="final-plan-button" href="{{ route('register',['service'=>'pulse']) }}">Create Account</a></article>
+        @endforelse
     </div>
 </section>
 
