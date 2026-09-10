@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/api_client.dart';
@@ -99,25 +100,83 @@ class _ServicesScreenState extends State<ServicesScreen> {
 }
 
 class NewsScreen extends StatefulWidget {
-  const NewsScreen({super.key});
+  const NewsScreen({super.key, this.embedded = false});
+
+  final bool embedded;
   @override
   State<NewsScreen> createState() => _NewsScreenState();
 }
 
-class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateMixin {
+class _NewsScreenState extends State<NewsScreen>
+    with SingleTickerProviderStateMixin {
   late final TabController tabs;
-  @override void initState() { super.initState(); tabs = TabController(length: 2, vsync: this); }
-  @override void dispose() { tabs.dispose(); super.dispose(); }
+
+  @override
+  void initState() {
+    super.initState();
+    tabs = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    tabs.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => AbsPage(
-        title: 'Market News',
-        subtitle: 'ABS published coverage and live headlines',
-        child: Column(children: [
-          TabBar(controller: tabs, tabs: const [Tab(text: 'ABS News'), Tab(text: 'Live News')]),
-          const SizedBox(height: 10),
-          Expanded(child: TabBarView(controller: tabs, children: const [_ContentList(kind: 'news'), _LiveNewsList()])),
-        ]),
+        title: 'ABS Intelligence',
+        subtitle: 'News, live headlines & economic calendar',
+        padding: EdgeInsets.fromLTRB(16, 8, 16, widget.embedded ? 104 : 28),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: AbsColors.panel.withValues(alpha: .88),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AbsColors.lineSoft),
+              ),
+              child: TabBar(
+                controller: tabs,
+                indicatorSize: TabBarIndicatorSize.tab,
+                dividerColor: Colors.transparent,
+                labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+                indicator: BoxDecoration(
+                  color: AbsColors.panel3,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: AbsColors.purple.withValues(alpha: .24),
+                  ),
+                ),
+                labelStyle: const TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w900,
+                ),
+                unselectedLabelStyle: const TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
+                ),
+                tabs: const [
+                  Tab(text: 'ABS NEWS'),
+                  Tab(text: 'LIVE'),
+                  Tab(text: 'CALENDAR'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: TabBarView(
+                controller: tabs,
+                children: const [
+                  _ContentList(kind: 'news'),
+                  _LiveNewsList(),
+                  EconomicCalendarBody(),
+                ],
+              ),
+            ),
+          ],
+        ),
       );
 }
 
@@ -177,50 +236,395 @@ class _ContentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (kind == 'news') return _newsCard(context);
     final summary = kind == 'research' ? item['summary'] : item['excerpt'];
     final image = JsonTools.text(item['image_url'], '');
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ContentDetailScreen(type: kind, slug: JsonTools.text(item['slug']), initial: item))),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ContentDetailScreen(
+              type: kind,
+              slug: JsonTools.text(item['slug']),
+              initial: item,
+            ),
+          ),
+        ),
         child: AbsCard(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            if (image.startsWith('http')) ...[
-              ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.network(image, height: 150, width: double.infinity, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const SizedBox.shrink())),
-              const SizedBox(height: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (image.startsWith('http')) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    image,
+                    height: 150,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              Row(
+                children: [
+                  if (JsonTools.text(item['category'], '').isNotEmpty)
+                    StatusChip(JsonTools.text(item['category']).toUpperCase()),
+                  if (JsonTools.text(item['asset_symbol'], '').isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    StatusChip(
+                      JsonTools.text(item['asset_symbol']).toUpperCase(),
+                      warning: true,
+                    ),
+                  ],
+                  if (JsonTools.boolean(item['is_featured'])) ...[
+                    const Spacer(),
+                    const StatusChip('FEATURED', warning: true),
+                  ],
+                ],
+              ),
+              if (JsonTools.text(item['category'], '').isNotEmpty ||
+                  JsonTools.boolean(item['is_featured']))
+                const SizedBox(height: 10),
+              Text(
+                JsonTools.text(item['title']),
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                JsonTools.plain(
+                  summary,
+                  'Open to read the full ABS publication.',
+                ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: AbsColors.muted),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                compactDate(item['published_at']),
+                style: const TextStyle(color: AbsColors.muted, fontSize: 10),
+              ),
             ],
-            Row(children: [
-              if (JsonTools.text(item['category'], '').isNotEmpty) StatusChip(JsonTools.text(item['category']).toUpperCase()),
-              if (JsonTools.text(item['asset_symbol'], '').isNotEmpty) ...[const SizedBox(width: 6), StatusChip(JsonTools.text(item['asset_symbol']).toUpperCase(), warning: true)],
-              if (JsonTools.boolean(item['is_featured'])) ...[const Spacer(), const StatusChip('FEATURED', warning: true)],
-            ]),
-            if (JsonTools.text(item['category'], '').isNotEmpty || JsonTools.boolean(item['is_featured'])) const SizedBox(height: 10),
-            Text(JsonTools.text(item['title']), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 6),
-            Text(JsonTools.plain(summary, 'Open to read the full ABS publication.'), maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AbsColors.muted)),
-            const SizedBox(height: 8),
-            Text(compactDate(item['published_at']), style: const TextStyle(color: AbsColors.muted, fontSize: 10)),
-          ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _newsCard(BuildContext context) {
+    final image = JsonTools.text(item['image_url'], '');
+    final category = JsonTools.text(item['category'], 'ABS');
+    final excerpt = JsonTools.plain(
+      item['excerpt'] ?? item['summary'],
+      'Open for the full ABS market update.',
+    );
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 9),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ContentDetailScreen(
+              type: kind,
+              slug: JsonTools.text(item['slug']),
+              initial: item,
+            ),
+          ),
+        ),
+        child: AbsCard(
+          padding: const EdgeInsets.all(13),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            category.toUpperCase(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AbsColors.cyanSoft,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: .75,
+                            ),
+                          ),
+                        ),
+                        if (JsonTools.boolean(item['is_featured'])) ...[
+                          const SizedBox(width: 7),
+                          const StatusChip('FEATURED', warning: true),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      JsonTools.text(item['title']),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14.5,
+                        height: 1.25,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      excerpt,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AbsColors.muted,
+                        fontSize: 10.5,
+                        height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      compactDate(item['published_at']),
+                      style: const TextStyle(
+                        color: AbsColors.muted2,
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (image.startsWith('http')) ...[
+                const SizedBox(width: 11),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    image,
+                    width: 92,
+                    height: 92,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                ),
+              ] else ...[
+                const SizedBox(width: 10),
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: AbsColors.cyan.withValues(alpha: .08),
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: const Icon(
+                    Icons.article_outlined,
+                    color: AbsColors.cyanSoft,
+                    size: 21,
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _LiveNewsList extends StatefulWidget { const _LiveNewsList(); @override State<_LiveNewsList> createState() => _LiveNewsListState(); }
+class _LiveNewsList extends StatefulWidget {
+  const _LiveNewsList();
+  @override
+  State<_LiveNewsList> createState() => _LiveNewsListState();
+}
+
 class _LiveNewsListState extends State<_LiveNewsList> {
-  bool loading = true; String? error; List<Map<String, dynamic>> items = [];
-  @override void didChangeDependencies() { super.didChangeDependencies(); if (loading && items.isEmpty) _load(); }
-  Future<void> _load() async { setState(() { loading = true; error = null; }); try { items = JsonTools.mapList(JsonTools.at(await SessionScope.of(context).api.get('/news/live', query: {'limit': 40}), 'data', <dynamic>[])); } on ApiException catch(e) { error = e.message; } finally { if (mounted) setState(() => loading = false); } }
-  @override Widget build(BuildContext context) => loading ? const LoadingBlock() : error != null ? ErrorBlock(message: error!, onRetry: _load) : RefreshIndicator(onRefresh: _load, child: ListView(physics: const AlwaysScrollableScrollPhysics(), children: [
-    ...items.map((item) => Padding(padding: const EdgeInsets.only(bottom: 9), child: AbsCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [Expanded(child: Text(JsonTools.text(item['source'] ?? item['source_name'], 'Market source'), style: const TextStyle(color: AbsColors.cyan, fontSize: 11, fontWeight: FontWeight.w800))), Text(compactDate(item['published_at'] ?? item['publishedAt'] ?? item['timestamp']), style: const TextStyle(color: AbsColors.muted, fontSize: 10))]),
-      const SizedBox(height: 7), Text(JsonTools.text(item['title'] ?? item['headline']), style: const TextStyle(fontWeight: FontWeight.w800)),
-      if (JsonTools.text(item['url'] ?? item['source_url'], '').startsWith('http')) ...[const SizedBox(height: 8), TextButton.icon(onPressed: () => launchUrl(Uri.parse(JsonTools.text(item['url'] ?? item['source_url'])), mode: LaunchMode.externalApplication), icon: const Icon(Icons.open_in_new, size: 16), label: const Text('Open source'))],
-    ])))),
-    if (items.isEmpty) const EmptyState(title: 'No live headlines', message: 'Live news is temporarily unavailable.', icon: Icons.newspaper_outlined),
-  ]));
+  bool loading = true;
+  String? error;
+  List<Map<String, dynamic>> items = [];
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (loading && items.isEmpty) _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      loading = true;
+      error = null;
+    });
+    try {
+      items = JsonTools.mapList(
+        JsonTools.at(
+          await SessionScope.of(context).api.get(
+            '/news/live',
+            query: {'limit': 40},
+          ),
+          'data',
+          <dynamic>[],
+        ),
+      );
+    } on ApiException catch (e) {
+      error = e.message;
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) return const LoadingBlock(label: 'Loading live headlines...');
+    if (error != null) return ErrorBlock(message: error!, onRetry: _load);
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AbsColors.green.withValues(alpha: .055),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AbsColors.green.withValues(alpha: .16)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.sensors_rounded, size: 16, color: AbsColors.green),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'LIVE MARKET WIRE · external headlines supplied through ABS',
+                    style: TextStyle(
+                      color: AbsColors.muted,
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: .15,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ...items.map((item) {
+            final source = JsonTools.text(
+              item['source'] ?? item['source_name'],
+              'Market source',
+            );
+            final url = JsonTools.text(
+              item['url'] ?? item['source_url'],
+              '',
+            );
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: InkWell(
+                onTap: url.startsWith('http')
+                    ? () => launchUrl(
+                          Uri.parse(url),
+                          mode: LaunchMode.externalApplication,
+                        )
+                    : null,
+                borderRadius: BorderRadius.circular(18),
+                child: AbsCard(
+                  padding: const EdgeInsets.fromLTRB(13, 12, 11, 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: AbsColors.cyan.withValues(alpha: .08),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: const Icon(
+                          Icons.bolt_rounded,
+                          color: AbsColors.cyanSoft,
+                          size: 17,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    source.toUpperCase(),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: AbsColors.cyanSoft,
+                                      fontSize: 8.75,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: .6,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  compactDate(
+                                    item['published_at'] ??
+                                        item['publishedAt'] ??
+                                        item['timestamp'],
+                                  ),
+                                  style: const TextStyle(
+                                    color: AbsColors.muted2,
+                                    fontSize: 9,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              JsonTools.text(item['title'] ?? item['headline']),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 12.5,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (url.startsWith('http')) ...[
+                        const SizedBox(width: 6),
+                        const Padding(
+                          padding: EdgeInsets.only(top: 11),
+                          child: Icon(
+                            Icons.open_in_new_rounded,
+                            size: 15,
+                            color: AbsColors.muted2,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+          if (items.isEmpty)
+            const EmptyState(
+              title: 'No live headlines',
+              message: 'Live news is temporarily unavailable.',
+              icon: Icons.newspaper_outlined,
+            ),
+          const SizedBox(height: 26),
+        ],
+      ),
+    );
+  }
 }
 
 class ContentDetailScreen extends StatefulWidget {
@@ -255,16 +659,869 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   ]));
 }
 
-class EconomicCalendarScreen extends StatefulWidget { const EconomicCalendarScreen({super.key}); @override State<EconomicCalendarScreen> createState() => _EconomicCalendarScreenState(); }
-class _EconomicCalendarScreenState extends State<EconomicCalendarScreen> {
-  bool loading = true; String? error; List<Map<String,dynamic>> events = []; String impact = 'all';
-  @override void didChangeDependencies() { super.didChangeDependencies(); if (loading && events.isEmpty) _load(); }
-  Future<void> _load() async { setState(() { loading = true; error = null; }); try { final now=DateTime.now(); final to=now.add(const Duration(days:30)); events=JsonTools.mapList(JsonTools.at(await SessionScope.of(context).api.get('/economic-calendar', query: {'from': now.toIso8601String().substring(0,10), 'to': to.toIso8601String().substring(0,10), if (impact!='all') 'impact': impact}), 'data', <dynamic>[])); } on ApiException catch(e){error=e.message;} finally {if(mounted)setState(()=>loading=false);} }
-  @override Widget build(BuildContext context) => AbsPage(title: 'Economic Calendar', subtitle: 'Upcoming macro events', actions:[IconButton(onPressed:_load,icon:const Icon(Icons.refresh))], child: loading?const LoadingBlock():error!=null?ErrorBlock(message:error!,onRetry:_load):ListView(children:[
-    DropdownButtonFormField<String>(value:impact, decoration:const InputDecoration(labelText:'Impact filter'), items:const [DropdownMenuItem(value:'all',child:Text('All impact')),DropdownMenuItem(value:'high',child:Text('High')),DropdownMenuItem(value:'medium',child:Text('Medium')),DropdownMenuItem(value:'low',child:Text('Low'))], onChanged:(v){setState(()=>impact=v??'all');_load();}), const SizedBox(height:12),
-    ...events.map((e){final i=JsonTools.text(e['impact']).toLowerCase(); return Padding(padding:const EdgeInsets.only(bottom:8),child:AbsCard(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Row(children:[StatusChip(JsonTools.text(e['currency'], JsonTools.text(e['country'])).toUpperCase(),warning:i=='high'),const SizedBox(width:7),StatusChip(i.toUpperCase(),good:i=='low',warning:i=='high'),const Spacer(),Text(compactDate(e['event_at']),style:const TextStyle(color:AbsColors.muted,fontSize:10))]),const SizedBox(height:9),Text(JsonTools.text(e['title']),style:const TextStyle(fontWeight:FontWeight.w900)),const SizedBox(height:8),Row(children:[Expanded(child:KeyValueRow('Previous',JsonTools.text(e['previous_value']))),const SizedBox(width:8),Expanded(child:KeyValueRow('Forecast',JsonTools.text(e['forecast_value'])))]),if(e['actual_value']!=null)KeyValueRow('Actual',JsonTools.text(e['actual_value']),valueColor:AbsColors.cyan)])));}),
-    if(events.isEmpty)const EmptyState(title:'No upcoming events',message:'No events match the selected filter.',icon:Icons.event_busy_outlined),
-  ]));
+class EconomicCalendarScreen extends StatelessWidget {
+  const EconomicCalendarScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) => const AbsPage(
+        title: 'Economic Calendar',
+        subtitle: 'Past, current & upcoming macro events',
+        child: EconomicCalendarBody(),
+      );
+}
+
+class EconomicCalendarBody extends StatefulWidget {
+  const EconomicCalendarBody({super.key});
+
+  @override
+  State<EconomicCalendarBody> createState() => _EconomicCalendarBodyState();
+}
+
+class _EconomicCalendarBodyState extends State<EconomicCalendarBody> {
+  bool loading = true;
+  String? error;
+  List<Map<String, dynamic>> events = [];
+  String impact = 'all';
+  String currency = 'all';
+  String period = 'today';
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (loading && events.isEmpty) _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      loading = true;
+      error = null;
+    });
+    try {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final api = SessionScope.of(context).api;
+      final responses = await Future.wait([
+        api.get(
+          '/economic-calendar',
+          query: {
+            'from': _apiDate(today.subtract(const Duration(days: 30))),
+            'to': _apiDate(today.subtract(const Duration(days: 1))),
+          },
+        ),
+        api.get(
+          '/economic-calendar',
+          query: {
+            'from': _apiDate(today),
+            'to': _apiDate(today.add(const Duration(days: 30))),
+          },
+        ),
+      ]);
+      final combined = <Map<String, dynamic>>[
+        ...JsonTools.mapList(
+          JsonTools.at(responses[0], 'data', <dynamic>[]),
+        ),
+        ...JsonTools.mapList(
+          JsonTools.at(responses[1], 'data', <dynamic>[]),
+        ),
+      ];
+      final seen = <String>{};
+      events = combined.where((event) {
+        final id = JsonTools.text(event['id'], '');
+        final at = _eventAt(event)?.toIso8601String() ?? '';
+        final title = JsonTools.text(
+          event['title'] ?? event['event'] ?? event['name'],
+          '',
+        );
+        final key = id.isNotEmpty ? 'id:$id' : '$at|${_currencyOf(event)}|$title';
+        return seen.add(key);
+      }).toList();
+    } on ApiException catch (e) {
+      error = e.message;
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const LoadingBlock(label: 'Loading economic calendar...');
+    }
+    if (error != null) return ErrorBlock(message: error!, onRetry: _load);
+
+    final currencies = events
+        .map(_currencyOf)
+        .where((value) => value.isNotEmpty && value != '—')
+        .toSet()
+        .toList()
+      ..sort();
+    if (currency != 'all' && !currencies.contains(currency)) {
+      currency = 'all';
+    }
+
+    final filtered = events.where(_matchesFilters).toList()
+      ..sort((a, b) {
+        final aa = _eventAt(a);
+        final bb = _eventAt(b);
+        if (aa == null && bb == null) return 0;
+        if (aa == null) return 1;
+        if (bb == null) return -1;
+        return aa.compareTo(bb);
+      });
+
+    final now = DateTime.now();
+    final todayCount = events.where((e) => _isToday(_eventAt(e), now)).length;
+    final highToday = events
+        .where((e) => _isToday(_eventAt(e), now) && _impactOf(e) == 'high')
+        .length;
+    final next = events
+        .where((e) {
+          final at = _eventAt(e);
+          return at != null && at.isAfter(now);
+        })
+        .toList()
+      ..sort((a, b) => _eventAt(a)!.compareTo(_eventAt(b)!));
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          _CalendarPulseHeader(
+            todayCount: todayCount,
+            highToday: highToday,
+            nextEvent: next.isEmpty ? null : next.first,
+          ),
+          const SizedBox(height: 11),
+          _CalendarPeriodSwitch(
+            value: period,
+            onChanged: (value) => setState(() => period = value),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: impact,
+                  isDense: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Impact',
+                    prefixIcon: Icon(Icons.tune_rounded, size: 18),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 11,
+                    ),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'all', child: Text('All impact')),
+                    DropdownMenuItem(value: 'high', child: Text('High')),
+                    DropdownMenuItem(value: 'medium', child: Text('Medium')),
+                    DropdownMenuItem(value: 'low', child: Text('Low')),
+                  ],
+                  onChanged: (value) =>
+                      setState(() => impact = value ?? 'all'),
+                ),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: currency,
+                  isDense: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Currency',
+                    prefixIcon: Icon(Icons.public_rounded, size: 18),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 11,
+                    ),
+                  ),
+                  items: [
+                    const DropdownMenuItem(
+                      value: 'all',
+                      child: Text('All currencies'),
+                    ),
+                    ...currencies.map(
+                      (value) => DropdownMenuItem(
+                        value: value,
+                        child: Text(value),
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) =>
+                      setState(() => currency = value ?? 'all'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const _CalendarColumnHeader(),
+          const SizedBox(height: 6),
+          if (filtered.isEmpty)
+            EmptyState(
+              title: period == 'yesterday'
+                  ? 'No events yesterday'
+                  : period == 'tomorrow'
+                      ? 'No events tomorrow'
+                      : period == 'week'
+                          ? 'No events this week'
+                          : 'No events today',
+              message: 'No events match the selected impact and currency filters.',
+              icon: Icons.event_busy_outlined,
+            )
+          else
+            ..._calendarRows(filtered),
+          const SizedBox(height: 30),
+        ],
+      ),
+    );
+  }
+
+  bool _matchesFilters(Map<String, dynamic> event) {
+    if (impact != 'all' && _impactOf(event) != impact) return false;
+    if (currency != 'all' && _currencyOf(event) != currency) return false;
+    final at = _eventAt(event);
+    if (at == null) return false;
+    final now = DateTime.now();
+    final day = DateTime(at.year, at.month, at.day);
+    final today = DateTime(now.year, now.month, now.day);
+    if (period == 'yesterday') {
+      return day == today.subtract(const Duration(days: 1));
+    }
+    if (period == 'tomorrow') {
+      return day == today.add(const Duration(days: 1));
+    }
+    if (period == 'week') {
+      final monday = today.subtract(Duration(days: today.weekday - 1));
+      final nextMonday = monday.add(const Duration(days: 7));
+      return !day.isBefore(monday) && day.isBefore(nextMonday);
+    }
+    return day == today;
+  }
+
+  List<Widget> _calendarRows(List<Map<String, dynamic>> rows) {
+    final widgets = <Widget>[];
+    String? previousDay;
+    for (final event in rows) {
+      final at = _eventAt(event);
+      final dayLabel = at == null
+          ? 'DATE NOT AVAILABLE'
+          : DateFormat('EEEE · d MMMM').format(at).toUpperCase();
+      if (dayLabel != previousDay) {
+        if (widgets.isNotEmpty) widgets.add(const SizedBox(height: 5));
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(2, 2, 2, 8),
+            child: Row(
+              children: [
+                Text(
+                  dayLabel,
+                  style: const TextStyle(
+                    color: AbsColors.muted2,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: .8,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Divider(height: 1, color: AbsColors.lineSoft),
+                ),
+              ],
+            ),
+          ),
+        );
+        previousDay = dayLabel;
+      }
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _EconomicEventCard(event: event),
+        ),
+      );
+    }
+    return widgets;
+  }
+
+  static String _apiDate(DateTime value) =>
+      '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+}
+
+class _CalendarPulseHeader extends StatelessWidget {
+  const _CalendarPulseHeader({
+    required this.todayCount,
+    required this.highToday,
+    required this.nextEvent,
+  });
+
+  final int todayCount;
+  final int highToday;
+  final Map<String, dynamic>? nextEvent;
+
+  @override
+  Widget build(BuildContext context) {
+    final nextAt = nextEvent == null ? null : _eventAt(nextEvent!);
+    final nextCurrency = nextEvent == null ? '—' : _currencyOf(nextEvent!);
+    final nextTitle = nextEvent == null
+        ? 'No upcoming event in range'
+        : JsonTools.text(
+            nextEvent!['title'] ?? nextEvent!['event'] ?? nextEvent!['name'],
+            'Macro event',
+          );
+    return AbsCard(
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF101A25), Color(0xFF0C121C), Color(0xFF090D15)],
+      ),
+      padding: const EdgeInsets.fromLTRB(15, 14, 15, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.language_rounded, color: AbsColors.cyanSoft, size: 18),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'TODAY’S MACRO PULSE',
+                  style: TextStyle(
+                    color: AbsColors.cyanSoft,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.05,
+                  ),
+                ),
+              ),
+              StatusChip('30D PAST · 30D AHEAD'),
+            ],
+          ),
+          const SizedBox(height: 13),
+          Row(
+            children: [
+              Expanded(
+                child: _CalendarMiniMetric(
+                  label: 'EVENTS TODAY',
+                  value: '$todayCount',
+                  color: AbsColors.text,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _CalendarMiniMetric(
+                  label: 'HIGH IMPACT',
+                  value: '$highToday',
+                  color: highToday > 0 ? AbsColors.gold : AbsColors.muted,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
+            decoration: BoxDecoration(
+              color: AbsColors.panel2.withValues(alpha: .68),
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(color: AbsColors.lineSoft),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 33,
+                  height: 33,
+                  decoration: BoxDecoration(
+                    color: AbsColors.purple.withValues(alpha: .10),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.schedule_rounded,
+                    color: AbsColors.purpleSoft,
+                    size: 17,
+                  ),
+                ),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        nextAt == null
+                            ? 'NEXT EVENT'
+                            : 'NEXT · $nextCurrency · ${DateFormat('HH:mm').format(nextAt)}',
+                        style: const TextStyle(
+                          color: AbsColors.muted2,
+                          fontSize: 8.75,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: .65,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        nextTitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11.25,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CalendarMiniMetric extends StatelessWidget {
+  const _CalendarMiniMetric({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
+        decoration: BoxDecoration(
+          color: AbsColors.panel2.withValues(alpha: .60),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AbsColors.lineSoft),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                color: AbsColors.muted2,
+                fontSize: 8.25,
+                fontWeight: FontWeight.w900,
+                letterSpacing: .7,
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              value,
+              style: TextStyle(
+                color: color,
+                fontSize: 19,
+                height: 1,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+class _CalendarPeriodSwitch extends StatelessWidget {
+  const _CalendarPeriodSwitch({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: AbsColors.panel,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AbsColors.lineSoft),
+          ),
+          child: Row(
+            children: [
+              _PeriodButton(
+                label: 'Yesterday',
+                selected: value == 'yesterday',
+                onTap: () => onChanged('yesterday'),
+              ),
+              _PeriodButton(
+                label: 'Today',
+                selected: value == 'today',
+                onTap: () => onChanged('today'),
+              ),
+              _PeriodButton(
+                label: 'Tomorrow',
+                selected: value == 'tomorrow',
+                onTap: () => onChanged('tomorrow'),
+              ),
+              _PeriodButton(
+                label: 'This Week',
+                selected: value == 'week',
+                onTap: () => onChanged('week'),
+              ),
+            ],
+          ),
+        ),
+      );
+}
+
+class _PeriodButton extends StatelessWidget {
+  const _PeriodButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+            decoration: BoxDecoration(
+              color: selected ? AbsColors.panel3 : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+              border: selected
+                  ? Border.all(color: AbsColors.purple.withValues(alpha: .24))
+                  : null,
+            ),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: selected ? AbsColors.text : AbsColors.muted,
+                fontSize: 10.5,
+                fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
+              ),
+            ),
+          ),
+        );
+}
+
+class _CalendarColumnHeader extends StatelessWidget {
+  const _CalendarColumnHeader();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: AbsColors.panel2.withValues(alpha: .72),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AbsColors.lineSoft),
+        ),
+        child: const Row(
+          children: [
+            SizedBox(width: 46, child: Text('TIME', style: _calendarHeaderStyle)),
+            SizedBox(width: 46, child: Text('CUR.', style: _calendarHeaderStyle)),
+            SizedBox(width: 48, child: Text('IMP.', style: _calendarHeaderStyle)),
+            Expanded(child: Text('EVENT', style: _calendarHeaderStyle)),
+          ],
+        ),
+      );
+
+  static const _calendarHeaderStyle = TextStyle(
+    color: AbsColors.muted2,
+    fontSize: 8,
+    fontWeight: FontWeight.w900,
+    letterSpacing: .7,
+  );
+}
+
+class _EconomicEventCard extends StatelessWidget {
+  const _EconomicEventCard({required this.event});
+
+  final Map<String, dynamic> event;
+
+  @override
+  Widget build(BuildContext context) {
+    final eventImpact = _impactOf(event);
+    final impactColor = eventImpact == 'high'
+        ? AbsColors.gold
+        : eventImpact == 'medium'
+            ? AbsColors.cyan
+            : AbsColors.muted;
+    final at = _eventAt(event);
+    final title = JsonTools.text(
+      event['title'] ?? event['event'] ?? event['name'] ?? event['event_name'],
+      'Economic event',
+    );
+    final actual = _eventValue(event, ['actual_value', 'actual', 'actualValue']);
+    final forecast = _eventValue(event, ['forecast_value', 'forecast', 'consensus', 'forecastValue']);
+    final previous = _eventValue(event, ['previous_value', 'previous', 'prev', 'previousValue']);
+    final surprise = _surpriseLabel(actual, forecast);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 11, 10, 11),
+      decoration: BoxDecoration(
+        color: AbsColors.panel.withValues(alpha: .88),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AbsColors.lineSoft),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 46,
+            child: Text(
+              at == null ? '—' : DateFormat('HH:mm').format(at),
+              style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w900),
+            ),
+          ),
+          SizedBox(
+            width: 46,
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AbsColors.panel2,
+                  borderRadius: BorderRadius.circular(7),
+                  border: Border.all(color: AbsColors.lineSoft),
+                ),
+                child: Text(
+                  _currencyOf(event),
+                  style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.w900),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 48,
+            child: _ImpactBars(level: eventImpact, color: impactColor),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontSize: 11.5, height: 1.25, fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 7),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 4,
+                  children: [
+                    _InlineMacroValue(label: 'Actual', value: actual, emphasize: actual != '—'),
+                    _InlineMacroValue(label: 'Forecast', value: forecast),
+                    _InlineMacroValue(label: 'Previous', value: previous),
+                  ],
+                ),
+                if (surprise != null) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    surprise,
+                    style: const TextStyle(color: AbsColors.goldSoft, fontSize: 8.5, fontWeight: FontWeight.w800),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ImpactBars extends StatelessWidget {
+  const _ImpactBars({required this.level, required this.color});
+  final String level;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = level == 'high' ? 3 : level == 'medium' ? 2 : 1;
+    return Row(
+      children: List.generate(3, (index) {
+        final on = index < active;
+        return Container(
+          width: 5,
+          height: 10 + (index * 4),
+          margin: const EdgeInsets.only(right: 3),
+          decoration: BoxDecoration(
+            color: on ? color : AbsColors.lineSoft,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _InlineMacroValue extends StatelessWidget {
+  const _InlineMacroValue({required this.label, required this.value, this.emphasize = false});
+  final String label;
+  final String value;
+  final bool emphasize;
+
+  @override
+  Widget build(BuildContext context) => RichText(
+        text: TextSpan(
+          style: const TextStyle(fontSize: 8.8, color: AbsColors.muted2, fontWeight: FontWeight.w700),
+          children: [
+            TextSpan(text: '$label '),
+            TextSpan(
+              text: value,
+              style: TextStyle(
+                color: emphasize ? AbsColors.cyanSoft : AbsColors.text,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+class _EventMetric extends StatelessWidget {
+  const _EventMetric({
+    required this.label,
+    required this.value,
+    this.emphasize = false,
+  });
+
+  final String label;
+  final String value;
+  final bool emphasize;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+        decoration: BoxDecoration(
+          color: AbsColors.panel2.withValues(alpha: .58),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: emphasize
+                ? AbsColors.cyan.withValues(alpha: .20)
+                : AbsColors.lineSoft,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                color: AbsColors.muted2,
+                fontSize: 7.75,
+                fontWeight: FontWeight.w900,
+                letterSpacing: .55,
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: emphasize ? AbsColors.cyanSoft : AbsColors.text,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+DateTime? _eventAt(Map<String, dynamic> event) {
+  final raw = event['event_at'] ??
+      event['scheduled_at'] ??
+      event['release_at'] ??
+      event['scheduled_for'] ??
+      event['datetime'] ??
+      event['date_time'] ??
+      event['dateTime'] ??
+      event['event_datetime'] ??
+      event['event_date_time'] ??
+      event['timestamp'];
+  if (raw is num) {
+    final millis = raw > 100000000000 ? raw.toInt() : raw.toInt() * 1000;
+    return DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true).toLocal();
+  }
+  if (raw != null && raw.toString().trim().isNotEmpty) {
+    final parsed = DateTime.tryParse(raw.toString().trim());
+    if (parsed != null) return parsed.toLocal();
+  }
+  final date = JsonTools.text(event['date'] ?? event['event_date'] ?? event['release_date'], '');
+  final time = JsonTools.text(event['time'] ?? event['event_time'] ?? event['release_time'], '');
+  if (date.isNotEmpty) {
+    final combined = time.isEmpty ? date : '$date $time';
+    final parsed = DateTime.tryParse(combined);
+    if (parsed != null) return parsed.toLocal();
+  }
+  return null;
+}
+
+String _impactOf(Map<String, dynamic> event) {
+  final raw = JsonTools.text(
+    event['impact'] ?? event['importance'] ?? event['priority'],
+    'low',
+  ).toLowerCase();
+  if (raw.contains('high') || raw == '3') return 'high';
+  if (raw.contains('med') || raw.contains('moderate') || raw == '2') {
+    return 'medium';
+  }
+  return 'low';
+}
+
+String _currencyOf(Map<String, dynamic> event) {
+  final raw = JsonTools.text(
+    event['currency'] ?? event['currency_code'] ?? event['country_code'] ?? event['country'] ?? event['region'],
+    '—',
+  ).toUpperCase();
+  const aliases = {
+    'US': 'USD', 'USA': 'USD',
+    'GB': 'GBP', 'UK': 'GBP',
+    'EU': 'EUR', 'EMU': 'EUR',
+    'JP': 'JPY', 'JAPAN': 'JPY',
+    'CA': 'CAD', 'CANADA': 'CAD',
+    'AU': 'AUD', 'AUSTRALIA': 'AUD',
+    'NZ': 'NZD', 'NEW ZEALAND': 'NZD',
+    'CH': 'CHF', 'SWITZERLAND': 'CHF',
+  };
+  return aliases[raw] ?? raw;
+}
+
+String _eventValue(Map<String, dynamic> event, List<String> keys) {
+  for (final key in keys) {
+    if (event.containsKey(key) && event[key] != null) {
+      final value = JsonTools.text(event[key], '—');
+      if (value.isNotEmpty) return value;
+    }
+  }
+  return '—';
+}
+
+bool _isToday(DateTime? at, DateTime now) => at != null &&
+    at.year == now.year &&
+    at.month == now.month &&
+    at.day == now.day;
+
+String? _surpriseLabel(String actual, String forecast) {
+  final a = _numericMacroValue(actual);
+  final f = _numericMacroValue(forecast);
+  if (a == null || f == null) return null;
+  if ((a - f).abs() < 0.0000001) return 'Actual is in line with forecast';
+  return a > f ? 'Actual is above forecast' : 'Actual is below forecast';
+}
+
+double? _numericMacroValue(String value) {
+  if (value == '—') return null;
+  var cleaned = value
+      .replaceAll(',', '')
+      .replaceAll('%', '')
+      .replaceAll(RegExp(r'[^0-9.\-]'), '');
+  if (cleaned.isEmpty || cleaned == '-' || cleaned == '.') return null;
+  return double.tryParse(cleaned);
 }
 
 class GlobalSearchScreen extends StatefulWidget { const GlobalSearchScreen({super.key}); @override State<GlobalSearchScreen> createState()=>_GlobalSearchScreenState(); }

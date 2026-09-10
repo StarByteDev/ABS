@@ -1,7 +1,9 @@
 # ABS Mobile — Store Release Checklist
 
 ## Backend
-- Deploy ABS V14.9.2 or later.
+- Confirm the deployed ABS backend reports build V15.1.6 from `/api/v1/bootstrap`.
+- Replace Google sample AdMob App IDs and rewarded-unit IDs with the ABS production identifiers.
+- Restore the authorized release keystore and `android/key.properties` only on the release machine; they are intentionally excluded from shared source.
 - Confirm `/api/v1/bootstrap` is reachable over HTTPS.
 - Confirm Admin -> Market Data & Cron Health is healthy and central price age is within target.
 - Confirm mobile maintenance/minimum/recommended version settings are correct.

@@ -4,7 +4,7 @@ cd /d "%~dp0"
 
 echo ===============================================================
 echo   ABS Pulse - Android Emulator Runner
-echo   V1.2.6 Hard-Fixed Android Host Build
+echo   V1.3.2 - Rewarded Access Motion & Free Signal Recovery
 echo ===============================================================
 echo.
 
@@ -28,7 +28,7 @@ flutter --version || exit /b 1
 echo.
 
 if not exist android\app\build.gradle.kts (
-  echo ERROR: Included hard-fixed Android host is missing. Re-extract the V1.2.6 ZIP.
+  echo ERROR: Included Android host is missing. Re-extract the V1.3.2 ZIP.
   exit /b 1
 )
 if not exist android\gradlew.bat (

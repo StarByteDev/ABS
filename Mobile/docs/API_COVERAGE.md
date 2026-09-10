@@ -1,4 +1,4 @@
-# ABS Flutter Mobile — V14.9.2 API Coverage
+# ABS Flutter Mobile V1.3.2 — V15.1.6 API Coverage
 
 Base URL: `/api/v1`
 
@@ -7,6 +7,7 @@ Base URL: `/api/v1`
 | Area | API |
 |---|---|
 | Bootstrap | `GET /bootstrap` |
+| Rewarded Free Signal | `GET /pulse/free-signal/status`, `POST /pulse/free-signal/session`, `POST /pulse/free-signal/claim` |
 | Registration | `POST /auth/register` |
 | Login | `POST /auth/login` |
 | Activation resend | `POST /auth/activation/resend` |
@@ -57,7 +58,7 @@ Password-reset links are sent by the backend email workflow and can complete on 
 | Dashboard | `GET /pulse/dashboard` |
 | Usage | `GET /pulse/usage` |
 | Pairs | `GET /pulse/pairs` |
-| Strategies | `GET /pulse/strategies`, `GET /pulse/strategies/overview` |
+| Strategy intelligence | `GET /pulse/reports/strategies`, `GET /pulse/reports/learning` |
 | Readiness | `GET /pulse/execution/readiness` |
 | Ticket | `GET /pulse/execution/ticket` |
 | Positions | `GET /pulse/positions` |
@@ -65,6 +66,7 @@ Password-reset links are sent by the backend email workflow and can complete on 
 | Settings | `GET/PUT /pulse/settings` |
 | Scanner | `GET /pulse/scanner/overview`, `POST /pulse/scanner/run` |
 | Signals | `GET /pulse/signals/overview`, `GET /pulse/signals/{id}` |
+| Share / explain | `POST /pulse/signals/{id}/share`, `POST /pulse/signals/{id}/explain` |
 | Validation | `GET /pulse/signals/{id}/validation` |
 | Dismiss | `PATCH /pulse/signals/{id}/dismiss` |
 | Execute | `POST /pulse/signals/{id}/execute` |
@@ -72,7 +74,7 @@ Password-reset links are sent by the backend email workflow and can complete on 
 | Close/sync | `POST /pulse/trades/{id}/close`, `POST /pulse/trades/sync` |
 | Emergency stop | `POST /pulse/emergency-stop` |
 | Orders | `GET /pulse/orders` |
-| Reports | `GET /pulse/reports`, `GET /pulse/reports/learning` |
+| Reports | `GET /pulse/reports`, `GET /pulse/reports/signals`, `GET /pulse/reports/strategies`, `GET /pulse/reports/simulation`, `GET /pulse/reports/learning` |
 | Market health | `GET /pulse/market-data/health` |
 | Central prices | `GET /pulse/market-data/prices` |
 | Binance | `GET/POST /pulse/binance/connections` + test/activate/delete |

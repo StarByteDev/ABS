@@ -6,13 +6,10 @@ import 'package:abs_pulse/screens/splash_screen.dart';
 void main() {
   testWidgets('ABS branded splash renders', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(
-        theme: buildAbsTheme(),
-        home: const SplashScreen(),
-      ),
+      MaterialApp(theme: buildAbsTheme(), home: const SplashScreen()),
     );
 
-    expect(find.text('ALPHA BLOCK SOLUTIONS'), findsOneWidget);
-    expect(find.text('Pulse Trading Intelligence'), findsOneWidget);
+    expect(find.text('ABS PULSE'), findsOneWidget);
+    expect(find.text('Professional market intelligence'), findsOneWidget);
   });
 }

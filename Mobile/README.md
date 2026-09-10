@@ -1,8 +1,11 @@
-# ABS Pulse — ABS Flutter Mobile V1.2.7
+# ABS Pulse — ABS Flutter Mobile V1.3.5
 
-**Release:** ABS Flutter Mobile V1.2.7+110 — Real Concept A — Public Market Pulse + Member Trading Workspace  
-**Backend:** ABS V14.9.2 or later  
-**Platforms:** Android + iOS  
+**Release:** ABS Flutter Mobile V1.3.5+135 — Premium Free Signal & ABS Intelligence for V15.1.6
+
+**Backend:** ABS V15.1.6
+
+**Platforms:** Android + iOS
+
 **Type:** Native Flutter client — not a WebView
 
 ## Premium experience
@@ -307,7 +310,7 @@ Only after this sequence is verified should LIVE trading be enabled for a user.
 
 ## Validation note
 
-This package was assembled and statically validated in an environment without the Flutter SDK / Android toolchain. Therefore the included validation report only claims checks that were actually performed here.
+This package was parsed and formatted with Dart 3.13.3 and passed its complete offline source validation. Package-network restrictions prevented `flutter pub get`, so the included validation report only claims checks that were actually completed here.
 
 On your Flutter machine you should still run:
 
@@ -327,7 +330,7 @@ Then test the UI and full backend workflow in your emulator before producing a s
 - `CHANGELOG.md` — release history
 - `BUILD_VERSION.txt` — release identity
 - `VALIDATION_REPORT.md` — performed checks and limitations
-- `RELEASE_MANIFEST_SHA256.txt` — per-file integrity manifest
+- `LOCAL_TEST_GUIDE.md` — local emulator setup and feature checklist
 - `docs/ARCHITECTURE.md` — client/backend architecture
 - `docs/API_COVERAGE.md` — API coverage
 - `docs/STORE_RELEASE_CHECKLIST.md` — production publishing checklist
@@ -337,7 +340,11 @@ Then test the UI and full backend workflow in your emulator before producing a s
 
 ---
 
-**ABS Flutter Mobile V1.2.7 is the premium adaptive trader UX release for ABS V14.9.2+.**
+**ABS Flutter Mobile V1.3.5 is the premium Free Signal and ABS Intelligence UX release for ABS V15.1.6.**
+
+## V1.3.5 premium Free Signal & ABS Intelligence
+
+This release connects to the deployed ABS V15.1.6 API and adds rewarded Free Signal, qualified-signal/Entry-Watch disclosure, native social sharing, optional AI explanations, direct USDT plan requests, detailed signal validation, strategy profitability, learned reliability and research-only what-if simulation. Google sample ad identifiers are enabled for local testing only; replace them with the ABS AdMob application and rewarded-unit IDs before publishing.
 
 
 ## V1.2.2 signal-discovery refinement
@@ -350,7 +357,7 @@ The app opens directly to Public Market Pulse with market cap, volume, BTC domin
 The main tabs are Pulse, Markets, Signals, Portfolio and More. The Pulse dashboard continues to show market context in addition to the member's personal trading information, so users do not lose the public intelligence layer after authentication.
 
 ### Important test rule
-Extract V1.2.2 to a new empty folder and run `RUN_ANDROID.bat`. Do not extract over an older ABS Mobile folder because generated Android and Gradle state can be cached.
+Extract V1.3.5 to a new empty folder and run `RUN_ANDROID.bat`. Do not extract over an older ABS Mobile folder because generated Android and Gradle state can be cached.
 
 
 ## V1.2.2 — how users find signals
@@ -435,3 +442,8 @@ The Android launch background resources were corrected to use a valid shape draw
 `#06080D is incompatible with attribute drawable`
 
 The fix is already applied to both `drawable/launch_background.xml` and `drawable-v21/launch_background.xml`.
+
+## V1.3.5 additions
+- Calendar table-style UI for mobile with Yesterday / Today / Tomorrow / This Week navigation.
+- Wider economic-event payload compatibility.
+- Retains Free Signal member fallback from V1.3.3.

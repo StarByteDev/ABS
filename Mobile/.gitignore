@@ -6,6 +6,8 @@
 *.iml
 android/.gradle/
 android/local.properties
+android/key.properties
+android/app/*.jks
 ios/Pods/
 ios/.symlinks/
 ios/Flutter/ephemeral/

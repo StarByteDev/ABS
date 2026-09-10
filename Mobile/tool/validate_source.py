@@ -83,6 +83,13 @@ for file in dart_files:
     text = file.read_text(encoding='utf-8')
     all_text += '\n' + text
     check(balanced_dart(text), f'Balanced Dart delimiters: {file.relative_to(ROOT)}')
+    duplicate_named_arguments = re.findall(
+        r'^(\s*[a-zA-Z_]\w*:[^\n]+)\n\1$', text, re.M
+    )
+    check(
+        not duplicate_named_arguments,
+        f'No adjacent duplicate named arguments: {file.relative_to(ROOT)}',
+    )
     classes.update(re.findall(r'\bclass\s+([A-Z]\w*)', text))
     used_screens.update(re.findall(r'\b([A-Z]\w*Screen)\b', text))
 
@@ -119,6 +126,7 @@ critical_files = [
     'lib/screens/profile_screen.dart',
     'lib/screens/content_screens.dart',
     'lib/screens/account_extra_screens.dart',
+    'lib/screens/free_signal_screen.dart',
 ]
 for rel in critical_files:
     check((ROOT / rel).exists(), f'Critical source exists: {rel}')
@@ -129,11 +137,14 @@ critical_api = [
     '/watchlist', '/market/overview', '/market/movers', '/market/chart/',
     '/products', '/news', '/research', '/learning', '/economic-calendar', '/contact', '/newsletter',
     '/pulse/access', '/pulse/membership', '/pulse/membership/quote', '/pulse/membership/requests',
-    '/pulse/dashboard', '/pulse/usage', '/pulse/pairs', '/pulse/strategies',
+    '/pulse/free-signal/status', '/pulse/free-signal/session', '/pulse/free-signal/claim',
+    '/pulse/dashboard', '/pulse/usage', '/pulse/pairs',
     '/pulse/execution/readiness', '/pulse/execution/ticket', '/pulse/positions',
     '/pulse/risk-controls', '/pulse/settings', '/pulse/scanner/overview', '/pulse/scanner/run',
-    '/pulse/signals', '/pulse/trades', '/pulse/trades/sync', '/pulse/orders',
-    '/pulse/reports', '/pulse/reports/learning', '/pulse/market-data/health',
+    '/pulse/signals', '/pulse/signals/${widget.signalId}/share', '/pulse/signals/${widget.signalId}/explain',
+    '/pulse/trades', '/pulse/trades/sync', '/pulse/orders',
+    '/pulse/reports', '/pulse/reports/signals', '/pulse/reports/strategies',
+    '/pulse/reports/simulation', '/pulse/reports/learning', '/pulse/market-data/health',
     '/pulse/market-data/prices', '/pulse/binance/connections', '/pulse/alerts',
     '/pulse/emergency-stop', '/private/account', '/private/statements/',
 ]
@@ -146,8 +157,8 @@ for endpoint in critical_api:
     check(present, f'Mobile client references API: {endpoint}')
 
 
-# V1.1 premium adaptive trader experience checks.
-check("mobileVersion = '1.2.2'" in all_text, 'Mobile application version is 1.2.2')
+# V1.3.5 rewarded access / market chart / calendar table and V15.1.6 parity checks.
+check("mobileVersion = '1.3.5'" in all_text, 'Mobile application version is 1.3.5')
 check("traderExperience = 'simple'" in all_text, 'Guided Simple experience defaults safely')
 check("setTraderExperience" in all_text, 'Simple/Pro experience preference is switchable')
 check('ExperienceModeSwitch' in all_text, 'Simple/Pro experience control exists')
@@ -160,7 +171,7 @@ check('ANDROID_MIN_SDK = 23' in configure_native, 'Native configuration pins And
 check('ANDROID_COMPILE_SDK = 36' in configure_native, 'Native configuration pins compileSdk 36')
 check("ANDROID_NDK = '27.0.12077973'" in configure_native, 'Native configuration pins supported Android NDK')
 
-# V1.2.2 signal-discovery clarity checks.
+# Signal-discovery clarity checks.
 check('Scan Markets Now' in all_text, 'Trade Signals exposes one-tap Scan Markets Now action')
 check("body: {'timeframe': 'all'}" in all_text, 'Quick scan uses the combined 15M + 4H server scan')
 check('Select Markets to Scan' in all_text, 'Signals redirects users to market selection when required')
@@ -180,10 +191,31 @@ check(not workspace_copy, 'No user-facing workspace terminology remains')
 
 # Architecture guardrails: mobile market and execution must go through ABS.
 lower = all_text.lower()
+pubspec = (ROOT / 'pubspec.yaml').read_text(encoding='utf-8')
 for forbidden in ['api.binance.com', 'fapi.binance.com', 'testnet.binancefuture.com', 'binance.com/fapi']:
     check(forbidden not in lower, f'No direct Binance endpoint in Flutter source: {forbidden}')
 check('https://alphablocksolutions.com/api/v1' in all_text, 'Production ABS API base URL is configured')
-check("supportedBackendBuild = '14.9.2'" in all_text, 'Backend compatibility target is ABS 14.9.2')
+check("supportedBackendBuild = '15.1.6'" in all_text, 'Backend compatibility target is ABS 15.1.6')
+check('google_mobile_ads' in pubspec, 'Native Google rewarded ads dependency is declared')
+check('share_plus' in pubspec, 'Native social share dependency is declared')
+check("eyebrow: qualified ? 'QUALIFIED PULSE SIGNAL' : 'ENTRY WATCH'" in all_text and "qualified ? 'QUALIFIED' : 'WATCH ONLY'" in all_text, 'Free Signal preserves clear Entry Watch qualification disclosure')
+check("'abs_public_signal_visitor'" in all_text, 'Free Signal visitor cooldown identity is persisted securely')
+check('Watch one ad. Unlock one Pulse setup.' in all_text, 'Simple rewarded-access Free Signal gateway is present')
+check('_RewardPulseVisual' in all_text and '_OrbitRing' in all_text, 'Rewarded gateway includes native motion visual')
+check('_recoverRevealFromStatus' in all_text, 'Free Signal can recover a persisted reveal from status')
+check('_recoverMemberSignal' in all_text, 'Free Signal can recover the strongest active package signal for eligible members')
+check('_hydrateSignalDetails' in all_text and "/pulse/signals/$id" in all_text, 'Free Signal hydrates full member signal detail when available')
+check('_priceText' in all_text and 'toStringAsFixed(digits)' in all_text, 'Free Signal uses adaptive crypto price precision instead of fixed two decimals')
+check('_PulseMarketPainter' in all_text and 'Candles + price line' in all_text, 'Free Signal market context uses candles plus a close-price line')
+check('Entry, Stop Loss and Take Profit have not been issued for this setup yet.' in all_text, 'Missing trade levels are disclosed instead of rendered as false zero prices')
+check("data['entry_watch']" in all_text and "data['free_signal']" in all_text, 'Free Signal accepts alternate V15.1.6 response shapes')
+check("Tab(text: 'CALENDAR')" in all_text, 'Economic Calendar is integrated under ABS Intelligence')
+check('_CalendarColumnHeader' in all_text and "Text('TIME'" in all_text and "Text('CUR.'" in all_text and "Text('IMP.'" in all_text, 'Economic Calendar uses compact table-style mobile layout')
+check(all_text.count("subtract(const Duration(days: 30))") >= 1, 'Economic Calendar includes thirty days of past events')
+check("add(const Duration(days: 30))" in all_text, 'Economic Calendar includes thirty days of upcoming events')
+check("label: 'Actual'" in all_text and "label: 'Forecast'" in all_text and "label: 'Previous'" in all_text, 'Economic Calendar exposes actual forecast and previous values')
+check("label: 'Yesterday'" in all_text and "label: 'Today'" in all_text and "label: 'Tomorrow'" in all_text and "label: 'This Week'" in all_text, 'Economic Calendar period switch exposes yesterday today tomorrow and this week views')
+
 
 # Secret-leak sanity checks. Binance *field labels* are allowed; literal credentials are not.
 secret_patterns = [
@@ -195,13 +227,13 @@ for pattern in secret_patterns:
     check(re.search(pattern, all_text) is None, f'No embedded secret matching {pattern}')
 
 # Declared assets must exist.
-pubspec = (ROOT / 'pubspec.yaml').read_text(encoding='utf-8')
 for asset in re.findall(r'^\s+-\s+(assets/[^\s]+)\s*$', pubspec, re.M):
     check((ROOT / asset).exists(), f'Pubspec asset exists: {asset}')
 
 # Release docs/scripts.
 for rel in [
-    'README.md', 'CHANGELOG.md', 'BUILD_VERSION.txt', 'docs/API_COVERAGE.md', 'docs/DESIGN_SYSTEM.md',
+    'README.md', 'CHANGELOG.md', 'BUILD_VERSION.txt', 'LOCAL_TEST_GUIDE.md',
+    'VALIDATION_REPORT.md', 'docs/API_COVERAGE.md', 'docs/DESIGN_SYSTEM.md',
     'tool/bootstrap_windows.bat', 'tool/bootstrap_macos.sh',
     'tool/build_android_windows.bat', 'tool/build_android_macos.sh',
 ]:

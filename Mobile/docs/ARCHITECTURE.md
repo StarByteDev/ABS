@@ -47,7 +47,7 @@ The application displays the server state; it does not independently infer that 
 
 ## Entitlements
 
-Pulse capabilities are returned and enforced by the V14.9.2 backend. Mobile screens improve UX, but server middleware remains authoritative for scanner, signals, orders, trading, reports, Binance and settings access.
+Pulse capabilities are returned and enforced by the V15.1.6 backend. Mobile screens improve UX, but server middleware remains authoritative for scanner, rewarded Free Signal cooldown/claim, signals, orders, trading, reports, Binance and settings access.
 
 ## Adaptive trader experience
 
