@@ -1,0 +1,13 @@
+ABS V15.7.0 — ADDITIVE, DATA-SAFE DATABASE CHANGE
+
+This release does not delete, truncate, replace or roll back existing live data.
+It adds the private investor investment-agreement record and safe performance-plan metadata required for date-aware monthly progress:
+- portfolio_investment_terms (new table)
+- portfolio_performance_plans.investment_term_id
+- portfolio_performance_plans.accrual_start_date
+- portfolio_performance_plans.accrual_end_date
+- portfolio_performance_plans.calculation_basis
+
+Existing users, memberships, payments, signals, trades, support conversations, portfolio transactions, statements, requests and prior daily accrual records are retained.
+The migration down() intentionally performs no destructive rollback. ABS Database Fix can create/repair these fields non-destructively.
+The V15.6.2+ one-build code-only rollback rule remains mandatory and never restores or deletes production database records.

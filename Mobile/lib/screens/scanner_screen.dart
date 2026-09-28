@@ -156,9 +156,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
                     width: 56,
                     height: 56,
                     decoration: BoxDecoration(
-                      color: (healthy ? AbsColors.green : AbsColors.gold).withValues(alpha: .09),
+                      color: (healthy ? AbsColors.green : AbsColors.gold).withOpacity(.09),
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: (healthy ? AbsColors.green : AbsColors.gold).withValues(alpha: .28)),
+                      border: Border.all(color: (healthy ? AbsColors.green : AbsColors.gold).withOpacity(.28)),
                     ),
                     child: Icon(healthy ? Icons.radar_rounded : Icons.sync_problem_rounded, color: healthy ? AbsColors.green : AbsColors.gold, size: 28),
                   ),
@@ -277,7 +277,7 @@ class _ScanProcessRow extends StatelessWidget {
           Container(
             width: 34,
             height: 34,
-            decoration: BoxDecoration(color: AbsColors.cyan.withValues(alpha: .08), borderRadius: BorderRadius.circular(11)),
+            decoration: BoxDecoration(color: AbsColors.cyan.withOpacity(.08), borderRadius: BorderRadius.circular(11)),
             child: Icon(icon, color: AbsColors.cyanSoft, size: 18),
           ),
           const SizedBox(width: 10),

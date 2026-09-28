@@ -8,7 +8,7 @@
 @section('content')
 @php
     $emailTypes = [
-        'transactional_emails_enabled' => ['Account & payment emails','Registration, verification, package payment and essential account messages.','Essential'],
+        'transactional_emails_enabled' => ['Account, payments & investor records','Registration, verification, package payments, Private Investor transactions, statements and essential account messages.','Essential'],
         'pulse_alert_emails_enabled' => ['Pulse alerts','Important Pulse account and service alerts.','Recommended'],
         'signal_email_alerts_enabled' => ['Signal alerts','Email notifications related to qualifying Pulse signals.','Optional'],
         'trade_email_alerts_enabled' => ['Trade alerts','Trade execution and lifecycle notifications.','Optional'],
@@ -22,6 +22,22 @@
     <article><span class="comm-icon {{ $stats['failed_24h'] ? 'danger' : 'success' }}">!</span><div><small>Failed · 24 hours</small><strong>{{ number_format($stats['failed_24h']) }}</strong><em>{{ $stats['failed_24h'] ? 'Needs review' : 'No delivery failures' }}</em></div></article>
     <article><span class="comm-icon gold">◷</span><div><small>Expiry reminders · 30 days</small><strong>{{ number_format($expirySent30) }}</strong><em>Customer reminders sent</em></div></article>
     <article><span class="comm-icon blue">▣</span><div><small>Mobile devices</small><strong>{{ number_format($stats['devices']) }}</strong><em>Push-capable devices</em></div></article>
+</section>
+
+<section class="comm-card {{ ($mailHealth['status'] ?? '') === 'ready' ? 'comm-mail-ready' : 'comm-mail-warning' }}">
+    <div class="comm-card-head">
+        <div><span>MAIL</span><div><h2>Email delivery status</h2><p>Production payment and account emails depend on this transport.</p></div></div>
+        <span class="admin-status {{ ($mailHealth['status'] ?? '') === 'ready' ? 'good' : 'danger' }}">{{ ($mailHealth['status'] ?? '') === 'ready' ? 'DELIVERY READY' : 'SETUP REQUIRED' }}</span>
+    </div>
+    <div class="comm-mail-health-grid">
+        <article><small>Active transport</small><strong>{{ strtoupper($mailHealth['effective_mailer'] ?? 'UNKNOWN') }}</strong></article>
+        <article><small>From address</small><strong>{{ $mailHealth['from_address'] ?? 'Not configured' }}</strong></article>
+        <article><small>Admin alerts</small><strong>{{ $adminEventSettings['new_subscription'] ? 'Payment alerts on' : 'Payment alerts off' }}</strong></article>
+    </div>
+    <p class="comm-mail-health-note">{{ $mailHealth['message'] ?? '' }}</p>
+    @if(($mailHealth['status'] ?? '') !== 'ready')
+        <div class="comm-help">On production, configure SMTP in <code>.env</code> or use the server sendmail transport. Messages using LOG/ARRAY are recorded but cannot reach an inbox.</div>
+    @endif
 </section>
 
 <form method="POST" action="{{ route('admin.enterprise.emails.settings') }}" class="comm-settings-form">
@@ -94,7 +110,7 @@
                     <td>{{ $log->created_at?->format('d M · H:i') }}</td>
                     <td>{{ ucwords(str_replace('_',' ',$log->event)) }}</td>
                     <td>{{ $log->recipient_email }}</td>
-                    <td><span class="admin-status {{ $log->status==='sent'?'good':($log->status==='failed'?'danger':'muted') }}">{{ strtoupper($log->status) }}</span></td>
+                    <td><span class="admin-status {{ $log->status==='sent'?'good':(in_array($log->status,['failed','not_delivered'])?'danger':'muted') }}">{{ strtoupper(str_replace('_',' ',$log->status)) }}</span></td>
                     <td>
                         <b>{{ $log->subject }}</b>
                         @if($log->error_message)

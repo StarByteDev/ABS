@@ -1,14 +1,14 @@
 @extends('layouts.app')
-@section('title','ABS Services — Pulse & Private Member Portal')
+@section('title','ABS Services — Pulse Trading Intelligence')
 @section('content')
 <section class="page-hero container focused-page-hero">
-    <h1>Two focused services. <span class="gradient-text">One controlled platform.</span></h1>
-    <p>Alpha Block Solutions is concentrating its public product development on Pulse Trading Intelligence and its invitation-only Private Member Portal.</p>
+    <h1>Pulse Trading Intelligence. <span class="gradient-text">One controlled platform.</span></h1>
+    <p>Alpha Block Solutions is focused on Pulse Trading Intelligence, live market awareness and member trading-intelligence services.</p>
 </section>
 
 <section class="container focused-products-page">
     @forelse($products as $product)
-        <article id="{{ $product->slug }}" class="panel focused-product-detail {{ $product->slug === 'private-member-portal' ? 'focused-product-private' : '' }}">
+        <article id="{{ $product->slug }}" class="panel focused-product-detail">
             <span class="service-icon accent-{{ $product->accent }}">{{ $product->icon }}</span>
             <div>
                 <small>{{ $product->category }}</small>
@@ -17,11 +17,7 @@
                 <p>{{ $product->description }}</p>
                 <ul>@foreach($product->features ?? [] as $feature)<li>{{ $feature }}</li>@endforeach</ul>
             </div>
-            @if($product->slug === 'pulse-trading-intelligence')
-                <a class="button button-primary" href="{{ route('pulse.entry') }}">Explore Pulse</a>
-            @else
-                <a class="button button-ghost" href="{{ route('login', ['service' => 'private']) }}">Authorized Member Login</a>
-            @endif
+            <a class="button button-primary" href="{{ route('pulse.entry') }}">Explore Pulse</a>
         </article>
     @empty
         <div class="panel empty-state full-span"><h2>Service information is temporarily unavailable.</h2><p>Please contact {{ config('brand.support_email') }} for assistance.</p></div>

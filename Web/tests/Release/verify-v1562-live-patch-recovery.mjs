@@ -1,0 +1,53 @@
+import fs from 'node:fs';
+import crypto from 'node:crypto';
+
+const read = (p) => fs.readFileSync(p, 'utf8');
+const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
+const release = read('app/Services/ApplicationReleaseService.php');
+const controller = read('app/Http/Controllers/Admin/AdminReleaseController.php');
+const recovery = read('app/Http/Controllers/RecoveryController.php');
+const routesApi = read('routes/api.php');
+const layout = read('resources/views/admin/layout.blade.php');
+const updates = read('resources/views/admin/enterprise/updates.blade.php');
+const buildRecovery = read('resources/views/errors/build-recovery.blade.php');
+const build = read('BUILD_VERSION.txt').trim();
+const envExample = read('.env.example');
+
+assert(build.includes('V15.6.2'), 'BUILD_VERSION is not V15.6.2');
+assert(release.includes("ABS_LAST_WORKING_BUILD_"), 'single previous-build prefix missing');
+assert(release.includes('enforceSingleRestorePoint'), 'single restore-point retention missing');
+assert(release.includes("'database_included' => false"), 'code-only backup manifest missing');
+assert(release.includes("'database_preserved_on_restore' => true"), 'database preservation manifest missing');
+assert(!release.includes("runArtisanOrFail('db:seed'"), 'production patch installer still runs db:seed');
+assert(release.includes('inspectFilesystemPendingMigrations'), 'pending migration safety check missing');
+assert(release.includes('destructiveMigrationReasons'), 'destructive migration protection missing');
+assert(release.includes('inspectComposerCompatibility'), 'Composer dependency compatibility guard missing');
+assert(release.includes('TOKEN_PARSE'), 'pre-deployment PHP syntax preflight missing');
+assert(release.includes('isDowngrade'), 'older-package protection missing');
+assert(release.includes("$managedDirectories = ['app','bootstrap','config','database','public/assets','resources'"), 'public-root preservation policy missing');
+assert(envExample.includes('ABS_RECOVERY_KEY='), 'ABS recovery key missing from environment reference');
+assert(release.includes('Live database records were not rolled back') || release.includes('database was not'), 'automatic rollback database-preservation messaging missing');
+assert(!release.includes("$this->backups->restore($work.'/state-backup.zip'"), 'application rollback still restores database state');
+assert(controller.includes('RecoveryKey::value()'), 'Admin restore is not protected by ABS recovery key');
+assert(controller.includes("'confirmation' => ['required','accepted']"), 'Admin restore explicit confirmation missing');
+assert(routesApi.includes("/recovery/build"), 'emergency build recovery GET route missing');
+assert(routesApi.includes("/recovery/build/restore"), 'emergency build recovery POST route missing');
+assert(recovery.includes('restoreBuild'), 'emergency build restore controller missing');
+assert(buildRecovery.includes('production database') && buildRecovery.includes('remain in place'), 'emergency recovery data-preservation copy missing');
+assert(updates.includes('Back Up Current Build'), 'Admin current-build backup action missing');
+assert(updates.includes('Restore Previous Build'), 'Admin previous-build restore action missing');
+assert(updates.includes('ABS Recovery Key'), 'Admin recovery-key field missing');
+assert(layout.includes('Updates &amp; Recovery'), 'Admin navigation link missing');
+assert(layout.includes('Database Fix'), 'Database Fix navigation link missing');
+assert(layout.includes('admin-release-v1562.css'), 'V15.6.2 release styling missing');
+
+const scanner = fs.readFileSync('app/Services/PulseScannerService.php');
+const scannerHash = crypto.createHash('sha256').update(scanner).digest('hex');
+assert(scannerHash === '81251d2dd99829127e251c5b217b4d499773ec9f4f4f1de58183cb40012cb5ad', 'PulseScannerService changed unexpectedly');
+const logo = fs.readFileSync('public/assets/brand/abs-logo-master.png');
+const logoHash = crypto.createHash('sha256').update(logo).digest('hex');
+assert(logoHash === 'f2c53ad570c0be3ddcc3683b5cddbfad3c18dbe2530dab1084b391f424b3cc05', 'ABS master logo changed unexpectedly');
+
+console.log('PASS: ABS V15.6.2 live patch + data-safe rollback contract');
+console.log('PulseScannerService SHA-256:', scannerHash);
+console.log('ABS master logo SHA-256:', logoHash);

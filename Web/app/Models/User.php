@@ -39,12 +39,24 @@ class User extends Authenticatable implements MustVerifyEmailContract
 
     public function isPrivateMember(): bool
     {
-        return $this->role === 'private_member' && $this->private_member_approved_at !== null && $this->status === 'active';
+        return in_array($this->role, ['private_member', 'private_investor'], true)
+            && $this->private_member_approved_at !== null
+            && $this->status === 'active';
+    }
+
+    public function isPrivateInvestor(): bool
+    {
+        return $this->isPrivateMember();
     }
 
     public function portfolioAccount(): HasOne
     {
         return $this->hasOne(PortfolioAccount::class);
+    }
+
+    public function portfolioRequests(): HasMany
+    {
+        return $this->hasMany(PortfolioRequest::class);
     }
 
     public function watchlists(): HasMany
@@ -130,6 +142,16 @@ class User extends Authenticatable implements MustVerifyEmailContract
     public function contactMessages(): HasMany
     {
         return $this->hasMany(ContactMessage::class);
+    }
+
+    public function supportConversations(): HasMany
+    {
+        return $this->hasMany(SupportConversation::class);
+    }
+
+    public function supportMessages(): HasMany
+    {
+        return $this->hasMany(SupportMessage::class);
     }
 
     public function hasPulseAccess(): bool

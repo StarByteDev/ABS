@@ -1,0 +1,23 @@
+ABS V15.6.5 — ADDITIVE / NON-DESTRUCTIVE DATABASE CHANGE ONLY
+
+Adds:
+- portfolio_requests
+
+Compatibility adjustment:
+- widens users.role from the legacy MySQL ENUM to VARCHAR(40) when required so
+  `private_investor` can coexist with existing `user`, `private_member` and `admin` values.
+
+Reuses existing production tables:
+- portfolio_accounts
+- portfolio_transactions
+- monthly_statements
+- users
+- user_service_accesses
+- pulse_alerts
+- support_conversations / support_messages
+
+No existing table is dropped, truncated, renamed or cleared.
+No existing user, membership, payment, signal, trade, portfolio, statement, strategy,
+content or history row is deleted or replaced.
+The migration down() intentionally retains investor request history and does not narrow
+legacy role values, preserving production data during code rollback.

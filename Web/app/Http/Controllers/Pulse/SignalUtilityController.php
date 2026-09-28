@@ -33,7 +33,7 @@ class SignalUtilityController extends Controller
         }
 
         return $request->expectsJson()
-            ? response()->json(['message' => 'AI explanation ready.', 'data' => ['explanation' => $text]])
-            : back()->with('success', 'AI explanation generated.');
+            ? response()->json(['message' => 'Pulse Insight ready.', 'data' => ['explanation' => $text]])
+            : back()->with('success', 'Pulse Insight generated.');
     }
 }

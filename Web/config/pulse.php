@@ -44,7 +44,7 @@ return [
         'retention_days' => ['1m' => 2, '15m' => 21, '4h' => 180],
     ],
     'validation' => [
-        'detailed_retention_days' => (int) env('PULSE_SIGNAL_VALIDATION_RETENTION_DAYS', 7),
+        'detailed_retention_days' => (int) env('PULSE_SIGNAL_VALIDATION_RETENTION_DAYS', 90),
     ],
     'learning' => [
         'prior_samples' => (int) env('PULSE_LEARNING_PRIOR_SAMPLES', 20),

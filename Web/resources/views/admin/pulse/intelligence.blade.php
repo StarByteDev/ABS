@@ -1,8 +1,9 @@
 @extends('admin.layout')
-@section('title','Pulse Strategy Intelligence')
-@section('heading','Pulse Strategy Intelligence')
-@section('description','Selected-period and all-time evidence for every strategy, including outcome mix and its current confidence contribution.')
+@section('title','Strategy Detail Report — ABS Admin')
+@section('heading','Strategy Detail Report')
+@section('description','Detailed evidence behind the Strategy Lab leaderboard. Use this page only when you want to investigate a strategy.')
 @section('content')
+@include('admin.pulse.partials.strategy-lab-nav')
 @php
     $queryWithoutRange = request()->except(['from','to']);
     $selectedLabel = $from->format('d M Y').' — '.$to->format('d M Y');
@@ -10,7 +11,7 @@
 
 <section class="enterprise-command-bar compact strategy-command-bar">
     <div><span class="strategy-eyebrow">STRATEGY EVIDENCE · CONFIDENCE GOVERNANCE</span><h2>See which strategies are working and how evidence affects confidence</h2><p>Pulse resolves every eligible signal as TP, SL, ambiguous or expired, then uses evidence-protected reliability for 25% of final confidence. The technical model remains 75%.</p></div>
-    <div class="enterprise-command-actions"><a class="button button-ghost" href="{{ route('admin.market-data') }}">Feed & Cron Health</a><a class="button button-ghost" href="{{ route('admin.pulse.strategies') }}">Strategy Controls</a></div>
+    <div class="enterprise-command-actions"><a class="button button-ghost" href="{{ route('admin.market-data') }}">Market Data</a><a class="button button-ghost" href="{{ route('admin.pulse.strategies') }}">Engine Setup</a></div>
 </section>
 
 <section class="enterprise-filter-surface report-toolbar">
@@ -59,7 +60,7 @@
     'ariaLabel'=>'Selected-period strategy outcome distribution','centerLabel'=>'RESULTS',
     'labels'=>['Take profit','Stop loss','Ambiguous','Expired before entry','Expired after entry'],
     'values'=>[$summary['wins'],$summary['losses'],$summary['ambiguous'],$summary['expired_no_entry'],$summary['expired_after_entry']],
-    'colors'=>['#179b6b','#d54d5b','#d68f24','#8292a8','#7457d9'],
+    'colors'=>['#179b6b','#d54d5b','#d68f24','#8292a8','#69d8ef'],
 ], JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT) !!}</script>
 
 <section class="admin-chart-grid">
@@ -92,7 +93,7 @@
 
 <section class="admin-purpose-card">
     <div><span class="purpose-label">HOW THE WHAT-IF MODEL WORKS</span><h2>Signal quality and actual trading are measured separately</h2><p>{{ $simulation['methodology'] ?? 'Resolved TP/SL outcomes only.' }} Historical days created before V15.1.6 may not have model-return fields until they are rebuilt from still-retained detailed validations.</p></div>
-    <div class="admin-purpose-list"><div><i>R</i><span>Risk-normalized result: SL = −1R; TP uses frozen reward/risk distance</span></div><div><i>$</i><span>Actual Binance P&amp;L comes only from synchronized exchange fills</span></div><div><i>AI</i><span>Use this evidence to judge automation readiness, never as a guaranteed future result</span></div></div>
+    <div class="admin-purpose-list"><div><i>R</i><span>Risk-normalized result: SL = −1R; TP uses frozen reward/risk distance</span></div><div><i>$</i><span>Actual Binance P&amp;L comes only from synchronized exchange fills</span></div><div><i>✓</i><span>Use this evidence to judge automation readiness, never as a guaranteed future result</span></div></div>
 </section>
 
 <section class="admin-chart-grid">

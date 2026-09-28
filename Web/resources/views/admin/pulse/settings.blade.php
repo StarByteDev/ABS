@@ -1,8 +1,9 @@
 @extends('admin.layout')
 @section('title','Pulse System Settings')
-@section('heading','Pulse System Gates & Alerts')
+@section('heading','Engine Setup · Safety Controls')
 @section('description','Control Pulse safety gates, operational defaults and targeted customer communications with server protections clearly separated.')
 @section('content')
+@include('admin.pulse.partials.strategy-lab-nav')
 <section class="enterprise-command-bar compact admin-report-command">
     <div>
         <span class="admin-report-eyebrow">PULSE GOVERNANCE · SAFETY CONTROLS</span><h2>Safety-first control layers</h2>

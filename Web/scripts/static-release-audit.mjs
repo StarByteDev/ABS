@@ -205,6 +205,8 @@ const allowedLiteralInternalTargets = new Set([
     '/api/recovery/repair',
     '/api/recovery/initialize',
     '/api/recovery/restore',
+    '/api/recovery/build',
+    '/api/recovery/build/restore',
 ]);
 for (const match of allBladeSource.matchAll(/(?:href|action)=["'](\/[^"'?#]*)["']/g)) {
     if (!allowedLiteralInternalTargets.has(match[1])) failures.push(`Unverified literal internal target: ${match[1]}`);
@@ -297,6 +299,12 @@ for (const required of [
     'docs/ABS_V14_8_18_FULL_SITE_STABILITY_RUNTIME_REPAIR.md',
     'docs/MOBILE_API_V14_8_18.md',
     'docs/ABS_V14_8_18_FINAL_VALIDATION.md',
+    'docs/ABS_V15_6_2_LIVE_PATCH_DATA_SAFE_ROLLBACK.md',
+    'docs/ABS_V15_6_2_LIVE_DEPLOYMENT.md',
+    'docs/ABS_V15_6_2_FINAL_VALIDATION_REPORT.md',
+    'tests/Release/verify-v1562-live-patch-recovery.mjs',
+    'public/assets/css/admin-release-v1562.css',
+    'resources/views/errors/build-recovery.blade.php',
 ]) {
     if (!fs.existsSync(path.join(root, required))) failures.push(`Missing release file: ${required}`);
 }

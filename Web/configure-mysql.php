@@ -1,7 +1,7 @@
 <?php
 
 /**
- * ABS V14.6.1 local MySQL configurator.
+ * ABS V15.3.0 local MySQL configurator.
  *
  * - Creates .env from .env.example when needed.
  * - Switches the runtime connection to MySQL without exposing credentials.
@@ -90,7 +90,7 @@ if (! preg_match('/^DB_PASSWORD=/m', $content)) {
 }
 $content = setEnvValue($content, 'DB_CHARSET', $charset);
 $content = setEnvValue($content, 'DB_COLLATION', $collation);
-$content = setEnvValue($content, 'CACHE_PREFIX', 'abs_v14_6_1_mysql');
+$content = setEnvValue($content, 'CACHE_PREFIX', 'abs_v15_3_0_mysql');
 
 if (file_put_contents($envPath, $content) === false) {
     fwrite(STDERR, "ERROR: Unable to update .env.\n");

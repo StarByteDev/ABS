@@ -3,8 +3,8 @@ setlocal EnableExtensions EnableDelayedExpansion
 cd /d "%~dp0"
 
 echo ===============================================================
-echo   ABS Pulse - Android Emulator Runner
-echo   V1.3.2 - Rewarded Access Motion & Free Signal Recovery
+echo   Pulse - Android Emulator Runner
+echo   V1.6.0 - Supplied Template Production Rebase
 echo ===============================================================
 echo.
 
@@ -28,14 +28,14 @@ flutter --version || exit /b 1
 echo.
 
 if not exist android\app\build.gradle.kts (
-  echo ERROR: Included Android host is missing. Re-extract the V1.3.2 ZIP.
+  echo ERROR: Included Android host is missing. Re-extract the V1.6.0 ZIP.
   exit /b 1
 )
 if not exist android\gradlew.bat (
   echo [2/9] Completing Gradle wrapper with your installed Flutter version...
   flutter create --platforms=android --org com.alphablocksolutions . || exit /b 1
 ) else (
-  echo [2/9] Using included hard-fixed ABS Pulse Android host.
+  echo [2/9] Using included hard-fixed Pulse Android host.
 )
 
 REM Remove stale machine-specific SDK pointer before rewriting it.
@@ -84,5 +84,5 @@ if defined ADB_EXE (
   "!ADB_EXE!" uninstall com.alphablocksolutions.absmobile >nul 2>nul
 )
 
-echo [9/9] Launching ABS Pulse...
+echo [9/9] Launching Pulse...
 flutter run

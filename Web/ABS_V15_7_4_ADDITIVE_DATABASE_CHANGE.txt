@@ -1,0 +1,18 @@
+ABS V15.7.4 — AUTOMATIC MONTHLY PROFIT SETTLEMENT & STATEMENT RECONCILIATION
+ADDITIVE / DATA-PRESERVING DATABASE CHANGE
+
+Adds:
+- portfolio_investment_terms.auto_payout
+- portfolio_investment_terms.payout_day
+- portfolio_transactions.entry_source
+- portfolio_transactions.performance_month
+- monthly_statements.profit_paid
+- monthly_statements.profit_paid_usd
+- monthly_statements.payment_date
+- monthly_statements.auto_generated
+
+Accounting correction:
+Existing posted Profit entries are preserved as financial/audit records but no longer increase investor capital because a published Profit represents money paid externally to the investor. Their profit/P&L effects remain intact. Account rollups are then rebuilt from the preserved ledger.
+
+No investor, user, transaction, request, statement, agreement, payment, trade or audit record is deleted.
+Rollback intentionally retains finance/audit fields and corrected ledger effects.

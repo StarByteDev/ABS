@@ -1,0 +1,7 @@
+ABS V15.6.3 — NO DATABASE CHANGES
+
+This release is application-code only. It does not add, remove, truncate, replace, seed, or roll back any database table or live record.
+
+Existing member accounts, package requests, payments, signals, trades, strategy history, content and Admin settings remain in place.
+
+Deploy through the V15.6.2+ Updates & Recovery workflow. The application rollback point remains code-only and does not restore the production database.

@@ -1,85 +1,100 @@
 @extends('admin.layout')
-@section('title','System Updates & Rollback | ABS Admin')
-@section('heading','System Updates & Rollback')
+@section('title','Updates & Recovery | ABS Admin')
+@section('heading','Updates & Recovery')
+@section('description','Apply a new ABS build with one previous-build rollback point while preserving live production data.')
 @section('content')
-<div class="enterprise-command-bar release-command-bar">
+<div class="release62-hero">
     <div>
-        <span class="release-eyebrow">PRODUCTION RELEASE CONTROL</span>
-        <h2>Safe application upgrades with one-click rollback</h2>
-        <p>Upload a complete ABS release package from this page. Before installation ABS automatically captures the current application code, MySQL database and uploaded files so you can return to the previous working release if needed.</p>
+        <span>ABS PULSE · RELEASE CONTROL</span>
+        <h2>Safe live updates. One rollback point. Live data stays in place.</h2>
+        <p>ABS stores only the immediately previous application build. Patch rollback restores application files only; the production database is never replaced by this workflow.</p>
     </div>
-    <div class="release-version-chip"><small>CURRENT BUILD</small><strong>{{ $currentVersion }}</strong><span>Environment files stay protected</span></div>
+    <div class="release62-version"><small>CURRENT BUILD</small><strong>{{ $currentVersion }}</strong><em>{{ $recoveryEnabled ? 'Recovery key ready' : 'Recovery key required' }}</em></div>
 </div>
 
-<div class="enterprise-kpi-grid release-kpis">
-    <div class="enterprise-kpi"><small>Current Build</small><strong style="font-size:18px">{{ $currentVersion }}</strong></div>
-    <div class="enterprise-kpi"><small>Staged Packages</small><strong>{{ count($packages) }}</strong></div>
-    <div class="enterprise-kpi"><small>Restore Points</small><strong>{{ count($restorePoints) }}</strong></div>
-    <div class="enterprise-kpi"><small>Database Backups</small><strong>{{ count($databaseBackups) }}</strong></div>
+<div class="release62-protection">
+    <article><i>◆</i><div><b>Database protected</b><span>Users, payments, trades and live records remain untouched during build rollback.</span></div></article>
+    <article><i>↶</i><div><b>One previous build</b><span>Only the latest rollback point is retained. Older application checkpoints are removed.</span></div></article>
+    <article><i>⌁</i><div><b>Protected restore</b><span>Restore uses the same ABS recovery key as Database Fix.</span></div></article>
 </div>
 
-<div class="release-flow">
-    <section class="enterprise-surface release-step-card">
-        <div class="release-step-number">01</div>
-        <div class="enterprise-section-head"><div><h2>Upload New ABS Package</h2><p>Stage and validate the ZIP first. Uploading does not change the live site.</p></div><span class="release-state safe">SAFE STAGING</span></div>
-        <div class="release-protection-list">
-            <span><b>Validated structure</b><small>ABS verifies application folders and BUILD_VERSION.txt before accepting the package.</small></span>
-            <span><b>Environment protected</b><small><code>.env</code>, storage, vendor and server-specific runtime data cannot be overwritten by a release ZIP.</small></span>
-            <span><b>Private storage</b><small>Staged packages are stored under protected Laravel storage, not the public web root.</small></span>
-        </div>
-        <form method="POST" enctype="multipart/form-data" action="{{ route('admin.enterprise.updates.upload') }}" class="release-upload-form">@csrf
-            <label class="release-dropzone"><input type="file" name="release_package" accept=".zip,application/zip" required><b>Select ABS release ZIP</b><span>Maximum upload {{ $uploadMax }} · POST limit {{ $postMax }}</span></label>
-            <button class="button button-primary">Validate & Stage Package</button>
+<div class="release62-grid">
+    <section class="release62-card">
+        <div class="release62-card-head"><div><span>BEFORE A PATCH</span><h3>Back up current build</h3></div><b class="release62-state safe">CODE ONLY</b></div>
+        <p>Save the application that is working now. Creating a new snapshot automatically replaces the older rollback point.</p>
+        @if($restorePoint)
+            <div class="release62-current-backup">
+                <small>ROLLBACK POINT</small>
+                <strong>{{ $restorePoint['name'] }}</strong>
+                <span>{{ $restorePoint['created_at'] }} · {{ number_format($restorePoint['size']/1024/1024,2) }} MB</span>
+            </div>
+        @else
+            <div class="release62-empty">No previous-build backup is stored yet.</div>
+        @endif
+        <form method="POST" action="{{ route('admin.enterprise.updates.restore-point') }}">@csrf
+            <button class="button button-primary">Back Up Current Build</button>
         </form>
     </section>
 
-    <section class="enterprise-surface release-step-card">
-        <div class="release-step-number">02</div>
-        <div class="enterprise-section-head"><div><h2>Create Restore Point</h2><p>Use this anytime. Installation also creates one automatically before touching production files.</p></div><span class="release-state">CODE + DB + FILES</span></div>
-        <div class="release-restore-visual"><strong>FULL SNAPSHOT</strong><div><span>Application Code</span><i>+</i><span>MySQL Database</span><i>+</i><span>Uploads</span></div><small>APP_KEY and live .env remain on the server and are never copied into an update package.</small></div>
-        <form method="POST" action="{{ route('admin.enterprise.updates.restore-point') }}">@csrf<button class="button button-primary">Create Full Restore Point Now</button></form>
-        <a class="button button-ghost" href="{{ route('admin.enterprise.backups') }}">Open Database-Only Backups</a>
+    <section class="release62-card">
+        <div class="release62-card-head"><div><span>NEW RELEASE</span><h3>Upload new patch</h3></div><b class="release62-state">SAFE STAGING</b></div>
+        <p>Upload the complete ABS ZIP. ABS validates protected paths and checks pending migrations before the patch can be installed.</p>
+        <form method="POST" enctype="multipart/form-data" action="{{ route('admin.enterprise.updates.upload') }}" class="release62-upload">@csrf
+            <label><input type="file" name="release_package" accept=".zip,application/zip" required><strong>Select ABS build ZIP</strong><span>Maximum {{ $uploadMax }} · POST limit {{ $postMax }}</span></label>
+            <button class="button button-primary">Validate Patch</button>
+        </form>
     </section>
 </div>
 
-<section class="enterprise-surface">
-    <div class="enterprise-section-head"><div><h2>Staged Release Packages</h2><p>Install only after reviewing the package name and SHA-256. Every install creates a pre-upgrade restore point automatically and rolls back automatically if deployment or migrations fail.</p></div></div>
+<section class="release62-card release62-stage">
+    <div class="release62-card-head"><div><span>READY TO INSTALL</span><h3>Staged patch</h3></div><b class="release62-state {{ count($packages) ? 'safe' : '' }}">{{ count($packages) ? 'VALIDATED' : 'NONE STAGED' }}</b></div>
     @if(!$packages)
-        <div class="backup-empty">No release package is staged. Upload the next ABS build above.</div>
+        <div class="release62-empty">Upload the next ABS build above. Uploading does not change the live site.</div>
     @else
-    <div class="enterprise-table-wrap"><table class="enterprise-table release-table"><thead><tr><th>Release Package</th><th>Uploaded</th><th>Size</th><th>SHA-256</th><th>Install</th></tr></thead><tbody>
-        @foreach($packages as $package)<tr>
-            <td><b>{{ $package['name'] }}</b><small>Validated staged ABS package</small></td>
-            <td>{{ $package['created_at'] }}</td><td>{{ number_format($package['size']/1024/1024,2) }} MB</td>
-            <td><code class="backup-hash">{{ $package['sha256'] }}</code></td>
-            <td><div class="release-package-actions"><a class="button button-ghost" href="{{ route('admin.enterprise.updates.packages.download',$package['name']) }}">Download</a><form method="POST" action="{{ route('admin.enterprise.updates.install',$package['name']) }}" class="release-install-form">@csrf<input name="confirmation" placeholder="Type INSTALL" required autocomplete="off"><button class="button button-primary" onclick="return confirm('Install this ABS release now? A full automatic restore point will be created first.')">Install</button></form><form method="POST" action="{{ route('admin.enterprise.updates.packages.destroy',$package['name']) }}">@csrf @method('DELETE')<button class="button button-ghost" onclick="return confirm('Delete this staged package?')">Delete</button></form></div></td>
-        </tr>@endforeach
-    </tbody></table></div>
+        @foreach($packages as $package)
+        <div class="release62-package">
+            <div class="release62-package-main"><small>PACKAGE</small><strong>{{ $package['name'] }}</strong><span>{{ $package['created_at'] }} · {{ number_format($package['size']/1024/1024,2) }} MB</span><code>{{ $package['sha256'] }}</code></div>
+            <div class="release62-package-actions">
+                <a class="button button-ghost" href="{{ route('admin.enterprise.updates.packages.download',$package['name']) }}">Download</a>
+                <form method="POST" action="{{ route('admin.enterprise.updates.install',$package['name']) }}" class="release62-install">@csrf
+                    <input name="confirmation" placeholder="Type INSTALL" required autocomplete="off">
+                    <button class="button button-primary" onclick="return confirm('Install this ABS patch now? The current application build will be saved first and live database records will remain in place.')">Install Patch</button>
+                </form>
+                <form method="POST" action="{{ route('admin.enterprise.updates.packages.destroy',$package['name']) }}">@csrf @method('DELETE')<button class="button button-ghost">Remove</button></form>
+            </div>
+        </div>
+        @endforeach
     @endif
 </section>
 
-<section class="enterprise-surface">
-    <div class="enterprise-section-head"><div><h2>Application Restore Points</h2><p>These are complete rollback checkpoints: previous ABS application code + database + uploads. Restoring one also creates a safety point of the current state first.</p></div><span class="release-state safe">ROLLBACK READY</span></div>
-    @if(!$restorePoints)
-        <div class="backup-empty">No full restore point exists yet. Create one above or install a future update to generate one automatically.</div>
+<section class="release62-card release62-restore">
+    <div class="release62-card-head"><div><span>ROLLBACK</span><h3>Restore previous build</h3></div><b class="release62-state {{ $restorePoint ? 'safe' : '' }}">{{ $restorePoint ? 'READY' : 'NO BACKUP' }}</b></div>
+    <p>If the new build does not behave correctly, restore the last working application files. This does <strong>not</strong> roll back the production database.</p>
+    @if($restorePoint)
+        <div class="release62-restore-row">
+            <div><small>AVAILABLE BUILD BACKUP</small><strong>{{ $restorePoint['name'] }}</strong><span>SHA-256 {{ $restorePoint['sha256'] }}</span></div>
+            <form method="POST" action="{{ route('admin.enterprise.updates.restore',$restorePoint['name']) }}" class="release62-restore-form">@csrf
+                <input type="password" name="recovery_key" placeholder="ABS Recovery Key" required autocomplete="off">
+                <label><input type="checkbox" name="confirmation" value="1" required> Restore application files only; keep the live database unchanged.</label>
+                <button class="button release-rollback-button" onclick="return confirm('Restore the previous ABS application build? Live database records will stay unchanged.')">Restore Previous Build</button>
+            </form>
+        </div>
     @else
-    <div class="enterprise-table-wrap"><table class="enterprise-table release-table"><thead><tr><th>Restore Point</th><th>Created</th><th>Size</th><th>SHA-256</th><th>Recovery</th></tr></thead><tbody>
-        @foreach($restorePoints as $point)<tr>
-            <td><b>{{ $point['name'] }}</b><small>Complete application recovery checkpoint</small></td><td>{{ $point['created_at'] }}</td><td>{{ number_format($point['size']/1024/1024,2) }} MB</td><td><code class="backup-hash">{{ $point['sha256'] }}</code></td>
-            <td><div class="release-package-actions"><a class="button button-ghost" href="{{ route('admin.enterprise.updates.restore-points.download',$point['name']) }}">Download</a><form method="POST" action="{{ route('admin.enterprise.updates.restore',$point['name']) }}" class="release-install-form">@csrf<input name="confirmation" placeholder="Type ROLLBACK" required autocomplete="off"><button class="button release-rollback-button" onclick="return confirm('Rollback the live application and database to this restore point?')">Rollback</button></form><form method="POST" action="{{ route('admin.enterprise.updates.restore-points.destroy',$point['name']) }}">@csrf @method('DELETE')<button class="button button-ghost" onclick="return confirm('Delete this restore point permanently?')">Delete</button></form></div></td>
-        </tr>@endforeach
-    </tbody></table></div>
+        <div class="release62-empty">Create a current-build backup before the next patch to enable one-click rollback.</div>
     @endif
+    <div class="release62-emergency">If the Admin interface is unavailable after a patch, open <a href="/api/recovery/build">Protected Build Recovery</a> and use the same recovery key.</div>
 </section>
 
-<section class="enterprise-surface release-safety-guide">
-    <div class="enterprise-section-head"><div><h2>Recommended Live Upgrade Flow</h2><p>Designed for your existing production website so updates are reversible without manually copying folders or importing SQL.</p></div></div>
-    <div class="release-timeline">
-        <div><b>1</b><span><strong>Upload</strong><small>Stage the new complete ABS ZIP.</small></span></div><i>→</i>
-        <div><b>2</b><span><strong>Validate</strong><small>Structure and protected-path checks run automatically.</small></span></div><i>→</i>
-        <div><b>3</b><span><strong>Auto Backup</strong><small>Current code + DB + uploads become a restore point.</small></span></div><i>→</i>
-        <div><b>4</b><span><strong>Install</strong><small>Files overlay safely; migrations run; cache clears.</small></span></div><i>→</i>
-        <div><b>5</b><span><strong>Rollback</strong><small>If installation fails, ABS automatically restores the previous checkpoint.</small></span></div>
-    </div>
+<section class="release62-card">
+    <div class="release62-card-head"><div><span>RECENT ACTIVITY</span><h3>Release audit</h3></div><a class="button button-ghost" href="{{ route('admin.enterprise.backups') }}">Database Backups</a></div>
+    @if(!$auditEntries)
+        <div class="release62-empty">No patch activity has been recorded yet.</div>
+    @else
+        <div class="release62-audit">
+            @foreach($auditEntries as $entry)
+                <div><time>{{ isset($entry['time']) ? \Illuminate\Support\Carbon::parse($entry['time'])->format('d M Y · H:i:s') : '—' }}</time><strong>{{ ucwords(str_replace('_',' ',(string)($entry['event'] ?? 'release activity'))) }}</strong><span>{{ data_get($entry,'context.version') ?: data_get($entry,'context.restored_version') ?: ($entry['version'] ?? '') }}</span></div>
+            @endforeach
+        </div>
+    @endif
 </section>
 @endsection

@@ -125,9 +125,9 @@ class _SignalDetailScreenState extends State<SignalDetailScreen> {
           height: 58,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: directionColor.withValues(alpha: .09),
+            color: directionColor.withOpacity(.09),
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: directionColor.withValues(alpha: .22)),
+            border: Border.all(color: directionColor.withOpacity(.22)),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -329,7 +329,7 @@ class _SignalDetailScreenState extends State<SignalDetailScreen> {
                           height: 28,
                           decoration: BoxDecoration(
                             color: (passed ? AbsColors.green : AbsColors.red)
-                                .withValues(alpha: .09),
+                                .withOpacity(.09),
                             borderRadius: BorderRadius.circular(9),
                           ),
                           child: Icon(
@@ -491,7 +491,7 @@ class _SignalDetailScreenState extends State<SignalDetailScreen> {
       final url = JsonTools.text(data['url'], '');
       await Share.share(
         url.isEmpty ? text : '$text\n$url',
-        subject: JsonTools.text(data['title'], 'ABS Pulse Signal'),
+        subject: JsonTools.text(data['title'], 'Pulse Signal'),
       );
     } on ApiException catch (e) {
       if (mounted) showSnack(context, e.message, error: true);
@@ -665,7 +665,7 @@ class _TradePlanMetric extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: AbsColors.panel2.withValues(alpha: .75),
+      color: AbsColors.panel2.withOpacity(.75),
       borderRadius: BorderRadius.circular(14),
       border: Border.all(color: AbsColors.lineSoft),
     ),

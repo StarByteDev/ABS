@@ -1,7 +1,7 @@
 # ABS Mobile — Store Release Checklist
 
 ## Backend
-- Confirm the deployed ABS backend reports build V15.1.6 from `/api/v1/bootstrap`.
+- Confirm the deployed ABS backend reports build V15.7.4 from `/api/v1/bootstrap`.
 - Replace Google sample AdMob App IDs and rewarded-unit IDs with the ABS production identifiers.
 - Restore the authorized release keystore and `android/key.properties` only on the release machine; they are intentionally excluded from shared source.
 - Confirm `/api/v1/bootstrap` is reachable over HTTPS.
@@ -30,7 +30,7 @@ Do not continue to a store release unless analyzer and tests pass.
 - Complete Google Play Data Safety and financial/trading declarations applicable to the product.
 
 ## iOS
-- Confirm bundle identifier `com.alphablocksolutions.abs`.
+- Confirm the iOS bundle identifier matches the existing published app. This source currently retains `com.alphablocksolutions.absMobile`.
 - Select the correct Apple Developer Team.
 - Configure signing/provisioning in Xcode.
 - Run `flutter build ios --release --no-codesign` before archive/signing.

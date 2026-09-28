@@ -23,6 +23,7 @@ class AccountController extends Controller
             'market' => $market->overview(),
             'news' => NewsArticle::where('status', 'published')->latest('published_at')->take(5)->get(),
             'private_member_enabled' => $request->user()->isPrivateMember(),
+            'private_investor_enabled' => $request->user()->isPrivateInvestor(),
         ]]);
     }
 
@@ -117,7 +118,7 @@ class AccountController extends Controller
                 ->limit(10)->get()
                 ->map(fn ($x) => ['type' => 'news', 'id' => $x->id, 'slug' => $x->slug, 'title' => $x->title, 'summary' => $x->excerpt]))
             ->concat(Product::where('status', 'live')
-                ->whereIn('slug', ['pulse-trading-intelligence', 'private-member-portal'])
+                ->whereIn('slug', $request->user()->isPrivateInvestor() ? ['pulse-trading-intelligence', 'private-member-portal'] : ['pulse-trading-intelligence'])
                 ->where(fn ($x) => $x->where('name', 'like', "%$q%")->orWhere('description', 'like', "%$q%"))
                 ->get()
                 ->map(fn ($x) => ['type' => 'service', 'id' => $x->id, 'slug' => $x->slug, 'title' => $x->name, 'summary' => $x->tagline]))

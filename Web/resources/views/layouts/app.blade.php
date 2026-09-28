@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta name="description" content="Alpha Block Solutions — Pulse trading intelligence, live market awareness and invitation-only private member reporting.">
+    <meta name="description" content="Alpha Block Solutions — Pulse trading intelligence and live market awareness.">
     <meta name="theme-color" content="#07111f">
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">

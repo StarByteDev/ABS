@@ -1,0 +1,5 @@
+ABS V15.4.0 — NO DATABASE MIGRATION REQUIRED
+
+This release uses the existing Pulse market-data, scanner, signal-validation, strategy-learning and system-settings tables.
+
+New price-sync detail history is stored inside the existing pulse_market_data_runs.summary JSON field under price_snapshot. Exact per-market snapshots are therefore available for synchronization runs created after V15.4.0 is installed. Older runs continue to display their existing aggregate counts.

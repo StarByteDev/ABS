@@ -190,12 +190,12 @@
     <header class="final-section-heading"><h2 id="headline-title">Latest Verified Headlines</h2><a href="{{ route('news.index') }}">View All ABS News <span>→</span></a></header>
     <div class="final-headline-grid" data-live-news-list data-live-news-mode="home" data-live-news-limit="5">
         @forelse($news as $item)
-            <a class="final-headline-card" data-live-news-item data-external="{{ ($item['is_external'] ?? false) ? '1' : '0' }}" href="{{ $item['url'] }}" @if($item['is_external'] ?? false) target="_blank" rel="noopener noreferrer" @endif>
+            <a class="final-headline-card" data-live-news-item data-external="{{ ($item['is_external'] ?? false) ? '1' : '0' }}" href="{{ ($item['is_external'] ?? false) ? route('news.live.show',['id'=>$item['id']]) : $item['url'] }}">
                 <img src="{{ $item['image_url'] ?: asset('assets/images/home/news-'.(($loop->index % 4) + 1).'.png') }}" alt="" loading="lazy" onerror="this.onerror=null;this.src='{{ asset('assets/images/home/news-'.(($loop->index % 4) + 1).'.png') }}'">
-                <div><small>{{ $item['published_at'] ? $item['published_at']->diffForHumans(short: true) : 'LATEST' }} <i>•</i> <span>{{ strtoupper($item['source_name'] ?: $item['category'] ?: 'MARKETS') }}</span></small><h3>{{ $item['title'] }}</h3><p>{{ $item['excerpt'] ?: 'Open the verified report for the complete market context and source details.' }}</p></div>
+                <div><small>{{ $item['published_at'] ? $item['published_at']->diffForHumans(short: true) : 'LATEST' }} <i>•</i> <span>{{ strtoupper($item['source_name'] ?: $item['category'] ?: 'MARKETS') }}</span></small><h3>{{ $item['title'] }}</h3><p>{{ $item['excerpt'] ?: 'Open the Market Brief for source details and Pulse context.' }}</p></div>
             </a>
         @empty
-            <div class="content-empty full-span" data-live-news-empty><b>Loading verified market headlines…</b><span>Published ABS and verified-source updates will appear here.</span></div>
+            <div class="content-empty full-span" data-live-news-empty><b>Loading market intelligence…</b><span>Current digital-asset market headlines will appear here.</span></div>
         @endforelse
     </div>
 </section>

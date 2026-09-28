@@ -16,12 +16,12 @@ class PulseAiExplanationService
             throw new RuntimeException('This signal does not belong to the current account.');
         }
         if (! (bool) PulseSystemSetting::value('openai_signal_explanations_enabled', false)) {
-            throw new RuntimeException('AI signal explanations are not enabled by the administrator.');
+            throw new RuntimeException('Pulse Insight is not enabled for this installation.');
         }
         if ($signal->ai_explanation) return (string) $signal->ai_explanation;
 
         $apiKey = trim((string) config('services.openai.api_key', ''));
-        if ($apiKey === '') throw new RuntimeException('OpenAI API is not configured on this ABS installation.');
+        if ($apiKey === '') throw new RuntimeException('Pulse Insight service is not configured on this ABS installation.');
 
         $model = trim((string) config('services.openai.model', 'gpt-5.6-sol')) ?: 'gpt-5.6-sol';
         $payload = [
@@ -50,7 +50,7 @@ class PulseAiExplanationService
             ->post('https://api.openai.com/v1/responses', $payload);
 
         if (! $response->successful()) {
-            throw new RuntimeException('OpenAI could not generate the signal explanation at this time.');
+            throw new RuntimeException('Pulse Insight is temporarily unavailable. Please try again later.');
         }
 
         $text = trim((string) data_get($response->json(), 'output_text', ''));
@@ -62,7 +62,7 @@ class PulseAiExplanationService
                 ->filter()
                 ->implode("\n\n");
         }
-        if ($text === '') throw new RuntimeException('OpenAI returned an empty signal explanation.');
+        if ($text === '') throw new RuntimeException('Pulse Insight could not prepare an explanation for this signal.');
 
         $signal->forceFill(['ai_explanation' => $text, 'ai_explained_at' => now()])->save();
         return $text;

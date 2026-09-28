@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -18,6 +19,7 @@ class AppSession extends ChangeNotifier {
   static const _tokenKey = 'abs_sanctum_token';
   static const _deviceUuidKey = 'abs_device_uuid';
   static const _traderExperienceKey = 'abs_trader_experience';
+  static const _userCacheKey = 'abs_user_snapshot';
 
   final ApiClient api;
   final FlutterSecureStorage storage;
@@ -33,6 +35,36 @@ class AppSession extends ChangeNotifier {
   bool get proMode => traderExperience == 'pro';
 
   bool get authenticated => user != null && api.token != null && api.token!.isNotEmpty;
+
+  bool get emailVerified {
+    final u = user;
+    if (u == null || u.isEmpty) return false;
+
+    // Explicit verification fields always win. In Laravel-style payloads an
+    // `email_verified_at: null` value means the account is still unverified,
+    // even when the general account status itself is active.
+    for (final key in ['email_verified_at', 'verified_at', 'activated_at']) {
+      if (u.containsKey(key)) {
+        return JsonTools.text(u[key], '').isNotEmpty;
+      }
+    }
+    for (final key in ['email_verified', 'is_verified', 'verified', 'activated']) {
+      if (u.containsKey(key)) return JsonTools.boolean(u[key]);
+    }
+    for (final key in ['activation_status', 'verification_status']) {
+      if (u.containsKey(key)) {
+        final state = JsonTools.text(u[key], '').toLowerCase();
+        return ['verified', 'activated', 'active'].contains(state);
+      }
+    }
+
+    // Compatibility fallback for older ABS user payloads that expose only a
+    // general account status and no verification-specific field.
+    final state = JsonTools.text(u['status'], '').toLowerCase();
+    return ['verified', 'activated', 'active'].contains(state);
+  }
+
+  bool get limitedAccount => authenticated && !emailVerified;
   bool get hasPulseAccess => JsonTools.boolean(access?['has_access']);
   Map<String, dynamic> get capabilities => JsonTools.map(access?['effective_capabilities']);
   Map<String, dynamic> get appBootstrap => JsonTools.map(bootstrap?['app']);
@@ -80,10 +112,20 @@ class AppSession extends ChangeNotifier {
     final saved = await storage.read(key: _tokenKey);
     if (saved != null && saved.isNotEmpty) {
       api.token = saved;
+      await _restoreUserSnapshot();
       try {
         await refreshIdentity();
       } on ApiException catch (e) {
-        if (e.statusCode == 401 || e.statusCode == 403) {
+        final body = JsonTools.map(e.body);
+        final activationRequired = e.statusCode == 403 &&
+            (JsonTools.boolean(body['activation_required']) ||
+                (user != null && !emailVerified));
+        if (activationRequired && user != null) {
+          // Keep the registration token and cached identity so an account that is
+          // waiting for email activation can still use the public/basic mobile
+          // experience. Pulse trading access remains locked until activation.
+          access = <String, dynamic>{'has_access': false, 'activation_required': true};
+        } else if (e.statusCode == 401 || e.statusCode == 403) {
           await _clearToken();
           user = null;
           access = null;
@@ -123,23 +165,61 @@ class AppSession extends ChangeNotifier {
         rethrow;
       }
     }
+    await _cacheUserSnapshot();
     await _registerDeviceBestEffort();
     notifyListeners();
   }
 
   Future<void> login(String email, String password) async {
     await _busy(() async {
-      final response = await api.post('/auth/login', body: {
-        'email': email.trim(),
-        'password': password,
-        'device_name': _deviceName,
-      });
+      dynamic response;
+      try {
+        response = await api.post('/auth/login', body: {
+          'email': email.trim(),
+          'password': password,
+          'device_name': _deviceName,
+          // Newer ABS backends may use this hint to return a limited-access
+          // token before email activation. Older backends safely ignore it.
+          'allow_unverified_basic_access': true,
+        });
+      } on ApiException catch (e) {
+        final body = JsonTools.map(e.body);
+        if (e.statusCode == 403 && JsonTools.boolean(body['activation_required'])) {
+          final limited = JsonTools.map(
+            JsonTools.at(body, 'data', <String, dynamic>{}),
+          );
+          final token = JsonTools.text(limited['token'] ?? body['token'], '');
+          final limitedUser = JsonTools.map(limited['user'] ?? body['user']);
+          if (token.isNotEmpty && limitedUser.isNotEmpty) {
+            await _saveToken(token);
+            user = limitedUser;
+            access = <String, dynamic>{
+              'has_access': false,
+              'activation_required': true,
+            };
+            await _cacheUserSnapshot();
+            notifyListeners();
+            return;
+          }
+        }
+        rethrow;
+      }
+
       final data = JsonTools.map(JsonTools.at(response, 'data', <String, dynamic>{}));
       final token = JsonTools.text(data['token'], '');
       if (token.isEmpty) throw const ApiException('ABS did not return a login token.');
       await _saveToken(token);
       user = JsonTools.map(data['user']);
-      await refreshIdentity();
+      await _cacheUserSnapshot();
+      if (emailVerified) {
+        await refreshIdentity();
+      } else {
+        access = <String, dynamic>{
+          'has_access': false,
+          'activation_required': true,
+        };
+        notifyListeners();
+      }
     });
   }
 
@@ -151,12 +231,35 @@ class AppSession extends ChangeNotifier {
         'device_name': _deviceName,
       });
       result = JsonTools.map(JsonTools.at(response, 'data', <String, dynamic>{}));
-      // Registration returns a token, but the account.active API middleware intentionally
-      // blocks authenticated features until email activation. Do not persist the token.
-      user = null;
-      access = null;
+      final token = JsonTools.text(result['token'], '');
+      final registeredUser = JsonTools.map(result['user']);
+
+      if (token.isNotEmpty && registeredUser.isNotEmpty) {
+        await _saveToken(token);
+        user = registeredUser;
+        access = <String, dynamic>{
+          'has_access': false,
+          'activation_required': !emailVerified,
+        };
+        await _cacheUserSnapshot();
+        if (emailVerified) {
+          await refreshIdentity();
+        } else {
+          notifyListeners();
+        }
+      } else {
+        user = null;
+        access = null;
+      }
     });
     return result;
+  }
+
+  Future<void> applyUserSnapshot(Map<String, dynamic> snapshot) async {
+    if (snapshot.isEmpty) return;
+    user = snapshot;
+    await _cacheUserSnapshot();
+    notifyListeners();
   }
 
   Future<void> refreshAccount() async {
@@ -207,6 +310,25 @@ class AppSession extends ChangeNotifier {
   Future<void> _clearToken() async {
     api.token = null;
     await storage.delete(key: _tokenKey);
+    await storage.delete(key: _userCacheKey);
+  }
+
+  Future<void> _cacheUserSnapshot() async {
+    final snapshot = user;
+    if (snapshot == null || snapshot.isEmpty) return;
+    await storage.write(key: _userCacheKey, value: jsonEncode(snapshot));
+  }
+
+  Future<void> _restoreUserSnapshot() async {
+    final raw = await storage.read(key: _userCacheKey);
+    if (raw == null || raw.trim().isEmpty) return;
+    try {
+      final decoded = jsonDecode(raw);
+      final snapshot = JsonTools.map(decoded);
+      if (snapshot.isNotEmpty) user = snapshot;
+    } catch (_) {
+      await storage.delete(key: _userCacheKey);
+    }
   }
 
   Future<String> _deviceUuid() async {

@@ -114,7 +114,7 @@ class _NewsScreenState extends State<NewsScreen>
   @override
   void initState() {
     super.initState();
-    tabs = TabController(length: 3, vsync: this);
+    tabs = TabController(length: 3, vsync: this, initialIndex: 2);
   }
 
   @override
@@ -125,15 +125,15 @@ class _NewsScreenState extends State<NewsScreen>
 
   @override
   Widget build(BuildContext context) => AbsPage(
-        title: 'ABS Intelligence',
+        title: 'Pulse Intelligence',
         subtitle: 'News, live headlines & economic calendar',
-        padding: EdgeInsets.fromLTRB(16, 8, 16, widget.embedded ? 104 : 28),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
         child: Column(
           children: [
             Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: AbsColors.panel.withValues(alpha: .88),
+                color: AbsColors.panel.withOpacity(.88),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: AbsColors.lineSoft),
               ),
@@ -146,7 +146,7 @@ class _NewsScreenState extends State<NewsScreen>
                   color: AbsColors.panel3,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: AbsColors.purple.withValues(alpha: .24),
+                    color: AbsColors.purple.withOpacity(.24),
                   ),
                 ),
                 labelStyle: const TextStyle(
@@ -201,9 +201,22 @@ class _ContentListState extends State<_ContentList> {
 
   Future<void> _load() async {
     setState(() { loading = true; error = null; });
-    try { items = JsonTools.pageItems(await SessionScope.of(context).api.get(endpoint, query: {'per_page': 50})); }
-    on ApiException catch (e) { error = e.message; }
-    finally { if (mounted) setState(() => loading = false); }
+    try {
+      final response = await SessionScope.of(context).api.get(
+        endpoint,
+        query: {'per_page': 50, 'limit': 50},
+      );
+      items = JsonTools.collectionItems(
+        response,
+        keys: widget.kind == 'news'
+            ? const ['news', 'articles', 'items', 'results', 'posts']
+            : const ['items', 'results', 'articles', 'posts'],
+      );
+    } on ApiException catch (e) {
+      error = e.message;
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
   }
 
   @override
@@ -420,7 +433,7 @@ class _ContentCard extends StatelessWidget {
                   width: 46,
                   height: 46,
                   decoration: BoxDecoration(
-                    color: AbsColors.cyan.withValues(alpha: .08),
+                    color: AbsColors.cyan.withOpacity(.08),
                     borderRadius: BorderRadius.circular(13),
                   ),
                   child: const Icon(
@@ -461,15 +474,13 @@ class _LiveNewsListState extends State<_LiveNewsList> {
       error = null;
     });
     try {
-      items = JsonTools.mapList(
-        JsonTools.at(
-          await SessionScope.of(context).api.get(
-            '/news/live',
-            query: {'limit': 40},
-          ),
-          'data',
-          <dynamic>[],
-        ),
+      final response = await SessionScope.of(context).api.get(
+        '/news/live',
+        query: {'limit': 40, 'per_page': 40},
+      );
+      items = JsonTools.collectionItems(
+        response,
+        keys: const ['headlines', 'news', 'articles', 'items', 'results', 'feed'],
       );
     } on ApiException catch (e) {
       error = e.message;
@@ -491,9 +502,9 @@ class _LiveNewsListState extends State<_LiveNewsList> {
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: AbsColors.green.withValues(alpha: .055),
+              color: AbsColors.green.withOpacity(.055),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AbsColors.green.withValues(alpha: .16)),
+              border: Border.all(color: AbsColors.green.withOpacity(.16)),
             ),
             child: const Row(
               children: [
@@ -522,15 +533,18 @@ class _LiveNewsListState extends State<_LiveNewsList> {
               item['url'] ?? item['source_url'],
               '',
             );
+            final id = JsonTools.text(item['id'] ?? item['news_id'], '');
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: InkWell(
-                onTap: url.startsWith('http')
-                    ? () => launchUrl(
-                          Uri.parse(url),
-                          mode: LaunchMode.externalApplication,
-                        )
-                    : null,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => _LiveNewsDetailScreen(
+                      id: id,
+                      initial: item,
+                    ),
+                  ),
+                ),
                 borderRadius: BorderRadius.circular(18),
                 child: AbsCard(
                   padding: const EdgeInsets.fromLTRB(13, 12, 11, 12),
@@ -541,7 +555,7 @@ class _LiveNewsListState extends State<_LiveNewsList> {
                         width: 34,
                         height: 34,
                         decoration: BoxDecoration(
-                          color: AbsColors.cyan.withValues(alpha: .08),
+                          color: AbsColors.cyan.withOpacity(.08),
                           borderRadius: BorderRadius.circular(11),
                         ),
                         child: const Icon(
@@ -597,17 +611,15 @@ class _LiveNewsListState extends State<_LiveNewsList> {
                           ],
                         ),
                       ),
-                      if (url.startsWith('http')) ...[
-                        const SizedBox(width: 6),
-                        const Padding(
-                          padding: EdgeInsets.only(top: 11),
-                          child: Icon(
-                            Icons.open_in_new_rounded,
-                            size: 15,
-                            color: AbsColors.muted2,
-                          ),
+                      const SizedBox(width: 6),
+                      const Padding(
+                        padding: EdgeInsets.only(top: 11),
+                        child: Icon(
+                          Icons.chevron_right_rounded,
+                          size: 17,
+                          color: AbsColors.muted2,
                         ),
-                      ],
+                      ),
                     ],
                   ),
                 ),
@@ -623,6 +635,140 @@ class _LiveNewsListState extends State<_LiveNewsList> {
           const SizedBox(height: 26),
         ],
       ),
+    );
+  }
+}
+
+class _LiveNewsDetailScreen extends StatefulWidget {
+  const _LiveNewsDetailScreen({required this.id, required this.initial});
+  final String id;
+  final Map<String, dynamic> initial;
+
+  @override
+  State<_LiveNewsDetailScreen> createState() => _LiveNewsDetailScreenState();
+}
+
+class _LiveNewsDetailScreenState extends State<_LiveNewsDetailScreen> {
+  bool loading = true;
+  String? error;
+  Map<String, dynamic> item = {};
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (loading && item.isEmpty) _load();
+  }
+
+  Future<void> _load() async {
+    item = widget.initial;
+    if (widget.id.isEmpty) {
+      if (mounted) setState(() => loading = false);
+      return;
+    }
+    try {
+      final response = await SessionScope.of(context).api.get('/news/live/${widget.id}');
+      final detailed = JsonTools.map(
+        JsonTools.at(response, 'data', <String, dynamic>{}),
+      );
+      if (detailed.isNotEmpty) item = detailed;
+    } on ApiException catch (e) {
+      error = e.message;
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final source = JsonTools.text(item['source'] ?? item['source_name'], 'Market source');
+    final title = JsonTools.text(item['title'] ?? item['headline'], 'Market headline');
+    final body = JsonTools.plain(
+      item['body'] ??
+          item['content'] ??
+          item['description'] ??
+          item['summary'] ??
+          item['excerpt'],
+      'This headline is available through the ABS live market wire.',
+    );
+    final url = JsonTools.text(item['url'] ?? item['source_url'], '');
+    return AbsPage(
+      title: 'Live Market Wire',
+      subtitle: source,
+      child: loading
+          ? const LoadingBlock(label: 'Loading headline...')
+          : ListView(
+              children: [
+                Row(
+                  children: [
+                    const StatusChip('LIVE', good: true),
+                    const SizedBox(width: 7),
+                    Expanded(
+                      child: Text(
+                        compactDate(
+                          item['published_at'] ?? item['publishedAt'] ?? item['timestamp'],
+                        ),
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          color: AbsColors.muted2,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 23,
+                    height: 1.18,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -.4,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  source.toUpperCase(),
+                  style: const TextStyle(
+                    color: AbsColors.cyanSoft,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: .8,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                AbsCard(
+                  child: SelectableText(
+                    body,
+                    style: const TextStyle(
+                      color: Color(0xFFC8D2DE),
+                      fontSize: 13,
+                      height: 1.55,
+                    ),
+                  ),
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    'ABS could not refresh the full article, so the cached headline is shown.',
+                    style: const TextStyle(color: AbsColors.muted, fontSize: 10.5),
+                  ),
+                ],
+                if (url.startsWith('http')) ...[
+                  const SizedBox(height: 14),
+                  OutlinedButton.icon(
+                    onPressed: () => launchUrl(
+                      Uri.parse(url),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                    icon: const Icon(Icons.open_in_new_rounded),
+                    label: Text('Open original source · $source'),
+                  ),
+                ],
+                const SizedBox(height: 28),
+              ],
+            ),
     );
   }
 }
@@ -683,7 +829,7 @@ class _EconomicCalendarBodyState extends State<EconomicCalendarBody> {
   List<Map<String, dynamic>> events = [];
   String impact = 'all';
   String currency = 'all';
-  String period = 'today';
+  String period = 'upcoming';
 
   @override
   void didChangeDependencies() {
@@ -717,11 +863,27 @@ class _EconomicCalendarBodyState extends State<EconomicCalendarBody> {
         ),
       ]);
       final combined = <Map<String, dynamic>>[
-        ...JsonTools.mapList(
-          JsonTools.at(responses[0], 'data', <dynamic>[]),
+        ...JsonTools.collectionItems(
+          responses[0],
+          keys: const [
+            'events',
+            'calendar',
+            'releases',
+            'items',
+            'results',
+            'previous',
+          ],
         ),
-        ...JsonTools.mapList(
-          JsonTools.at(responses[1], 'data', <dynamic>[]),
+        ...JsonTools.collectionItems(
+          responses[1],
+          keys: const [
+            'events',
+            'calendar',
+            'releases',
+            'items',
+            'results',
+            'upcoming',
+          ],
         ),
       ];
       final seen = <String>{};
@@ -858,12 +1020,12 @@ class _EconomicCalendarBodyState extends State<EconomicCalendarBody> {
           const SizedBox(height: 6),
           if (filtered.isEmpty)
             EmptyState(
-              title: period == 'yesterday'
-                  ? 'No events yesterday'
-                  : period == 'tomorrow'
-                      ? 'No events tomorrow'
-                      : period == 'week'
-                          ? 'No events this week'
+              title: period == 'upcoming'
+                  ? 'No upcoming events'
+                  : period == 'previous'
+                      ? 'No previous releases'
+                      : period == 'all'
+                          ? 'No calendar events'
                           : 'No events today',
               message: 'No events match the selected impact and currency filters.',
               icon: Icons.event_busy_outlined,
@@ -884,17 +1046,13 @@ class _EconomicCalendarBodyState extends State<EconomicCalendarBody> {
     final now = DateTime.now();
     final day = DateTime(at.year, at.month, at.day);
     final today = DateTime(now.year, now.month, now.day);
-    if (period == 'yesterday') {
-      return day == today.subtract(const Duration(days: 1));
+    if (period == 'upcoming') {
+      return !at.isBefore(now);
     }
-    if (period == 'tomorrow') {
-      return day == today.add(const Duration(days: 1));
+    if (period == 'previous') {
+      return at.isBefore(now);
     }
-    if (period == 'week') {
-      final monday = today.subtract(Duration(days: today.weekday - 1));
-      final nextMonday = monday.add(const Duration(days: 7));
-      return !day.isBefore(monday) && day.isBefore(nextMonday);
-    }
+    if (period == 'all') return true;
     return day == today;
   }
 
@@ -1019,7 +1177,7 @@ class _CalendarPulseHeader extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
             decoration: BoxDecoration(
-              color: AbsColors.panel2.withValues(alpha: .68),
+              color: AbsColors.panel2.withOpacity(.68),
               borderRadius: BorderRadius.circular(13),
               border: Border.all(color: AbsColors.lineSoft),
             ),
@@ -1029,7 +1187,7 @@ class _CalendarPulseHeader extends StatelessWidget {
                   width: 33,
                   height: 33,
                   decoration: BoxDecoration(
-                    color: AbsColors.purple.withValues(alpha: .10),
+                    color: AbsColors.purple.withOpacity(.10),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(
@@ -1091,7 +1249,7 @@ class _CalendarMiniMetric extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
         decoration: BoxDecoration(
-          color: AbsColors.panel2.withValues(alpha: .60),
+          color: AbsColors.panel2.withOpacity(.60),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AbsColors.lineSoft),
         ),
@@ -1144,24 +1302,24 @@ class _CalendarPeriodSwitch extends StatelessWidget {
           child: Row(
             children: [
               _PeriodButton(
-                label: 'Yesterday',
-                selected: value == 'yesterday',
-                onTap: () => onChanged('yesterday'),
-              ),
-              _PeriodButton(
                 label: 'Today',
                 selected: value == 'today',
                 onTap: () => onChanged('today'),
               ),
               _PeriodButton(
-                label: 'Tomorrow',
-                selected: value == 'tomorrow',
-                onTap: () => onChanged('tomorrow'),
+                label: 'Upcoming',
+                selected: value == 'upcoming',
+                onTap: () => onChanged('upcoming'),
               ),
               _PeriodButton(
-                label: 'This Week',
-                selected: value == 'week',
-                onTap: () => onChanged('week'),
+                label: 'Previous',
+                selected: value == 'previous',
+                onTap: () => onChanged('previous'),
+              ),
+              _PeriodButton(
+                label: 'All',
+                selected: value == 'all',
+                onTap: () => onChanged('all'),
               ),
             ],
           ),
@@ -1191,7 +1349,7 @@ class _PeriodButton extends StatelessWidget {
               color: selected ? AbsColors.panel3 : Colors.transparent,
               borderRadius: BorderRadius.circular(10),
               border: selected
-                  ? Border.all(color: AbsColors.purple.withValues(alpha: .24))
+                  ? Border.all(color: AbsColors.purple.withOpacity(.24))
                   : null,
             ),
             child: Text(
@@ -1214,7 +1372,7 @@ class _CalendarColumnHeader extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: AbsColors.panel2.withValues(alpha: .72),
+          color: AbsColors.panel2.withOpacity(.72),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: AbsColors.lineSoft),
         ),
@@ -1254,15 +1412,15 @@ class _EconomicEventCard extends StatelessWidget {
       event['title'] ?? event['event'] ?? event['name'] ?? event['event_name'],
       'Economic event',
     );
-    final actual = _eventValue(event, ['actual_value', 'actual', 'actualValue']);
-    final forecast = _eventValue(event, ['forecast_value', 'forecast', 'consensus', 'forecastValue']);
-    final previous = _eventValue(event, ['previous_value', 'previous', 'prev', 'previousValue']);
+    final actual = _eventValue(event, ['actual_value', 'actual', 'actualValue', 'reported_value', 'released_value', 'result_value', 'actual_result']);
+    final forecast = _eventValue(event, ['forecast_value', 'forecast', 'consensus', 'forecastValue', 'expected_value', 'estimate', 'forecast_result']);
+    final previous = _eventValue(event, ['previous_value', 'previous', 'prev', 'previousValue', 'prior_value', 'previous_release', 'previous_result']);
     final surprise = _surpriseLabel(actual, forecast);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 11, 10, 11),
       decoration: BoxDecoration(
-        color: AbsColors.panel.withValues(alpha: .88),
+        color: AbsColors.panel.withOpacity(.88),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AbsColors.lineSoft),
       ),
@@ -1396,11 +1554,11 @@ class _EventMetric extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
         decoration: BoxDecoration(
-          color: AbsColors.panel2.withValues(alpha: .58),
+          color: AbsColors.panel2.withOpacity(.58),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: emphasize
-                ? AbsColors.cyan.withValues(alpha: .20)
+                ? AbsColors.cyan.withOpacity(.20)
                 : AbsColors.lineSoft,
           ),
         ),
@@ -1492,13 +1650,67 @@ String _currencyOf(Map<String, dynamic> event) {
 }
 
 String _eventValue(Map<String, dynamic> event, List<String> keys) {
-  for (final key in keys) {
-    if (event.containsKey(key) && event[key] != null) {
-      final value = JsonTools.text(event[key], '—');
-      if (value.isNotEmpty) return value;
+  final wanted = keys
+      .map((key) => key.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), ''))
+      .toSet();
+
+  String clean(dynamic value) {
+    if (value == null) return '';
+    if (value is Map) {
+      final map = JsonTools.map(value);
+      for (final key in const <String>['display', 'formatted', 'text', 'value', 'raw', 'result']) {
+        if (!map.containsKey(key)) continue;
+        final candidate = clean(map[key]);
+        if (candidate.isEmpty) continue;
+        final unit = JsonTools.text(map['unit'] ?? map['suffix'], '');
+        return unit.isNotEmpty && !candidate.endsWith(unit) ? '$candidate$unit' : candidate;
+      }
+      return '';
     }
+    if (value is List) return '';
+    final text = JsonTools.plain(value, '').trim();
+    if (text.isEmpty || <String>{'null', 'n/a', 'na', '-', '—', 'pending'}.contains(text.toLowerCase())) return '';
+    return text;
   }
-  return '—';
+
+  String scan(dynamic value, int depth) {
+    if (value == null || depth > 8) return '';
+    if (value is List) {
+      for (final item in value) {
+        if (item is Map) {
+          final map = JsonTools.map(item);
+          final label = JsonTools.text(map['name'] ?? map['label'] ?? map['type'] ?? map['key'] ?? map['field'], '')
+              .toLowerCase()
+              .replaceAll(RegExp(r'[^a-z0-9]'), '');
+          if (wanted.contains(label)) {
+            for (final key in const <String>['value', 'text', 'display', 'formatted', 'result']) {
+              final candidate = clean(map[key]);
+              if (candidate.isNotEmpty) return candidate;
+            }
+          }
+        }
+        final nested = scan(item, depth + 1);
+        if (nested.isNotEmpty) return nested;
+      }
+      return '';
+    }
+    if (value is! Map) return '';
+    final map = JsonTools.map(value);
+    for (final entry in map.entries) {
+      final key = entry.key.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+      if (!wanted.contains(key)) continue;
+      final candidate = clean(entry.value);
+      if (candidate.isNotEmpty) return candidate;
+    }
+    for (final entry in map.entries) {
+      final nested = scan(entry.value, depth + 1);
+      if (nested.isNotEmpty) return nested;
+    }
+    return '';
+  }
+
+  final value = scan(event, 0);
+  return value.isEmpty ? '—' : value;
 }
 
 bool _isToday(DateTime? at, DateTime now) => at != null &&

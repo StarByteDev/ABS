@@ -1,0 +1,34 @@
+ABS V15.7.1 — ADDITIVE, DATA-SAFE DATABASE CHANGE
+
+This release adds multi-currency reporting fields only. It does not delete, truncate, replace or reset existing users, memberships, payments, signals, trades, investor accounts, transactions, statements, requests, support history or strategy evidence.
+
+Added to portfolio_accounts:
+- opening_value_usd
+- current_value_usd
+- net_contributions_usd
+- total_profit_usd
+- monthly_profit_usd
+
+Added to portfolio_transactions:
+- currency
+- fx_rate_to_usd
+- usd_amount
+- usd_current_value_effect
+- usd_net_contributions_effect
+- usd_profit_effect
+- usd_monthly_profit_effect
+- fx_source
+- fx_locked_at
+
+Added to monthly_statements:
+- currency
+- fx_rate_to_usd
+- opening_balance_usd
+- contributions_usd
+- withdrawals_usd
+- profit_loss_usd
+- closing_balance_usd
+
+USD-native historic records are backfilled safely. Non-USD historic records without an auditable historical conversion are not guessed; Admin can set the locked rate through transaction/statement management.
+
+Rollback remains application-code-only under the ABS V15.6.2 live-production rule. These reporting/audit fields are intentionally retained if application code is restored.

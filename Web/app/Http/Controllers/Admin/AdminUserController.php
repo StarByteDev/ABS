@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\PortfolioAccount;
 use App\Models\PulseMembershipRequest;
 use App\Models\PulsePlan;
 use App\Models\PulseScannerRun;
@@ -33,7 +34,10 @@ class AdminUserController extends Controller
             $term = '%'.trim((string) $request->string('q')).'%';
             $query->where(fn ($q) => $q->where('name', 'like', $term)->orWhere('email', 'like', $term)->orWhere('phone', 'like', $term));
         }
-        if ($request->filled('role')) $query->where('role', $request->string('role'));
+        if ($request->filled('role')) {
+            $role = (string) $request->string('role');
+            $role === 'private_investor' ? $query->whereIn('role', ['private_member','private_investor']) : $query->where('role', $role);
+        }
         if ($request->filled('status')) $query->where('status', $request->string('status'));
         if ($request->filled('plan')) $query->whereHas('pulseAccess', fn ($q) => $q->where('pulse_plan_id', (int) $request->input('plan')));
         if ($request->filled('pulse_status')) $query->whereHas('pulseAccess', fn ($q) => $q->where('status', $request->string('pulse_status')));
@@ -55,7 +59,7 @@ class AdminUserController extends Controller
                 'All accounts' => User::count(),
                 'Standard users' => User::where('role', 'user')->where('status', 'active')->count(),
                 'Pulse customers' => UserServiceAccess::query()->where('service', 'pulse')->where('status', 'active')->where(fn ($q) => $q->whereNull('ends_at')->orWhere('ends_at', '>', $now))->count(),
-                'Private members' => User::where('role', 'private_member')->where('status', 'active')->count(),
+                'Private investors' => User::whereIn('role', ['private_member','private_investor'])->where('status', 'active')->count(),
                 'Administrators' => User::where('role', 'admin')->where('status', 'active')->count(),
                 'Pending accounts' => User::where('status', 'pending')->count(),
                 'Suspended accounts' => User::where('status', 'suspended')->count(),
@@ -82,7 +86,7 @@ class AdminUserController extends Controller
             'phone' => ['nullable', 'string', 'max:24', 'regex:/^[0-9\s().-]+$/'],
             'country' => ['nullable', 'string', 'max:80'],
             'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()],
-            'role' => ['required', 'in:user,private_member,admin'],
+            'role' => ['required', 'in:user,private_member,private_investor,admin'],
             'status' => ['required', 'in:active,pending,suspended'],
             'pulse_plan_id' => ['nullable', 'exists:pulse_plans,id'],
             'pulse_status' => ['nullable', 'in:pending,active,suspended,expired,revoked'],
@@ -91,12 +95,27 @@ class AdminUserController extends Controller
             'access_notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
+        $isPrivateInvestor = in_array($data['role'], ['private_member','private_investor'], true);
         $assignPulse = $request->boolean('assign_pulse');
+        if ($isPrivateInvestor) {
+            // Private Investor is an overlay on the full Pulse experience. Always
+            // provision the Professional plan (or the strongest active non-trial
+            // plan if that legacy slug is unavailable), regardless of form toggles.
+            $defaultInvestorPlan = PulsePlan::query()->where('is_active', true)->where('is_trial', false)->orderByRaw("CASE WHEN slug = 'pulse-professional' THEN 0 ELSE 1 END")->orderByDesc('sort_order')->orderByDesc('monthly_price')->first();
+            if ($defaultInvestorPlan) {
+                $assignPulse = true;
+                $data['pulse_plan_id'] = $defaultInvestorPlan->id;
+                $data['pulse_status'] = 'active';
+                $data['starts_at'] = $data['starts_at'] ?? now();
+                $data['ends_at'] = null;
+                $data['access_notes'] = trim(($data['access_notes'] ?? '').' Private Investor Pulse access.');
+            }
+        }
         if ($assignPulse && empty($data['pulse_plan_id'])) {
             return back()->withErrors(['pulse_plan_id' => 'Choose a Pulse plan when Pulse access is enabled.'])->withInput();
         }
 
-        [$user, $access] = DB::transaction(function () use ($request, $data, $assignPulse): array {
+        [$user, $access] = DB::transaction(function () use ($request, $data, $assignPulse, $isPrivateInvestor): array {
             $user = User::create([
                 'name' => trim($data['name']),
                 'email' => $data['email'],
@@ -107,8 +126,25 @@ class AdminUserController extends Controller
                 'role' => $data['role'],
                 'status' => $data['status'],
                 'email_verified_at' => $request->boolean('email_verified') ? now() : null,
-                'private_member_approved_at' => $data['role'] === 'private_member' && $data['status'] === 'active' ? now() : null,
+                'private_member_approved_at' => in_array($data['role'], ['private_member','private_investor'], true) && $data['status'] === 'active' ? now() : null,
             ]);
+
+            if ($isPrivateInvestor) {
+                PortfolioAccount::firstOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'account_name' => 'Private Investor Portfolio',
+                        'currency' => 'USD',
+                        'opening_value' => 0,
+                        'current_value' => 0,
+                        'net_contributions' => 0,
+                        'total_profit' => 0,
+                        'monthly_profit' => 0,
+                        'valuation_date' => today(),
+                        'is_active' => true,
+                    ]
+                );
+            }
 
             $access = null;
             if ($assignPulse) {
@@ -204,7 +240,7 @@ class AdminUserController extends Controller
             'country_code' => ['nullable','string','max:8','regex:/^\+[0-9]{1,6}$/'],
             'phone' => ['nullable','string','max:24','regex:/^[0-9\s().-]+$/'],
             'country' => ['nullable','string','max:80'],
-            'role' => ['required','in:user,private_member,admin'],
+            'role' => ['required','in:user,private_member,private_investor,admin'],
             'status' => ['required','in:active,suspended,pending'],
         ]);
 
@@ -226,10 +262,45 @@ class AdminUserController extends Controller
             'role' => $data['role'],
             'status' => $data['status'],
             'email_verified_at' => $request->boolean('email_verified') ? ($user->email_verified_at ?: now()) : null,
-            'private_member_approved_at' => $data['role'] === 'private_member' && $data['status'] === 'active'
+            'private_member_approved_at' => in_array($data['role'], ['private_member','private_investor'], true) && $data['status'] === 'active'
                 ? ($user->private_member_approved_at ?: now())
                 : null,
         ]);
+
+        if (in_array($data['role'], ['private_member','private_investor'], true)) {
+            PortfolioAccount::firstOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'account_name' => 'Private Investor Portfolio',
+                    'currency' => 'USD',
+                    'opening_value' => 0,
+                    'current_value' => 0,
+                    'net_contributions' => 0,
+                    'total_profit' => 0,
+                    'monthly_profit' => 0,
+                    'valuation_date' => today(),
+                    'is_active' => true,
+                ]
+            );
+        }
+
+        if (in_array($data['role'], ['private_member','private_investor'], true)) {
+            $defaultInvestorPlan = PulsePlan::query()->where('is_active', true)->where('is_trial', false)->orderByRaw("CASE WHEN slug = 'pulse-professional' THEN 0 ELSE 1 END")->orderByDesc('sort_order')->orderByDesc('monthly_price')->first();
+            if ($defaultInvestorPlan) {
+                UserServiceAccess::query()->updateOrCreate(
+                    ['user_id' => $user->id, 'service' => 'pulse'],
+                    [
+                        'status' => 'active',
+                        'pulse_plan_id' => $defaultInvestorPlan->id,
+                        'approved_by' => $request->user()->id,
+                        'starts_at' => $user->pulseAccess?->starts_at ?? now(),
+                        'ends_at' => null,
+                        'permissions' => $user->pulseAccess?->permissions ?? [],
+                        'notes' => 'Private Investor Pulse access.',
+                    ]
+                );
+            }
+        }
 
         $audit->record('admin.user_updated', $request->user(), 'User', $user->id, null, [
             'target_user_id' => $user->id,

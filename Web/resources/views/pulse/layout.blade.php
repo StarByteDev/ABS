@@ -12,6 +12,10 @@
     <link rel="stylesheet" href="{{ asset('assets/css/abs-app.css') }}?v={{ @filemtime(public_path('assets/css/abs-app.css')) ?: '14.8.11' }}">
     <link rel="stylesheet" href="{{ asset('assets/css/pulse-app.css') }}?v={{ @filemtime(public_path('assets/css/pulse-app.css')) ?: '14.8.11' }}">
     <link rel="stylesheet" href="{{ asset('assets/css/pulse-premium.css') }}?v={{ @filemtime(public_path('assets/css/pulse-premium.css')) ?: '14.8.11' }}">
+    <link rel="stylesheet" href="{{ asset('assets/css/support-v1566.css') }}?v={{ @filemtime(public_path('assets/css/support-v1566.css')) ?: '15.6.6' }}">
+    <link rel="stylesheet" href="{{ asset('assets/css/private-investor-v1566.css') }}?v={{ @filemtime(public_path('assets/css/private-investor-v1566.css')) ?: '15.6.6' }}">
+    <link rel="stylesheet" href="{{ asset('assets/css/private-investor-v1569.css') }}?v={{ @filemtime(public_path('assets/css/private-investor-v1569.css')) ?: '15.6.9' }}">
+    <link rel="stylesheet" href="{{ asset('assets/css/private-investor-v1573.css') }}?v={{ @filemtime(public_path('assets/css/private-investor-v1573.css')) ?: '15.7.3' }}">
     @stack('head')
 </head>
 <body class="pulse-body" data-pulse-route="{{ request()->route()?->getName() }}">
@@ -25,7 +29,7 @@
     $pulsePlanName = $pulseAccess?->plan?->name ?? ($pulseUser?->isAdmin() ? 'Administrator' : 'Pulse Access');
     $pulseRoleLabel = $pulseUser?->isAdmin()
         ? 'Administrator'
-        : (str_contains(strtolower($pulsePlanName), 'professional') ? 'Pro Trader' : 'Pulse Member');
+        : ($pulseUser?->isPrivateInvestor() ? 'Private Investor' : (str_contains(strtolower($pulsePlanName), 'professional') ? 'Pro Trader' : 'Pulse Member'));
     $pulseMembershipService = app(\App\Services\PulseMembershipService::class);
     $pulseNextPlan = $pulseUser?->isAdmin() ? null : $pulseMembershipService->nextUpgradePlan($pulseAccess);
     $pulseHasPaidCurrentPlan = $pulseAccess?->isActive() && $pulseAccess?->plan && ! $pulseAccess->plan->is_trial;
@@ -39,6 +43,8 @@
         ? (int) $unreadAlerts
         : \App\Models\PulseAlert::query()->where('user_id', $pulseUser?->id)->where('is_read', false)->count();
     $pulseAlertBadge = $pulseUnreadAlerts > 0 ? min($pulseUnreadAlerts, 99) : null;
+    $pulseSupportUnread = 0;
+    try { $pulseSupportUnread = app(\App\Services\PulseSupportService::class)->unreadForUser($pulseUser); } catch (\Throwable) {}
     // V14.7.9: keep the finalized signed-in navigation visible as one stable
     // product shell. Plan/account permissions restrict access to a destination;
     // they no longer make core navigation disappear or fall back to the legacy
@@ -54,6 +60,8 @@
         ['enabled' => $pulseAccessService->allows($pulseUser, 'alerts', false), 'match' => 'pulse.alerts*', 'route' => 'pulse.alerts.index', 'icon' => 'bell', 'label' => 'Alerts & Watchlists'],
         ['enabled' => true, 'match' => 'news.*', 'route' => 'news.index', 'icon' => 'bars', 'label' => 'ABS News'],
         ['enabled' => $pulseAccessService->allows($pulseUser, 'reports', false), 'match' => 'pulse.reports', 'route' => 'pulse.reports', 'icon' => 'bars', 'label' => 'Reports & P&L'],
+        ['enabled' => (bool) $pulseUser?->isPrivateInvestor(), 'match' => 'private.*', 'route' => 'private.index', 'icon' => 'pie', 'label' => 'Investor Portfolio'],
+        ['enabled' => true, 'match' => 'pulse.support*', 'route' => 'pulse.support.index', 'icon' => 'support', 'label' => 'Pulse Support', 'badge' => $pulseSupportUnread ? min($pulseSupportUnread, 99) : null],
         ['enabled' => $pulseAccessService->allows($pulseUser, 'settings', false), 'match' => ['pulse.settings*','pulse.risk.*','pulse.binance*'], 'route' => 'pulse.settings.edit', 'icon' => 'settings', 'label' => 'Trading Setup'],
     ];
 ?>
@@ -70,6 +78,7 @@
     <symbol id="pulse-icon-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></symbol>
     <symbol id="pulse-icon-bars" viewBox="0 0 24 24"><rect x="4" y="12" width="3" height="8" rx="1"/><rect x="10.5" y="7" width="3" height="13" rx="1"/><rect x="17" y="3" width="3" height="17" rx="1"/></symbol>
     <symbol id="pulse-icon-binance" viewBox="0 0 24 24"><path d="m12 3 3 3-3 3-3-3 3-3zM6 9l3 3-3 3-3-3 3-3zM18 9l3 3-3 3-3-3 3-3zM12 15l3 3-3 3-3-3 3-3zM12 9l3 3-3 3-3-3 3-3z"/></symbol>
+    <symbol id="pulse-icon-support" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4V5z"/><path d="M8 9h8M8 12h5"/></symbol>
     <symbol id="pulse-icon-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 14.5l2 1.2-2 3.5-2.2-1a8 8 0 0 1-2.3 1.3L14.2 22h-4.4l-.3-2.5a8 8 0 0 1-2.3-1.3l-2.2 1-2-3.5 2-1.2a8 8 0 0 1 0-2.6L3 10.7l2-3.5 2.2 1a8 8 0 0 1 2.3-1.3L9.8 4h4.4l.3 2.9a8 8 0 0 1 2.3 1.3l2.2-1 2 3.5-2 1.2a8 8 0 0 1 0 2.6z"/></symbol>
     <symbol id="pulse-icon-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
     <symbol id="pulse-icon-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
@@ -201,7 +210,7 @@
                     <div class="pulse-automation-banner enabled"><strong>Automatic mode selected.</strong> Execution remains subject to your plan, account permissions and platform controls.</div>
                 <?php endif; ?>
                 @yield('content')
-                @include('partials.market-disclaimer')
+                @unless(request()->routeIs('private.*')) @include('partials.market-disclaimer') @endunless
             </section>
         </main>
     </div>

@@ -217,9 +217,9 @@
                 <div class="pp-section-head"><h3>V15 Signal Tools</h3><span>Included with package · {{ number_format((int)($selected['share_count'] ?? 0)) }} shares</span></div>
                 <div class="pp-decision-actions">
                     <button class="pp-button" type="button" data-pulse-share data-url="{{ route('pulse.signals.share',$selected['id']) }}">@include('pulse.partials.icon',['name'=>'share']) Share Signal</button>
-                    <button class="pp-button" type="button" data-pulse-explain data-url="{{ route('pulse.signals.explain',$selected['id']) }}">AI Explain</button>
+                    <button class="pp-button" type="button" data-pulse-explain data-url="{{ route('pulse.signals.explain',$selected['id']) }}">Pulse Insight</button>
                 </div>
-                <div class="pulse-legal-note" data-pulse-ai-output style="margin-top:12px">{{ $selected['ai_explanation'] ?: 'AI explanation is optional and controlled by Admin. It explains the existing signal; it never changes scoring, confidence or trade levels.' }}</div>
+                <div class="pulse-legal-note" data-pulse-ai-output style="margin-top:12px">{{ $selected['ai_explanation'] ?: 'Pulse Insight explains the existing signal context and never changes scoring, confidence or trade levels.' }}</div>
                 <div class="pulse-legal-note" data-pulse-share-output hidden></div>
             </article>
         <?php else: ?>
@@ -563,7 +563,7 @@
             ai.disabled=true; var out=document.querySelector('[data-pulse-ai-output]'); if(out) out.textContent='Generating explanation…';
             try{
                 var response=await fetch(ai.dataset.url,{method:'POST',headers:{'X-CSRF-TOKEN':csrf(),'Accept':'application/json'}}); var json=await response.json();
-                if(!response.ok) throw new Error(json.message||'AI explanation unavailable.'); if(out) out.textContent=json.data?.explanation||'Explanation ready.';
+                if(!response.ok) throw new Error(json.message||'Pulse Insight is temporarily unavailable.'); if(out) out.textContent=json.data?.explanation||'Pulse Insight ready.';
             }catch(e){ if(out) out.textContent=e.message; } finally{ai.disabled=false;}
         }
     });

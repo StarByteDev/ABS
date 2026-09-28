@@ -5,7 +5,7 @@
 <div class="enterprise-command-bar">
     <div>
         <h2>Production Backup & Migration Center</h2>
-        <p>Create a portable ABS backup before updates or server migration. The archive preserves the complete MySQL database, users, memberships, CMS content, Pulse settings and application settings stored in the database, with an option to include uploaded files.</p>
+        <p>Create a portable database backup for disaster recovery or server migration. Normal ABS patch updates use Updates & Recovery and do not roll back the live database.</p>
     </div>
 </div>
 
@@ -16,10 +16,12 @@
     <div class="enterprise-kpi"><small>POST Limit</small><strong style="font-size:20px">{{ $postMax }}</strong></div>
 </div>
 
+<div class="backup-key-warning" style="margin:0 0 18px"><b>Application rollback is separate</b><span>Admin → Updates & Recovery restores application files only and preserves the current live database. The database restore controls on this page should be used only when you intentionally want to replace database state from a backup.</span></div>
+
 <div class="enterprise-section-grid equal">
     <section class="enterprise-surface backup-action-card">
         <div class="enterprise-section-head">
-            <div><h2>Create Backup</h2><p>Recommended before every deployment, database change or HostGator migration.</p></div>
+            <div><h2>Create Backup</h2><p>Use before database maintenance, major infrastructure changes or HostGator migration.</p></div>
             <span class="backup-icon">⇩</span>
         </div>
         <div class="backup-detail-list">

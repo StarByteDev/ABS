@@ -1,10 +1,10 @@
 class AppConfig {
-  static const String name = 'ABS Pulse';
-  static const String shortName = 'ABS';
-  static const String mobileVersion = '1.3.5';
-  static const int mobileBuild = 135;
-  static const String supportedBackendBuild = '15.1.6';
-  static const String minimumBackendBuild = '15.1.6';
+  static const String name = 'Pulse';
+  static const String shortName = 'Pulse';
+  static const String mobileVersion = '1.6.4';
+  static const int mobileBuild = 164;
+  static const String supportedBackendBuild = '15.7.4';
+  static const String minimumBackendBuild = '15.7.4';
 
   static const String apiBaseUrl = String.fromEnvironment(
     'ABS_API_BASE_URL',

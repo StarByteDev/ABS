@@ -9,7 +9,7 @@ class PageController extends Controller
 {
     public function products()
     {
-        return view('pages.products', ['products' => Product::where('status', 'live')->whereIn('slug', ['pulse-trading-intelligence', 'private-member-portal'])->orderBy('sort_order')->get()]);
+        return view('pages.products', ['products' => Product::where('status', 'live')->where('slug', 'pulse-trading-intelligence')->orderBy('sort_order')->get()]);
     }
 
     public function markets(MarketDataService $market)

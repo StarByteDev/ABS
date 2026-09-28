@@ -1,36 +1,36 @@
-# ABS Flutter Mobile V1.3.5 Validation Report
+# Pulse Flutter Mobile V1.6.4+164 — Validation Report
 
-**Target backend:** ABS V15.1.6
+**Target backend:** ABS V15.7.4  
+**Production API:** `https://alphablocksolutions.com/api/v1`
 
-**Offline source result:** 403/403 static integrity and architecture checks passed.
+## Release checks completed in this packaging environment
 
-## V1.3.5 checks completed
+- Offline source validator: **680/680 checks passed**.
+- Runtime Dart source contains no user-facing `ABS Pulse` product name.
+- Android/iOS display identity and native repair script are pinned to **Pulse**.
+- Existing Android application ID remains `com.alphablocksolutions.abs` for update compatibility.
+- Calendar historical/upcoming requests remain separated (45-day history / 60-day upcoming window).
+- Calendar response discovery recursively scans nested response collections.
+- Duplicate event/release payloads are merged by event identity so richer release figures are preserved.
+- Result-only provider fragments carrying an event ID plus release figures can merge into their schedule row.
+- Calendar value extraction supports direct aliases, case/style-normalized aliases, nested `{value, unit}` maps, labelled value arrays and labelled summary text.
+- Generic bare `value` is not treated as Actual, avoiding unrelated provider values being displayed as release results.
+- Past missing Actual is labelled `Not reported`; future missing Actual remains `Pending`; missing Previous/Forecast is labelled `Not provided`.
+- Added source tests for standard V15 fields, nested figure maps, labelled arrays and summary fallback parsing.
+- V1.6.3 Direct USDT membership payment and Find Best Signal code paths remain present.
+- V1.6.2 registration phone, activation, market overview and membership-state fixes remain present.
 
-- Free Signal retains the V15.1.6 rewarded-ad status / session / claim / visitor / server cooldown flow.
-- The gateway is now one simple premium rewarded-access card with ABS gold treatment, risk acknowledgement and a single CTA.
-- Native motion uses rotating orbit rings, a pulsing play control and animated signal bars without adding a new dependency.
-- Claim response parsing now accepts `signal`, `free_signal`, `setup`, nested result/payload responses and `entry_watch` shapes.
-- If `/claim` does not include the reveal directly, the app performs one visitor-bound `/status` recovery request before treating the reveal as missing.
-- The mobile client no longer silently shows an empty gateway after a completed rewarded ad when the server returns no setup; a clear server-flow notice is shown.
-- Qualified Signal and `ENTRY WATCH / WATCH ONLY` remain visually and semantically distinct.
-- ABS Intelligence / News / Live / Economic Calendar changes from V1.3.1 are preserved.
-- No direct Binance endpoint is present in Flutter source; market and execution traffic remains routed through ABS.
-- Declared assets, critical screens, API references and relative imports passed the included offline validator.
+## Important data rule
 
+Pulse only displays release values supplied by the ABS/backend provider. The mobile client does **not** invent Actual, Forecast or Previous values. V1.6.4 is designed to recover values that were previously missed because of provider response shape differences; if the backend truly omits a figure, the UI states that explicitly instead of showing a misleading value.
 
-### V1.3.5 Free Signal presentation checks
+## Live endpoint limitation in this environment
 
-- Tiny crypto prices use adaptive precision instead of being rounded to misleading `$0.00` values.
-- Current market price falls back to the latest candle close when a separate price field is absent.
-- Missing Entry / Stop Loss / Take Profit values render as unavailable, never as fake zero levels.
-- Authenticated package fallback attempts to hydrate `/pulse/signals/{id}` for complete signal levels.
-- Market Context now renders candlesticks plus a close-price line and Entry/SL/TP overlays when valid levels exist.
-- Entry Watch uses a concise `WATCH ONLY` action and a clear Setup Snapshot instead of a trade-looking zero-value card.
-- Release ZIP is flattened so project files are at archive root.
+The packaging runtime cannot resolve/access `alphablocksolutions.com`, so the live production endpoint could not be queried directly from this environment. The fix therefore hardens the client against the known ABS V15.7.4 API contract and provider-shape variants already represented in the project source/history. Final comparison against the live web calendar should be performed on the local emulator/device.
 
-## Runtime validation still required locally
+## Native Flutter validation still required locally
 
-Flutter/Dart is not installed in this build environment, so compiler, emulator and device execution must be run locally before release:
+Flutter/Dart SDK is not installed in the packaging runtime. Before live deployment run:
 
 ```bash
 flutter clean
@@ -40,6 +40,4 @@ flutter test
 flutter run
 ```
 
-Use Google rewarded test ads for local validation. If a completed reward still returns the new “public Free Signal service did not return a market setup” notice, the remaining fault is in the V15.1.6 Laravel Free Signal backend, not the Flutter reveal UI.
-
-Additional static review: verified Free Signal member-fallback code path, shorter gateway copy, and updated error-state navigation.
+Then compare several **News → Calendar → Previous** events directly with the web calendar, especially rate decisions, employment and inflation releases.

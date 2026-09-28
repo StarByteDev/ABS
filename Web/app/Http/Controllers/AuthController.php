@@ -75,7 +75,7 @@ class AuthController extends Controller
                 return redirect()->route('private.index');
             }
 
-            return redirect()->route('dashboard')->with('warning', 'Private Member Portal access has not been assigned to this account.');
+            return redirect()->route('dashboard')->with('warning', 'Private Investor Portfolio access has not been assigned to this account.');
         }
 
         if ($request->user()->isAdmin()) {

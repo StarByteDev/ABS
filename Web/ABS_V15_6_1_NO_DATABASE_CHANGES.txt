@@ -1,0 +1,2 @@
+ABS V15.6.1 requires no new database migration.
+Existing news, economic-calendar, Pulse strategy, signal, paper-trade and Admin tables/settings are reused.

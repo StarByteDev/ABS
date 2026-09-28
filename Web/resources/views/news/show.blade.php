@@ -10,8 +10,8 @@
             @if($article->published_at) · {{ $article->published_at->format('d M Y, H:i T') }} @endif
             @if($article->source_name) · Source: {{ $article->source_name }} @endif
         </div>
-        @if($article->source_url)
-            <a class="button button-ghost button-small source-article-link" href="{{ $article->source_url }}" target="_blank" rel="noopener noreferrer">Open original source ↗</a>
+        @if($article->source_name)
+            <div class="article-meta">Verified source: {{ $article->source_name }}</div>
         @endif
     </header>
     <div class="reading-card panel">
@@ -19,7 +19,7 @@
             {!! $article->body !!}
         @else
             <p>{{ $article->excerpt }}</p>
-            @if($article->source_url)<p>This headline links to the original publisher for the complete report.</p>@endif
+            @if($article->source_name)<p>Source: {{ $article->source_name }}</p>@endif
         @endif
         <div class="disclaimer">This content is for general market awareness and education. It is not personalized financial advice.</div>
     </div>

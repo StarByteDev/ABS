@@ -18,12 +18,17 @@ class MembershipController extends Controller
     public function index(Request $request, PulseMembershipService $membership)
     {
         $access = $request->user()->pulseAccess()->with('plan')->first();
+        $nextPlan = $membership->nextUpgradePlan($access);
+        $requests = PulseMembershipRequest::query()->where('user_id', $request->user()->id)->with(['plan', 'promotion'])->latest()->limit(20)->get();
 
         return view('pulse.membership.index', [
             'access' => $access,
             'plans' => $membership->upgradePathPlans($access),
-            'nextPlan' => $membership->nextUpgradePlan($access),
-            'requests' => PulseMembershipRequest::query()->where('user_id', $request->user()->id)->with(['plan', 'promotion'])->latest()->limit(20)->get(),
+            'nextPlan' => $nextPlan,
+            'requests' => $requests,
+            'requestPresentations' => $requests->mapWithKeys(fn (PulseMembershipRequest $item) => [$item->id => $membership->requestStatusPayload($item)]),
+            'currentPlanHighlights' => $access?->plan ? $membership->planHighlights($access->plan) : [],
+            'nextPlanHighlights' => $nextPlan ? $membership->planHighlights($nextPlan) : [],
             'assignedPromotions' => $this->assignedPromotions($request->user()->id),
             'commerce' => $membership->settings(),
         ]);
@@ -40,6 +45,7 @@ class MembershipController extends Controller
             'commerce' => $commerce,
             'quote' => $membership->quote($plan),
             'assignedPromotions' => $commerce['promotions_enabled'] ? $this->assignedPromotions($request->user()->id, $plan->id) : collect(),
+            'planHighlights' => $membership->planHighlights($plan),
         ]);
     }
 
@@ -80,10 +86,11 @@ class MembershipController extends Controller
             'currency' => $quote['currency'],
             'network' => $commerce['network'],
         ], $request);
+        $membership->notifyAdministrators($membershipRequest, 'web');
         $mail->adminNewSubscription($membershipRequest, 'web');
         $mail->planRequestReceived($membershipRequest);
 
-        return redirect()->route('pulse.membership.index')->with('success', 'Payment submitted for Admin verification. Your Pulse package will activate after the USDT transaction is approved.');
+        return redirect()->route('pulse.membership.index')->with('success', 'Payment submitted for verification. Your Pulse package will activate after the USDT transaction is confirmed.');
     }
 
     public function cancel(Request $request, PulseMembershipRequest $membershipRequest, PulseAuditService $audit)

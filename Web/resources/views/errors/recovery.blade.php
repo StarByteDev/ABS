@@ -18,7 +18,7 @@
     <div class="brand"><div class="mark">ABS</div><div><b>ALPHA BLOCK SOLUTIONS</b><small>SECURE DATABASE RECOVERY</small></div></div>
 
     <div class="card hero">
-        <span class="tag">V15.0.9 Recovery</span>
+        <span class="tag">ABS Recovery</span>
         <h1>Repair the current database, initialize an empty database or restore an ABS backup.</h1>
         <p>This recovery page works before user/admin tables exist. It never asks for your MySQL password or APP_KEY in the browser. The database credentials continue to come from your private <code>.env</code>.</p>
 
@@ -82,7 +82,7 @@
         </div>
 
         <div class="warn" style="margin-top:20px"><strong>Important:</strong> If restoring an old live ABS backup, keep the same production <code>APP_KEY</code> in the new HostGator <code>.env</code> before restoring. A different APP_KEY can make encrypted exchange credentials unreadable.</div>
-        <div class="footer">After successful repair/setup/restore, you may remove <code>ABS_RECOVERY_KEY</code> from <code>.env</code> to lock these recovery actions.</div>
+        <div class="footer"><a class="link" href="/api/recovery/build">Restore previous ABS application build →</a><br><br>After successful repair/setup/restore, you may remove <code>ABS_RECOVERY_KEY</code> from <code>.env</code> to lock these recovery actions.</div>
     </div>
 </div>
 </body>

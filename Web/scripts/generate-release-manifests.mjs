@@ -30,7 +30,7 @@ function packageFiles() {
 
 const buildVersion = fs.readFileSync(path.join(root, 'BUILD_VERSION.txt'), 'utf8').trim();
 const manifestVersion = buildVersion.replace(/\s+Build$/i, '');
-const releaseDate = '2026-09-09';
+const releaseDate = '2026-09-26';
 const manifestSources = packageFiles().filter(file => ![buildManifestPath, hashManifestPath].includes(file));
 const buildLines = [
     `${manifestVersion} — BUILD MANIFEST`,

@@ -11,6 +11,7 @@ import '../core/app_config.dart';
 import '../core/json_tools.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
+import '../template_ui/common.dart';
 import '../widgets/abs_ui.dart';
 import 'signals_screen.dart';
 
@@ -219,7 +220,7 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
       if (signal.isNotEmpty) signal = await _hydrateSignalDetails(signal);
       if (responseCooldown > 0) _startCooldown(responseCooldown);
 
-      // V15.1.6 can persist the reveal against the visitor session. If a
+      // ABS can persist the reveal against the visitor session. If a
       // deployment returns the reveal from status instead of directly from
       // /claim, recover it before telling the user that no setup was returned.
       if (signal.isEmpty) {
@@ -228,6 +229,8 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
           signal = recovered;
           if (JsonTools.boolean(signal['member_fallback_used'])) {
             claimNotice = 'Public free flow returned no dedicated setup, so ABS showed your strongest active package signal.';
+          } else if (JsonTools.boolean(signal['btc_context_fallback_used'])) {
+            claimNotice = 'No qualified Free Signal or Entry Watch is available, so ABS is showing the latest BTC 4H market context instead.';
           }
         }
       }
@@ -246,7 +249,9 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
             signal = recovered;
             claimNotice = JsonTools.boolean(recovered['member_fallback_used'])
                 ? 'Public free flow returned no dedicated setup, so ABS showed your strongest active package signal.'
-                : null;
+                : JsonTools.boolean(recovered['btc_context_fallback_used'])
+                    ? 'No qualified Free Signal or Entry Watch is available, so ABS is showing the latest BTC 4H market context instead.'
+                    : null;
             error = null;
           } else {
             error = _friendlyFreeSignalMessage(e.message);
@@ -313,7 +318,55 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
   Future<Map<String, dynamic>> _tryRecoverAnySignal() async {
     final recovered = await _recoverRevealFromStatus();
     if (recovered.isNotEmpty) return recovered;
-    return _recoverMemberSignal();
+    final member = await _recoverMemberSignal();
+    if (member.isNotEmpty) return member;
+    return _recoverBtcContext();
+  }
+
+  Future<Map<String, dynamic>> _recoverBtcContext() async {
+    try {
+      final response = await SessionScope.of(context).api.get(
+        '/market/chart/BTCUSDT',
+        query: const {'interval': '4h', 'limit': 30},
+      );
+      final chart = JsonTools.map(
+        JsonTools.at(response, 'data', <String, dynamic>{}),
+      );
+      final candles = JsonTools.mapList(chart['candles']);
+      if (candles.isEmpty) return <String, dynamic>{};
+      final last = candles.last;
+      final first = candles.length > 6 ? candles[candles.length - 7] : candles.first;
+      final lastClose = JsonTools.number(last['close']);
+      final firstClose = JsonTools.number(first['close']);
+      if (lastClose <= 0) return <String, dynamic>{};
+      final change = firstClose > 0 ? ((lastClose - firstClose) / firstClose) * 100 : 0.0;
+      final bias = change > .75
+          ? 'BULLISH WATCH'
+          : change < -.75
+              ? 'BEARISH WATCH'
+              : 'NEUTRAL WATCH';
+      return _normalizeSignal(<String, dynamic>{
+        'symbol': 'BTCUSDT',
+        'direction': 'WATCH',
+        'timeframe': '4H',
+        'is_qualified_signal': false,
+        'qualified': false,
+        'score': 0,
+        'current_price': lastClose,
+        'candles': candles,
+        'entry_price': 0,
+        'stop_loss': 0,
+        'take_profit': 0,
+        'change_percent_24h': change,
+        'setup_summary': 'No qualified Free Signal or Entry Watch is available. ABS is showing BTC 4H market context ($bias) without issuing trade levels.',
+        'btc_context_fallback_used': true,
+        'market_context_only': true,
+        'source': JsonTools.text(chart['source'], 'ABS'),
+        'generated_at': chart['updated_at'],
+      }, forceEntryWatch: true);
+    } on ApiException {
+      return <String, dynamic>{};
+    }
   }
 
   String _friendlyFreeSignalMessage(String message) {
@@ -587,6 +640,9 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
       if (JsonTools.boolean(base['member_fallback_used'])) {
         hydrated['member_fallback_used'] = true;
       }
+      if (JsonTools.boolean(base['btc_context_fallback_used'])) {
+        hydrated['btc_context_fallback_used'] = true;
+      }
       return hydrated;
     } on ApiException {
       return base;
@@ -634,7 +690,7 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
         .map((entry) => 'TP${entry.key + 1} ${entry.value}')
         .join(' · ');
     final text = <String>[
-      'ABS Pulse ${JsonTools.boolean(signal['is_qualified_signal'], true) ? 'Free Signal' : 'Entry Watch'} — ${JsonTools.text(signal['symbol'])} ${JsonTools.text(signal['direction'])} (${JsonTools.text(signal['timeframe'])})',
+      'Pulse ${JsonTools.boolean(signal['is_qualified_signal'], true) ? 'Free Signal' : 'Entry Watch'} — ${JsonTools.text(signal['symbol'])} ${JsonTools.text(signal['direction'])} (${JsonTools.text(signal['timeframe'])})',
       'Entry ${_priceText(signal['entry_price'])} · SL ${_priceText(signal['stop_loss'])} · ${targets.isEmpty ? 'TP ${_priceText(signal['take_profit'])}' : targets}',
       'Confidence ${number(signal['confidence_score'], digits: 0)}/100',
       'Market intelligence for decision support — not financial advice or a guarantee of profit.',
@@ -642,7 +698,7 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
     ].join('\n');
     await Share.share(
       text,
-      subject: 'ABS Pulse · ${JsonTools.text(signal['symbol'])}',
+      subject: 'Pulse · ${JsonTools.text(signal['symbol'])}',
     );
   }
 
@@ -652,7 +708,7 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
         ? const LoadingBlock(label: 'Checking free-signal availability...')
         : error != null && signal.isEmpty
         ? ListView(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, widget.embedded ? 110 : 28),
+            padding: EdgeInsets.fromLTRB(16, 16, 16, widget.embedded ? 28 : 28),
             children: [
               ErrorBlock(message: error!, onRetry: _loadStatus),
               const SizedBox(height: 12),
@@ -677,14 +733,39 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
             ],
           )
         : ListView(
-            padding: EdgeInsets.fromLTRB(16, 12, 16, widget.embedded ? 110 : 32),
+            padding: EdgeInsets.fromLTRB(16, 12, 16, widget.embedded ? 32 : 32),
             children: signal.isEmpty ? _gateway() : _reveal(),
           );
 
     if (widget.embedded) {
       return Scaffold(
-        backgroundColor: Colors.transparent,
-        body: AbsBackground(child: SafeArea(child: content)),
+        backgroundColor: AbsColors.bg,
+        body: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 10, 16, 8),
+                child: Row(
+                  children: [
+                    PulseLogo(size: 36),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Free Signal', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
+                          Text('Rewarded access · no account required', style: TextStyle(color: AbsColors.muted, fontSize: 10.5, fontWeight: FontWeight.w500)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(child: content),
+            ],
+          ),
+        ),
       );
     }
     return AbsPage(
@@ -770,9 +851,9 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
           height: 62,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: directionColor.withValues(alpha: .12),
+            color: directionColor.withOpacity(.12),
             borderRadius: BorderRadius.circular(19),
-            border: Border.all(color: directionColor.withValues(alpha: .28)),
+            border: Border.all(color: directionColor.withOpacity(.28)),
           ),
           child: Text(
             number(score, digits: 0),
@@ -817,7 +898,7 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
               height: 42,
               decoration: BoxDecoration(
                 color: (qualified ? AbsColors.green : AbsColors.gold)
-                    .withValues(alpha: .10),
+                    .withOpacity(.10),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(
@@ -974,9 +1055,9 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(11),
                 decoration: BoxDecoration(
-                  color: AbsColors.gold.withValues(alpha: .07),
+                  color: AbsColors.gold.withOpacity(.07),
                   borderRadius: BorderRadius.circular(13),
-                  border: Border.all(color: AbsColors.gold.withValues(alpha: .18)),
+                  border: Border.all(color: AbsColors.gold.withOpacity(.18)),
                 ),
                 child: const Text(
                   'Entry, Stop Loss and Take Profit have not been issued for this setup yet.',
@@ -1107,7 +1188,7 @@ class _RewardedAccessCard extends StatelessWidget {
           colors: [Color(0xFF111827), Color(0xFF0D1521), Color(0xFF0A111B)],
         ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AbsColors.gold.withValues(alpha: .52), width: 1.1),
+        border: Border.all(color: AbsColors.gold.withOpacity(.52), width: 1.1),
         boxShadow: const [
           BoxShadow(color: Color(0x38000000), blurRadius: 34, offset: Offset(0, 18)),
         ],
@@ -1138,9 +1219,9 @@ class _RewardedAccessCard extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                         decoration: BoxDecoration(
-                          color: statusColor.withValues(alpha: .08),
+                          color: statusColor.withOpacity(.08),
                           borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: statusColor.withValues(alpha: .26)),
+                          border: Border.all(color: statusColor.withOpacity(.26)),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -1184,7 +1265,7 @@ class _RewardedAccessCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Complete one rewarded ad to reveal the strongest available setup. If nothing qualifies, ABS can show the best Entry Watch instead.',
+                    'Complete one rewarded ad to reveal the strongest available setup. If nothing qualifies, ABS can show the best Entry Watch; if no setup exists, BTC 4H market context is shown without trade levels.',
                     style: TextStyle(
                       color: Color(0xFFAAB8CB),
                       fontSize: 13.2,
@@ -1199,12 +1280,12 @@ class _RewardedAccessCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF111B28).withValues(alpha: .92),
+                        color: const Color(0xFF111B28).withOpacity(.92),
                         borderRadius: BorderRadius.circular(17),
                         border: Border.all(
                           color: consent
-                              ? AbsColors.gold.withValues(alpha: .50)
-                              : const Color(0xFF36506A).withValues(alpha: .70),
+                              ? AbsColors.gold.withOpacity(.50)
+                              : const Color(0xFF36506A).withOpacity(.70),
                         ),
                       ),
                       child: Row(
@@ -1253,9 +1334,9 @@ class _RewardedAccessCard extends StatelessWidget {
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AbsColors.gold.withValues(alpha: .07),
+                        color: AbsColors.gold.withOpacity(.07),
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AbsColors.gold.withValues(alpha: .22)),
+                        border: Border.all(color: AbsColors.gold.withOpacity(.22)),
                       ),
                       child: Text(
                         notice!,
@@ -1320,8 +1401,8 @@ class _GatewayGlow extends StatelessWidget {
               center: const Alignment(0, -.46),
               radius: .68,
               colors: [
-                AbsColors.gold.withValues(alpha: .075),
-                AbsColors.cyan.withValues(alpha: .025),
+                AbsColors.gold.withOpacity(.075),
+                AbsColors.cyan.withOpacity(.025),
                 Colors.transparent,
               ],
               stops: const [0, .48, 1],
@@ -1376,7 +1457,7 @@ class _RewardPulseVisualState extends State<_RewardPulseVisual>
                   child: _OrbitRing(
                     width: 132,
                     height: 205,
-                    color: AbsColors.gold.withValues(alpha: .26),
+                    color: AbsColors.gold.withOpacity(.26),
                   ),
                 ),
                 Transform.rotate(
@@ -1384,7 +1465,7 @@ class _RewardPulseVisualState extends State<_RewardPulseVisual>
                   child: _OrbitRing(
                     width: 184,
                     height: 122,
-                    color: AbsColors.cyanSoft.withValues(alpha: .18),
+                    color: AbsColors.cyanSoft.withOpacity(.18),
                   ),
                 ),
                 Transform.rotate(
@@ -1392,7 +1473,7 @@ class _RewardPulseVisualState extends State<_RewardPulseVisual>
                   child: _OrbitRing(
                     width: 164,
                     height: 146,
-                    color: const Color(0xFF6E9DC3).withValues(alpha: .19),
+                    color: const Color(0xFF6E9DC3).withOpacity(.19),
                   ),
                 ),
                 Transform.scale(
@@ -1406,7 +1487,7 @@ class _RewardPulseVisualState extends State<_RewardPulseVisual>
                       border: Border.all(color: AbsColors.goldSoft, width: 3),
                       boxShadow: [
                         BoxShadow(
-                          color: AbsColors.gold.withValues(alpha: .10 + pulse * .12),
+                          color: AbsColors.gold.withOpacity(.10 + pulse * .12),
                           blurRadius: 24 + pulse * 20,
                           spreadRadius: 2 + pulse * 3,
                         ),
@@ -1441,8 +1522,8 @@ class _RewardPulseVisualState extends State<_RewardPulseVisual>
                         margin: const EdgeInsets.symmetric(horizontal: 3),
                         decoration: BoxDecoration(
                           color: index < 2
-                              ? AbsColors.gold.withValues(alpha: .75)
-                              : const Color(0xFF7693A8).withValues(alpha: .58),
+                              ? AbsColors.gold.withOpacity(.75)
+                              : const Color(0xFF7693A8).withOpacity(.58),
                           borderRadius: BorderRadius.circular(99),
                         ),
                       );
@@ -1510,7 +1591,7 @@ class _GoldUnlockButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: active
-              ? AbsColors.goldSoft.withValues(alpha: .45)
+              ? AbsColors.goldSoft.withOpacity(.45)
               : AbsColors.line,
         ),
         boxShadow: active
@@ -1667,7 +1748,7 @@ class _PulseMarketPainter extends CustomPainter {
     double y(double value) => top + (high - value) / range * chartHeight;
 
     final grid = Paint()
-      ..color = const Color(0xFF26374A).withValues(alpha: .38)
+      ..color = const Color(0xFF26374A).withOpacity(.38)
       ..strokeWidth = .7;
     for (var i = 0; i <= 4; i++) {
       final yy = top + chartHeight * i / 4;
@@ -1685,7 +1766,7 @@ class _PulseMarketPainter extends CustomPainter {
       final close = row['close']!;
       final candleColor = close >= open ? AbsColors.green : AbsColors.red;
       final wick = Paint()
-        ..color = candleColor.withValues(alpha: .72)
+        ..color = candleColor.withOpacity(.72)
         ..strokeWidth = 1;
       canvas.drawLine(
         Offset(x, y(row['high']!)),
@@ -1701,7 +1782,7 @@ class _PulseMarketPainter extends CustomPainter {
           Rect.fromLTWH(x - bodyWidth / 2, rectTop, bodyWidth, rectHeight),
           const Radius.circular(1.2),
         ),
-        Paint()..color = candleColor.withValues(alpha: .72),
+        Paint()..color = candleColor.withOpacity(.72),
       );
       if (i == 0) {
         closePath.moveTo(x, y(close));
@@ -1727,7 +1808,7 @@ class _PulseMarketPainter extends CustomPainter {
         Offset(left, yy),
         Offset(size.width - right, yy),
         Paint()
-          ..color = color.withValues(alpha: .60)
+          ..color = color.withOpacity(.60)
           ..strokeWidth = .9,
       );
     }

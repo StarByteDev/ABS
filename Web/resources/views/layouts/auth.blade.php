@@ -37,7 +37,7 @@
             <div class="auth-intelligence__shade" aria-hidden="true"></div>
             <div class="auth-intelligence__content">
                 <h1 id="auth-intelligence-title">@yield('auth-heading-primary', 'Intelligence that')<br><span>@yield('auth-heading-accent', 'keeps you ahead.')</span></h1>
-                <p>@hasSection('auth-intelligence-copy')@yield('auth-intelligence-copy')@else Access verified market insights, Pulse alerts<br class="auth-desktop-break"> and your private member account.@endif</p>
+                <p>@hasSection('auth-intelligence-copy')@yield('auth-intelligence-copy')@else Access verified market insights, Pulse alerts<br class="auth-desktop-break"> and your eligible account services.@endif</p>
 
                 <ul class="auth-benefits" aria-label="Member portal benefits">
                     <li>

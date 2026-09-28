@@ -20,7 +20,10 @@ class PulseMarketDataService
 {
     private const REQUIRED_TABLES = ['pulse_market_prices', 'pulse_market_candles', 'pulse_market_data_runs'];
 
-    public function __construct(private readonly BinanceFuturesService $binance) {}
+    public function __construct(
+        private readonly BinanceFuturesService $binance,
+        private readonly PulseRuntimeCadenceService $cadence,
+    ) {}
 
     public function schemaReady(): bool
     {
@@ -55,7 +58,9 @@ class PulseMarketDataService
             $enabledSymbols = PulsePair::query()->where('is_enabled', true)->orderBy('sort_order')->orderBy('symbol')
                 ->pluck('symbol')->map(fn ($s) => strtoupper((string) $s))->filter()->unique()->values();
 
-            $pricesUpdated = $this->syncPrices($enabledSymbols);
+            $priceSync = $this->syncPrices($enabledSymbols);
+            $pricesUpdated = (int) ($priceSync['count'] ?? 0);
+            $priceSnapshot = (array) ($priceSync['snapshot'] ?? []);
             $scannerUniverse = $this->scannerUniverse($enabledSymbols);
             $candleSymbolsUpdated = 0;
             $scannerRefresh = [];
@@ -82,10 +87,16 @@ class PulseMarketDataService
                     'enabled_symbols' => $enabledSymbols->count(),
                     'scanner_universe_symbols' => $scannerUniverse->count(),
                     'scheduler_profile' => (string) config('pulse.scheduler.profile', 'standard'),
+                    'cycle_mode' => $this->cadence->mode(),
+                    'effective_cycle_seconds' => $this->cadence->effectiveSeconds(),
                     'scanner_symbols_this_cycle' => $scannerRefresh,
                     'scanner_timeframes' => array_values((array) config('pulse.market_data.scanner_timeframes', ['15m', '4h'])),
                     'validation_symbols' => $validationSymbols->count(),
-                    'architecture' => 'central-scheduled-v1',
+                    // Exact per-run market snapshot for Admin price-sync audit/history.
+                    // Stored in the existing JSON summary so V15.4.0 requires no schema migration.
+                    'price_snapshot' => $priceSnapshot,
+                    'price_snapshot_count' => count($priceSnapshot),
+                    'architecture' => 'central-scheduled-v2',
                 ],
                 'completed_at' => now(),
             ]);
@@ -159,7 +170,7 @@ class PulseMarketDataService
                 'last_run_completed_at' => null,
                 'latest_price_observed_at' => null,
                 'latest_price_symbols' => 0,
-                'target_price_refresh_seconds' => (int) config('pulse.market_data.target_price_refresh_seconds', 60),
+                'target_price_refresh_seconds' => $this->cadence->effectiveSeconds(),
                 'read_max_age_seconds' => (int) config('pulse.market_data.read_max_age_seconds', 300),
                 'scheduler_profile' => (string) config('pulse.scheduler.profile', 'standard'),
                 'scheduler_cron_minutes' => (int) config('pulse.scheduler.cron_minutes', 1),
@@ -171,9 +182,21 @@ class PulseMarketDataService
         $lastRun = PulseMarketDataRun::query()->latest('id')->first();
         $latestObserved = PulseMarketPrice::query()->max('observed_at');
         $priceCount = PulseMarketPrice::query()->count();
-        $target = (int) config('pulse.market_data.target_price_refresh_seconds', 60);
+        $target = $this->cadence->effectiveSeconds();
+        $mode = $this->cadence->mode();
+        $readMaxAge = (int) config('pulse.market_data.read_max_age_seconds', 300);
         $ageSeconds = $latestObserved ? max(0, now()->diffInSeconds(\Illuminate\Support\Carbon::parse($latestObserved))) : null;
-        $feedStatus = $ageSeconds === null ? 'offline' : ($ageSeconds <= max(120, $target * 2) ? 'healthy' : ($ageSeconds <= max(300, $target * 5) ? 'delayed' : 'offline'));
+        if ($mode === 'manual') {
+            $healthyAge = max(60, $readMaxAge);
+            $delayedAge = max(300, $readMaxAge * 2);
+        } elseif ($mode === 'internal') {
+            $healthyAge = max(15, $target * 2);
+            $delayedAge = max(60, $target * 5);
+        } else {
+            $healthyAge = max(120, $target * 2);
+            $delayedAge = max(300, $target * 5);
+        }
+        $feedStatus = $ageSeconds === null ? 'offline' : ($ageSeconds <= $healthyAge ? 'healthy' : ($ageSeconds <= $delayedAge ? 'delayed' : 'offline'));
         return [
             'architecture' => 'central-scheduled-v2',
             'schema_ready' => true,
@@ -185,16 +208,20 @@ class PulseMarketDataService
             'latest_price_observed_at' => $latestObserved,
             'latest_price_symbols' => $priceCount,
             'target_price_refresh_seconds' => $target,
-            'read_max_age_seconds' => (int) config('pulse.market_data.read_max_age_seconds', 300),
+            'read_max_age_seconds' => $readMaxAge,
+            'healthy_age_seconds' => $healthyAge,
+            'delayed_age_seconds' => $delayedAge,
             'scheduler_profile' => (string) config('pulse.scheduler.profile', 'standard'),
+            'cycle_mode' => $this->cadence->mode(),
             'scheduler_cron_minutes' => (int) config('pulse.scheduler.cron_minutes', 1),
             'scanner_timeframes' => array_values((array) config('pulse.market_data.scanner_timeframes', ['15m', '4h'])),
         ];
     }
 
-    private function syncPrices(Collection $enabledSymbols): int
+    /** @return array{count:int,snapshot:array<int,array<string,mixed>>} */
+    private function syncPrices(Collection $enabledSymbols): array
     {
-        if ($enabledSymbols->isEmpty()) return 0;
+        if ($enabledSymbols->isEmpty()) return ['count'=>0,'snapshot'=>[]];
         $wanted = array_flip($enabledSymbols->all());
         $observedAt = now();
         $rows = [];
@@ -215,7 +242,18 @@ class PulseMarketDataService
         if ($rows !== []) {
             DB::table('pulse_market_prices')->upsert($rows, ['symbol'], ['price','change_percent_24h','high_24h','low_24h','volume_24h','source','observed_at','updated_at']);
         }
-        return count($rows);
+        $snapshot = array_map(static fn (array $row): array => [
+            'symbol' => (string) $row['symbol'],
+            'price' => (float) $row['price'],
+            'change_percent_24h' => $row['change_percent_24h'],
+            'high_24h' => $row['high_24h'],
+            'low_24h' => $row['low_24h'],
+            'volume_24h' => $row['volume_24h'],
+            'source' => (string) $row['source'],
+            'observed_at' => $row['observed_at'] instanceof \DateTimeInterface ? $row['observed_at']->format(DATE_ATOM) : (string) $row['observed_at'],
+        ], $rows);
+
+        return ['count'=>count($rows),'snapshot'=>$snapshot];
     }
 
     /**

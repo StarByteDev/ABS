@@ -1,0 +1,11 @@
+ABS V15.6.6 — ADDITIVE / NON-DESTRUCTIVE DATABASE CHANGE ONLY
+
+Adds:
+- portfolio_performance_plans
+- portfolio_daily_accruals
+
+No existing ABS Pulse users, memberships, payments, signals, trades, investor transactions, monthly statements, support messages, CMS content, strategy evidence or history are deleted, reset or replaced.
+
+Private Investor monthly performance plans create PROVISIONAL daily accrual reporting only. They do not create realized profit transactions and do not publish monthly statements automatically. Official portfolio performance remains based on confirmed transactions and published monthly statements.
+
+V15.6.2 one-build application rollback remains code-only and must not roll back the live database.

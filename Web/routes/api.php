@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ContentController;
 use App\Http\Controllers\Api\V1\MarketController;
 use App\Http\Controllers\Api\V1\NewsletterController;
+use App\Http\Controllers\Api\V1\SupportController;
 use App\Http\Controllers\Api\V1\PrivatePortalController;
 use App\Http\Controllers\Api\V1\WatchlistController;
 use App\Http\Controllers\Api\V1\PulseController;
@@ -23,6 +24,8 @@ Route::get('/recovery', [RecoveryController::class, 'index']);
 Route::post('/recovery/repair', [RecoveryController::class, 'repair'])->middleware('throttle:5,1');
 Route::post('/recovery/initialize', [RecoveryController::class, 'initialize'])->middleware('throttle:5,1');
 Route::post('/recovery/restore', [RecoveryController::class, 'restore'])->middleware('throttle:5,1');
+Route::get('/recovery/build', [RecoveryController::class, 'buildRecovery']);
+Route::post('/recovery/build/restore', [RecoveryController::class, 'restoreBuild'])->middleware('throttle:5,1');
 
 Route::prefix('v1')->group(function () {
     Route::post('/auth/register', [AuthController::class, 'register']);
@@ -74,6 +77,11 @@ Route::prefix('v1')->group(function () {
         Route::get('/watchlist', [WatchlistController::class, 'index']);
         Route::post('/watchlist', [WatchlistController::class, 'store']);
         Route::delete('/watchlist/{symbol}', [WatchlistController::class, 'destroy']);
+
+        Route::get('/support', [SupportController::class, 'overview']);
+        Route::post('/support/messages', [SupportController::class, 'message'])->middleware('throttle:30,1');
+        Route::get('/support/conversations/{conversation}', [SupportController::class, 'show']);
+        Route::patch('/support/conversations/{conversation}/close', [SupportController::class, 'close']);
 
         Route::get('/pulse/access', [PulseController::class, 'access']);
         Route::get('/pulse/plans', [PulseController::class, 'plans']);
@@ -154,7 +162,13 @@ Route::prefix('v1')->group(function () {
 
         Route::middleware('private.member')->prefix('private')->group(function () {
             Route::get('/account', [PrivatePortalController::class, 'account']);
+            Route::get('/transactions', [PrivatePortalController::class, 'transactions']);
+            Route::get('/statements', [PrivatePortalController::class, 'statements']);
             Route::get('/statements/{statement}', [PrivatePortalController::class, 'statement']);
+            Route::patch('/currency', [PrivatePortalController::class, 'updateCurrency'])->middleware('throttle:10,1');
+            Route::get('/requests', [PrivatePortalController::class, 'requests']);
+            Route::post('/requests', [PrivatePortalController::class, 'storeRequest'])->middleware('throttle:10,1');
+            Route::patch('/requests/{portfolioRequest}/cancel', [PrivatePortalController::class, 'cancelRequest']);
         });
     });
 });

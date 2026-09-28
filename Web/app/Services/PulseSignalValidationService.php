@@ -19,7 +19,14 @@ class PulseSignalValidationService
         }
         $signals = PulseSignal::query()->whereIn('direction',['LONG','SHORT'])
             ->where(function ($q) { $q->whereIn('status',['active','expired'])->orWhereHas('trades'); })
-            ->where('generated_at','>=',now()->subDays(2))->orderBy('generated_at')->limit(max(1,$limit))->get();
+            ->where('generated_at','>=',now()->subDays(2))
+            ->where(function ($q) {
+                $q->whereDoesntHave('validation')
+                    ->orWhereHas('validation', fn ($validation) => $validation->whereNull('resolved_at'));
+            })
+            ->orderBy('generated_at')
+            ->limit(max(1,$limit))
+            ->get();
         $processed=0; $resolved=0; $dates=[];
         foreach ($signals as $signal) {
             $validation = $this->ensureValidation($signal);
@@ -125,7 +132,7 @@ class PulseSignalValidationService
     private function pruneDetailed(): void
     {
         if (! Schema::hasTable('pulse_signal_validations')) return;
-        $days=max(1,(int)config('pulse.validation.detailed_retention_days',7));
+        $days=max(1,(int)config('pulse.validation.detailed_retention_days',90));
         PulseSignalValidation::query()->whereNotNull('resolved_at')->where('resolved_at','<',now()->subDays($days))->delete();
     }
 }

@@ -1,11 +1,11 @@
 @echo off
 setlocal
-TITLE ABS V14.6.2 Laragon MySQL Local Setup
+TITLE ABS V15.3.0 Laragon MySQL Local Setup
 
 cd /d "%~dp0"
 
 echo =====================================================
-echo Alpha Block Solutions V14.6.2 - Laragon MySQL Setup
+echo Alpha Block Solutions V15.3.0 - Laragon MySQL Setup
 echo =====================================================
 echo.
 echo Start Laragon and make sure MySQL is running before continuing.
@@ -69,8 +69,9 @@ php artisan abs:cache-market
 if errorlevel 1 echo WARNING: Market providers are temporarily unavailable. The homepage will retry automatically in the browser.
 
 echo.
-echo ABS V14.6.2 MySQL setup completed successfully.
-echo Run: php artisan serve
+echo ABS V15.3.0 MySQL setup completed successfully.
+echo For automatic background research use RUN-ABS-LARAGON.bat.
+echo Manual terminals: php artisan schedule:work  ^&  php artisan serve
 echo Open: http://127.0.0.1:8000
 exit /b 0
 

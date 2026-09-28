@@ -1,12 +1,12 @@
-@extends('layouts.app')
-@section('title','Monthly Statement — Alpha Block Solutions')
+@extends('pulse.layout')
+@section('title','Monthly Investor Statement · ABS Pulse')
+@section('heading','Monthly Investor Statement')
 @section('content')
-<section class="container statement-sheet">
-    <div class="statement-top">@include('partials.logo')<div><b>PRIVATE MEMBER MONTHLY STATEMENT</b><span>{{ $statement->statement_month->format('F Y') }}</span></div></div>
-    <p>This statement summarizes the account records published for {{ auth()->user()->name }}.</p>
-    <div class="statement-grid"><div><small>Opening Balance</small><strong>{{ number_format($statement->opening_balance,2) }}</strong></div><div><small>Contributions</small><strong>{{ number_format($statement->contributions,2) }}</strong></div><div><small>Withdrawals</small><strong>{{ number_format($statement->withdrawals,2) }}</strong></div><div><small>Profit / Loss</small><strong>{{ number_format($statement->profit_loss,2) }}</strong></div><div><small>Closing Balance</small><strong>{{ number_format($statement->closing_balance,2) }}</strong></div></div>
-    <div class="statement-notes"><h3>Statement Notes</h3><p>{{ $statement->notes ?: 'No additional note is available for this period.' }}</p></div>
-    <div class="statement-actions"><button class="button button-primary" onclick="window.print()">Print or Save as PDF</button><a class="button button-ghost" href="{{ route('private.statement.export',$statement) }}">Download Statement CSV</a></div>
-    <div class="disclaimer"><strong>Confidential reporting document:</strong> Verify any discrepancy with {{ config('brand.support_email') }}. This statement is not a bank, custodian or exchange statement unless explicitly identified and reconciled as such.</div>
-</section>
+@php($ret=(float)$statement->opening_balance>0?((float)$statement->profit_loss/(float)$statement->opening_balance)*100:0)
+@php($currency=$statement->account?->currency ?? $statement->currency ?? 'USD')
+<section class="pi-shell"><header class="pi-head"><div><span class="pi-kicker">Private Investor Statement</span><h1>{{ $statement->statement_month->format('F Y') }}</h1><p>{{ auth()->user()->name }} · {{ $statement->account?->account_name ?? 'Private Investor Portfolio' }} · {{ $currency }}</p></div><div class="pi-actions"><button class="pi-btn" onclick="window.print()">Print / Save PDF</button><a class="pi-btn primary" href="{{ route('private.statement.export',$statement) }}">Download CSV</a></div></header>@include('private._tabs')
+<div class="pi-grid pi-grid-5"><article class="pi-stat"><small>Opening Capital</small><strong>{{ $currency }} {{ number_format($statement->opening_balance,2) }}</strong></article><article class="pi-stat"><small>Investment Added</small><strong>{{ $currency }} {{ number_format($statement->contributions,2) }}</strong></article><article class="pi-stat"><small>Capital Withdrawn</small><strong>{{ $currency }} {{ number_format($statement->withdrawals,2) }}</strong></article><article class="pi-stat"><small>Profit Paid</small><strong class="pi-positive">{{ $currency }} {{ number_format($statement->profit_paid,2) }}</strong></article><article class="pi-stat"><small>Closing Capital</small><strong>{{ $currency }} {{ number_format($statement->closing_balance,2) }}</strong></article></div>
+<div class="pi-summary-band"><div><small>Profit / Loss</small><strong class="{{ $statement->profit_loss>=0?'pi-positive':'pi-negative' }}">{{ $currency }} {{ number_format($statement->profit_loss,2) }}</strong></div><div><small>Monthly Return</small><strong class="{{ $ret>=0?'pi-positive':'pi-negative' }}">{{ number_format($ret,2) }}%</strong></div><div><small>Profit Payment Date</small><strong>{{ $statement->payment_date?->format('d M Y') ?: '—' }}</strong></div><div><small>Statement Published</small><strong>{{ optional($statement->published_at)->format('d M Y') ?: '—' }}</strong></div></div>
+<article class="pi-card"><div class="pi-card-head"><h2>Statement Notes</h2></div><p>{{ $statement->notes ?: 'This statement was reconciled from your posted account activity for the period.' }}</p></article>
+<div class="pi-note">Profit Paid is recorded as a distribution outside the portfolio and does not increase your principal. Closing Capital therefore represents invested capital after capital additions, capital withdrawals and any balance-affecting adjustments.</div></section>
 @endsection

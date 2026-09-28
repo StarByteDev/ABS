@@ -29,31 +29,31 @@
             <p>Connect the calendar provider once, then keep upcoming and historical CPI, PPI, FOMC, jobs, GDP and other market-moving releases synchronized automatically.</p>
         </div>
         <span class="admin-status {{ ($economicIntegration['configured'] ?? false) ? 'good' : 'warn' }}">
-            {{ ($economicIntegration['configured'] ?? false) ? 'CONNECTED' : 'SETUP REQUIRED' }}
+            {{ ($economicIntegration['primary_configured'] ?? false) ? 'FMP CONNECTED' : (($economicIntegration['configured'] ?? false) ? 'MARKET CALENDAR READY' : 'SETUP REQUIRED') }}
         </span>
     </div>
     <div class="economic-integration-grid">
         <form method="POST" action="{{ route('admin.enterprise.economic-calendar.settings') }}" class="economic-integration-form">
             @csrf
             @method('PUT')
-            <label>Financial Modeling Prep API key
-                <input type="password" name="api_key" autocomplete="new-password" placeholder="{{ ($economicIntegration['configured'] ?? false) ? 'Connected — enter a new key only to replace it' : 'Paste your FMP API key' }}">
+            <label>Financial Modeling Prep API key <small>(optional primary source)</small>
+                <input type="password" name="api_key" autocomplete="new-password" placeholder="{{ ($economicIntegration['primary_configured'] ?? false) ? 'Connected — enter a new key only to replace it' : 'Optional — built-in market calendar is available without this key' }}">
             </label>
             <label class="economic-switch"><input type="checkbox" name="auto_sync" value="1" @checked($economicIntegration['auto_sync'] ?? true)> <span>Keep calendar synchronized automatically</span></label>
             <label class="economic-switch"><input type="checkbox" name="clear_api_key" value="1"> <span>Disconnect current API key</span></label>
             <button class="button button-ghost">Save Calendar Settings</button>
         </form>
         <div class="economic-integration-actions">
-            <div><small>Provider</small><b>{{ $economicIntegration['provider'] ?? 'Financial Modeling Prep' }}</b></div>
+            <div><small>Active provider</small><b>{{ $economicIntegration['provider'] ?? 'Economic Calendar' }}</b></div>
             <div><small>Last successful sync</small><b>{{ !empty($economicIntegration['last_sync_at']) ? \Illuminate\Support\Carbon::parse($economicIntegration['last_sync_at'])->format('d M Y · H:i') : 'Not synced yet' }}</b></div>
             <form method="POST" action="{{ route('admin.enterprise.economic-calendar.sync') }}">
                 @csrf
                 <button class="button button-primary" @disabled(!($economicIntegration['configured'] ?? false))>Sync Calendar Now</button>
             </form>
-            <a class="button button-ghost" href="{{ route('news.index') }}" target="_blank" rel="noopener">Preview ABS News ↗</a>
+            <a class="button button-ghost" href="{{ route('news.index') }}">Preview ABS News →</a>
         </div>
     </div>
-    <p class="economic-integration-note">Forecasts are estimates and actual values can be revised. ABS presents simplified crypto context for information only.</p>
+    <p class="economic-integration-note">ABS uses your configured FMP connection when available. Otherwise the built-in market-calendar sources keep the schedule synchronized automatically. Forecasts are estimates and actual values can be revised.</p>
 </section>
 @endif
 

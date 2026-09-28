@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\ApplicationBackupService;
+use App\Services\ApplicationReleaseService;
 use App\Support\AbsSchemaRepair;
 use App\Support\RecoveryKey;
 use Illuminate\Http\Request;
@@ -103,6 +104,49 @@ class RecoveryController extends Controller
         }
     }
 
+    public function buildRecovery(ApplicationReleaseService $releases)
+    {
+        return $this->renderBuildRecovery($releases);
+    }
+
+    public function restoreBuild(Request $request, ApplicationReleaseService $releases)
+    {
+        try {
+            $this->assertRecoveryKey($request);
+            $validated = $request->validate([
+                'confirmation' => ['required', 'string'],
+            ]);
+            if (strtoupper(trim((string) ($validated['confirmation'] ?? ''))) !== 'RESTORE') {
+                throw ValidationException::withMessages([
+                    'confirmation' => 'Type RESTORE exactly to confirm the previous-build recovery.',
+                ]);
+            }
+
+            $point = $releases->latestRestorePoint();
+            if (! $point) {
+                throw ValidationException::withMessages([
+                    'confirmation' => 'No previous application build is currently stored.',
+                ]);
+            }
+
+            $result = $releases->restoreRestorePoint($point['name'], false);
+            return $this->renderBuildRecovery($releases, [
+                'ok' => true,
+                'title' => 'Previous ABS build restored.',
+                'message' => 'Application build '.$result['restored_version'].' is active again. The live database was not replaced, rolled back or deleted.',
+            ]);
+        } catch (ValidationException $e) {
+            return $this->renderBuildRecovery($releases, null, $this->flattenValidationErrors($e), 422);
+        } catch (Throwable $e) {
+            report($e);
+            return $this->renderBuildRecovery($releases, [
+                'ok' => false,
+                'title' => 'Previous-build recovery failed.',
+                'message' => $e->getMessage(),
+            ], [], 500);
+        }
+    }
+
     public function restore(Request $request, ApplicationBackupService $backups)
     {
         try {
@@ -197,6 +241,17 @@ class RecoveryController extends Controller
                 'recovery_key' => 'The recovery key is incorrect.',
             ]);
         }
+    }
+
+    private function renderBuildRecovery(ApplicationReleaseService $releases, ?array $result = null, array $validationErrors = [], int $status = 200)
+    {
+        return response()->view('errors.build-recovery', [
+            'currentVersion' => is_file(base_path('BUILD_VERSION.txt')) ? trim((string) file_get_contents(base_path('BUILD_VERSION.txt'))) : 'Unknown',
+            'restorePoint' => $releases->latestRestorePoint(),
+            'recoveryEnabled' => RecoveryKey::enabled(),
+            'result' => $result,
+            'validationErrors' => $validationErrors,
+        ], $status);
     }
 
     private function renderSetupRequired(?array $result = null, array $validationErrors = [], int $status = 200, ?array $diagnosis = null)

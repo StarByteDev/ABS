@@ -67,9 +67,11 @@ class AdminEnterpriseController extends Controller
             $calendar = app(EconomicCalendarService::class);
             $economicIntegration = [
                 'configured' => $calendar->configured(),
+                'primary_configured' => $calendar->primaryConfigured(),
                 'auto_sync' => $calendar->autoSyncEnabled(),
                 'provider' => $calendar->providerName(),
                 'last_sync_at' => $calendar->lastSyncAt(),
+                'last_sync_status' => $calendar->lastSyncStatus(),
             ];
         }
         return view('admin.enterprise.content-index', compact('type', 'definition', 'summary', 'filterOptions', 'economicIntegration') + ['items' => $query->paginate(25)->withQueryString()]);
@@ -232,9 +234,10 @@ class AdminEnterpriseController extends Controller
         $logs = EmailDeliveryLog::query()->latest()->paginate(40);
         $stats = [
             'sent_24h' => EmailDeliveryLog::query()->where('status', 'sent')->where('created_at', '>=', now()->subDay())->count(),
-            'failed_24h' => EmailDeliveryLog::query()->where('status', 'failed')->where('created_at', '>=', now()->subDay())->count(),
+            'failed_24h' => EmailDeliveryLog::query()->whereIn('status', ['failed','not_delivered'])->where('created_at', '>=', now()->subDay())->count(),
             'devices' => MobileDevice::query()->where('is_active', true)->count(),
         ];
+        $mailHealth = app(BrandedMailService::class)->deliveryHealth();
         $configuredDays = PulseSystemSetting::value('expiry_reminder_days', [7, 3, 1, 0]);
         if (! is_array($configuredDays)) $configuredDays = explode(',', (string) $configuredDays);
         $expiryDays = collect($configuredDays)->map(fn ($day) => (int) $day)->filter(fn ($day) => $day >= 0 && $day <= 90)->unique()->sortDesc()->values();
@@ -246,7 +249,7 @@ class AdminEnterpriseController extends Controller
             return [(string) $day => $count];
         });
         $expirySent30 = EmailDeliveryLog::query()->where('status', 'sent')->where('event', 'like', 'plan_expiry_%')->where('created_at', '>=', now()->subDays(30))->count();
-        return view('admin.enterprise.emails', compact('settings', 'adminEventSettings', 'logs', 'stats', 'expiryDays', 'expiryAudience', 'expirySent30'));
+        return view('admin.enterprise.emails', compact('settings', 'adminEventSettings', 'logs', 'stats', 'expiryDays', 'expiryAudience', 'expirySent30', 'mailHealth'));
     }
 
     public function updateEmailSettings(Request $request)

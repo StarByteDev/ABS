@@ -40,7 +40,16 @@ class ContentController extends Controller
 
     public function liveNews(Request $request, LiveNewsService $liveNews)
     {
-        return response()->json(['data' => $liveNews->latest((int) $request->integer('limit', 20), $request->boolean('refresh'))])
+        $items = collect($liveNews->latest((int) $request->integer('limit', 20), $request->boolean('refresh')))
+            ->map(function (array $item): array {
+                $item['publisher_url'] = (string) ($item['url'] ?? '');
+                $item['abs_url'] = route('news.live.show', ['id' => (string) ($item['id'] ?? '')]);
+                return $item;
+            })
+            ->values()
+            ->all();
+
+        return response()->json(['data' => $items])
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
     }
 

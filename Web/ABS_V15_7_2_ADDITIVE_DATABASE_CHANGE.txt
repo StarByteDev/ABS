@@ -1,0 +1,22 @@
+ABS V15.7.2 — ADDITIVE DATABASE CHANGE ONLY
+
+Purpose
+- Preserve investor principal in its original account currency.
+- Track Admin USD carrying basis separately from the USD settlement cost at withdrawal.
+- Record realized Admin FX gain/loss without changing investor principal or investor performance.
+
+Added fields
+portfolio_accounts
+- realized_fx_gain_loss_usd DECIMAL(18,2) default 0
+
+portfolio_transactions
+- principal_usd_basis DECIMAL(18,2) nullable
+- settlement_usd_amount DECIMAL(18,2) nullable
+- fx_gain_loss_usd DECIMAL(18,2) default 0
+
+Safety
+- No existing table or column is dropped.
+- No user, investor, transaction, statement, request, agreement, trade, payment or history row is deleted.
+- Existing V15.7.1 financial effects are not silently rewritten during migration.
+- USD-native accounts remain 1:1.
+- Rollback intentionally retains the new finance/audit fields under the ABS production data-preservation rule.

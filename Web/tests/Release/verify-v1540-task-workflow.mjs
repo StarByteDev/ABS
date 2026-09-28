@@ -1,0 +1,18 @@
+import fs from 'node:fs';
+const must = (cond,msg)=>{if(!cond){console.error('FAIL:',msg);process.exit(1)}};
+const read=p=>fs.readFileSync(p,'utf8');
+const routes=read('routes/web.php');
+const layout=read('resources/views/admin/layout.blade.php');
+const market=read('app/Services/PulseMarketDataService.php');
+const controller=read('app/Http/Controllers/Admin/AdminStrategyWorkflowController.php');
+for (const name of ['price-source','latest-prices','price-history','scan-signals','paper-trades','trade-results','strategy-performance']) must(routes.includes(`name('${name}')`),`route ${name}`);
+for (const label of ['Strategy Overview','Price Source &amp; Schedule','Latest Market Prices','Price Sync History','Scan &amp; Signals','Paper Trades','Trade Results','Strategy Performance','Audit &amp; History']) must(layout.includes(label),`sidebar ${label}`);
+must(layout.includes('admin-workflow-v1540.css'),'V15.4 style loaded');
+must(layout.includes('abs-admin-v1540'),'V15.4 body branding class');
+must(market.includes("'price_snapshot' => $priceSnapshot"),'market run price snapshot stored');
+must(controller.includes('public function overview'),'executive overview controller');
+must(controller.includes('public function priceHistoryShow'),'price history detail controller');
+for (const view of ['overview','price-source','latest-prices','price-history','price-history-show','scan-signals','paper-trades','trade-results','strategy-performance']) must(fs.existsSync(`resources/views/admin/pulse/workflow/${view}.blade.php`),`view ${view}`);
+const scanner=read('app/Services/PulseScannerService.php');
+must(scanner.length>1000,'core scanner present');
+console.log('PASS: ABS V15.4.0 task workflow contract');

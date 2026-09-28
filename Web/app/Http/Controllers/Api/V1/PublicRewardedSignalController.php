@@ -69,11 +69,23 @@ class PublicRewardedSignalController extends Controller
                 'amount' => $data['reward_amount'] ?? 0,
                 'client' => 'mobile_api',
             ]);
+            $snapshot = (array) $unlock->signal_snapshot;
+            $qualified = (bool) data_get($snapshot, 'is_qualified_signal', true);
+            $presentation = (string) data_get($snapshot, 'presentation', 'qualified_signal');
             return response()->json(['data' => [
                 'visitor_token' => $visitor,
-                'presentation' => data_get($unlock->signal_snapshot, 'presentation', 'qualified_signal'),
-                'is_qualified_signal' => (bool) data_get($unlock->signal_snapshot, 'is_qualified_signal', true),
-                'signal' => $unlock->signal_snapshot,
+                'presentation_schema_version' => 3,
+                'presentation' => $presentation,
+                'is_qualified_signal' => $qualified,
+                'fallback_mode' => $qualified ? null : ($presentation === 'btc_outlook' ? 'btc_4h_outlook' : $presentation),
+                'display' => [
+                    'eyebrow' => $presentation === 'btc_outlook' ? 'ABS PULSE · BTC 4-HOUR OUTLOOK' : 'ABS PULSE · FREE SIGNAL',
+                    'title' => $presentation === 'btc_outlook' ? 'No qualified signal right now' : 'Qualified Pulse setup',
+                    'subtitle' => $presentation === 'btc_outlook'
+                        ? 'Monitor BTC over the next four hours while ABS waits for a stronger qualified setup.'
+                        : 'Review the entry, target, stop and strategy evidence for the unlocked setup.',
+                ],
+                'signal' => $snapshot,
                 'visibility_mode' => 'until_refresh_or_navigation',
                 'next_available_at' => $unlock->next_available_at?->toIso8601String(),
                 'cooldown_seconds' => max(0, now()->diffInSeconds($unlock->next_available_at, false)),

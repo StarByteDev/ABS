@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.alphablocksolutions.abs"
-    android:versionCode="135"
-    android:versionName="1.3.5" >
+    android:versionCode="164"
+    android:versionName="1.6.4" >
 
     <uses-sdk
         android:minSdkVersion="23"
@@ -81,7 +81,7 @@
         android:debuggable="true"
         android:extractNativeLibs="false"
         android:icon="@mipmap/ic_launcher"
-        android:label="ABS Pulse"
+        android:label="Pulse"
         android:usesCleartextTraffic="true" >
 
         <!-- Google sample App ID. Replace with the ABS AdMob App ID for release. -->

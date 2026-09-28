@@ -39,13 +39,19 @@ class AbsSchemaRepair
         'community_comments' => ['id', 'community_post_id', 'user_id', 'body', 'status', 'created_at', 'updated_at'],
         'newsletter_subscribers' => ['id', 'email', 'preferences', 'status', 'confirmed_at', 'unsubscribed_at', 'created_at', 'updated_at'],
         'watchlists' => ['id', 'user_id', 'symbol', 'display_name', 'sort_order', 'created_at', 'updated_at'],
-        'portfolio_accounts' => ['id', 'user_id', 'account_name', 'currency', 'opening_value', 'current_value', 'net_contributions', 'total_profit', 'monthly_profit', 'valuation_date', 'is_active', 'notes', 'created_at', 'updated_at'],
-        'portfolio_transactions' => ['id', 'portfolio_account_id', 'type', 'amount', 'transaction_date', 'reference', 'description', 'created_at', 'updated_at'],
-        'monthly_statements' => ['id', 'portfolio_account_id', 'statement_month', 'opening_balance', 'contributions', 'withdrawals', 'profit_loss', 'closing_balance', 'notes', 'pdf_path', 'published_at', 'created_at', 'updated_at'],
+        'portfolio_accounts' => ['id', 'user_id', 'account_name', 'currency', 'opening_value', 'current_value', 'net_contributions', 'total_profit', 'monthly_profit', 'opening_value_usd', 'current_value_usd', 'net_contributions_usd', 'total_profit_usd', 'monthly_profit_usd', 'realized_fx_gain_loss_usd', 'valuation_date', 'is_active', 'notes', 'created_at', 'updated_at'],
+        'portfolio_transactions' => ['id', 'portfolio_account_id', 'type', 'amount', 'currency', 'fx_rate_to_usd', 'usd_amount', 'principal_usd_basis', 'settlement_usd_amount', 'fx_gain_loss_usd', 'transaction_date', 'performance_month', 'entry_source', 'reference', 'description', 'status', 'created_by', 'current_value_effect', 'net_contributions_effect', 'profit_effect', 'monthly_profit_effect', 'usd_current_value_effect', 'usd_net_contributions_effect', 'usd_profit_effect', 'usd_monthly_profit_effect', 'fx_source', 'fx_locked_at', 'posted_at', 'voided_at', 'voided_by', 'void_reason', 'created_at', 'updated_at'],
+        'monthly_statements' => ['id', 'portfolio_account_id', 'statement_month', 'currency', 'fx_rate_to_usd', 'opening_balance', 'contributions', 'withdrawals', 'profit_loss', 'profit_paid', 'closing_balance', 'opening_balance_usd', 'contributions_usd', 'withdrawals_usd', 'profit_loss_usd', 'profit_paid_usd', 'closing_balance_usd', 'payment_date', 'auto_generated', 'notes', 'pdf_path', 'published_at', 'created_at', 'updated_at'],
+        'portfolio_requests' => ['id', 'user_id', 'portfolio_account_id', 'type', 'amount', 'currency', 'status', 'message', 'admin_note', 'processed_by', 'processed_at', 'created_at', 'updated_at'],
+        'portfolio_performance_plans' => ['id', 'portfolio_account_id', 'investment_term_id', 'plan_month', 'accrual_start_date', 'accrual_end_date', 'base_amount', 'target_rate', 'target_amount', 'calculation_basis', 'status', 'created_by', 'notes', 'created_at', 'updated_at'],
+        'portfolio_investment_terms' => ['id', 'portfolio_account_id', 'effective_from', 'monthly_target_rate', 'status', 'auto_payout', 'payout_day', 'created_by', 'notes', 'created_at', 'updated_at'],
+        'portfolio_daily_accruals' => ['id', 'portfolio_performance_plan_id', 'accrual_date', 'scheduled_at', 'planned_amount', 'manual_adjustment', 'posted_amount', 'posted_at', 'adjusted_by', 'admin_note', 'created_at', 'updated_at'],
         'notifications' => ['id', 'type', 'notifiable_type', 'notifiable_id', 'data', 'read_at', 'created_at', 'updated_at'],
         'email_delivery_logs' => ['id', 'user_id', 'event', 'recipient_email', 'subject', 'status', 'error_message', 'metadata', 'sent_at', 'created_at', 'updated_at'],
         'mobile_devices' => ['id', 'user_id', 'device_uuid', 'platform', 'device_name', 'app_version', 'os_version', 'push_token', 'is_active', 'last_seen_at', 'created_at', 'updated_at'],
         'contact_messages' => ['id', 'user_id', 'name', 'email', 'subject', 'category', 'message', 'status', 'priority', 'admin_notes', 'replied_at', 'created_at', 'updated_at'],
+        'support_conversations' => ['id', 'user_id', 'assigned_admin_id', 'name', 'email', 'subject', 'category', 'channel', 'status', 'priority', 'last_message_at', 'last_customer_message_at', 'last_admin_message_at', 'assistant_handled_at', 'escalated_at', 'closed_at', 'created_at', 'updated_at'],
+        'support_messages' => ['id', 'support_conversation_id', 'user_id', 'sender_type', 'message_type', 'body', 'metadata', 'read_by_customer_at', 'read_by_admin_at', 'created_at', 'updated_at'],
         'personal_access_tokens' => ['id', 'tokenable_type', 'tokenable_id', 'name', 'token', 'abilities', 'last_used_at', 'expires_at', 'created_at', 'updated_at'],
     ];
 
@@ -608,13 +614,19 @@ class AbsSchemaRepair
             Schema::create('portfolio_accounts', function (Blueprint $table): void {
                 $table->id();
                 $table->unsignedBigInteger('user_id')->unique();
-                $table->string('account_name')->default('Private Member Account');
+                $table->string('account_name')->default('Private Investor Portfolio');
                 $table->string('currency', 10)->default('USD');
                 $table->decimal('opening_value', 18, 2)->default(0);
                 $table->decimal('current_value', 18, 2)->default(0);
                 $table->decimal('net_contributions', 18, 2)->default(0);
                 $table->decimal('total_profit', 18, 2)->default(0);
                 $table->decimal('monthly_profit', 18, 2)->default(0);
+                $table->decimal('opening_value_usd', 18, 2)->nullable();
+                $table->decimal('current_value_usd', 18, 2)->nullable();
+                $table->decimal('net_contributions_usd', 18, 2)->nullable();
+                $table->decimal('total_profit_usd', 18, 2)->nullable();
+                $table->decimal('monthly_profit_usd', 18, 2)->nullable();
+                $table->decimal('realized_fx_gain_loss_usd', 18, 2)->default(0);
                 $table->date('valuation_date')->nullable();
                 $table->boolean('is_active')->default(true);
                 $table->text('notes')->nullable();
@@ -623,13 +635,19 @@ class AbsSchemaRepair
         } else {
             self::addMissing('portfolio_accounts', [
                 'user_id' => fn (Blueprint $t) => $t->unsignedBigInteger('user_id')->nullable(),
-                'account_name' => fn (Blueprint $t) => $t->string('account_name')->default('Private Member Account'),
+                'account_name' => fn (Blueprint $t) => $t->string('account_name')->default('Private Investor Portfolio'),
                 'currency' => fn (Blueprint $t) => $t->string('currency', 10)->default('USD'),
                 'opening_value' => fn (Blueprint $t) => $t->decimal('opening_value', 18, 2)->default(0),
                 'current_value' => fn (Blueprint $t) => $t->decimal('current_value', 18, 2)->default(0),
                 'net_contributions' => fn (Blueprint $t) => $t->decimal('net_contributions', 18, 2)->default(0),
                 'total_profit' => fn (Blueprint $t) => $t->decimal('total_profit', 18, 2)->default(0),
                 'monthly_profit' => fn (Blueprint $t) => $t->decimal('monthly_profit', 18, 2)->default(0),
+                'opening_value_usd' => fn (Blueprint $t) => $t->decimal('opening_value_usd', 18, 2)->nullable(),
+                'current_value_usd' => fn (Blueprint $t) => $t->decimal('current_value_usd', 18, 2)->nullable(),
+                'net_contributions_usd' => fn (Blueprint $t) => $t->decimal('net_contributions_usd', 18, 2)->nullable(),
+                'total_profit_usd' => fn (Blueprint $t) => $t->decimal('total_profit_usd', 18, 2)->nullable(),
+                'monthly_profit_usd' => fn (Blueprint $t) => $t->decimal('monthly_profit_usd', 18, 2)->nullable(),
+                'realized_fx_gain_loss_usd' => fn (Blueprint $t) => $t->decimal('realized_fx_gain_loss_usd', 18, 2)->default(0),
                 'valuation_date' => fn (Blueprint $t) => $t->date('valuation_date')->nullable(),
                 'is_active' => fn (Blueprint $t) => $t->boolean('is_active')->default(true),
                 'notes' => fn (Blueprint $t) => $t->text('notes')->nullable(),
@@ -644,9 +662,33 @@ class AbsSchemaRepair
                 $table->unsignedBigInteger('portfolio_account_id')->index();
                 $table->string('type', 30);
                 $table->decimal('amount', 18, 2);
+                $table->string('currency', 10)->nullable();
+                $table->decimal('fx_rate_to_usd', 18, 8)->nullable();
+                $table->decimal('usd_amount', 18, 2)->nullable();
+                $table->decimal('principal_usd_basis', 18, 2)->nullable();
+                $table->decimal('settlement_usd_amount', 18, 2)->nullable();
+                $table->decimal('fx_gain_loss_usd', 18, 2)->default(0);
                 $table->date('transaction_date')->index();
+                $table->date('performance_month')->nullable()->index();
+                $table->string('entry_source', 40)->default('admin_manual')->index();
                 $table->string('reference')->nullable();
                 $table->text('description')->nullable();
+                $table->string('status', 20)->default('posted')->index();
+                $table->unsignedBigInteger('created_by')->nullable()->index();
+                $table->decimal('current_value_effect', 18, 2)->default(0);
+                $table->decimal('net_contributions_effect', 18, 2)->default(0);
+                $table->decimal('profit_effect', 18, 2)->default(0);
+                $table->decimal('monthly_profit_effect', 18, 2)->default(0);
+                $table->decimal('usd_current_value_effect', 18, 2)->nullable();
+                $table->decimal('usd_net_contributions_effect', 18, 2)->nullable();
+                $table->decimal('usd_profit_effect', 18, 2)->nullable();
+                $table->decimal('usd_monthly_profit_effect', 18, 2)->nullable();
+                $table->string('fx_source', 40)->nullable();
+                $table->timestamp('fx_locked_at')->nullable();
+                $table->timestamp('posted_at')->nullable()->index();
+                $table->timestamp('voided_at')->nullable()->index();
+                $table->unsignedBigInteger('voided_by')->nullable()->index();
+                $table->text('void_reason')->nullable();
                 $table->timestamps();
             });
         } else {
@@ -654,12 +696,136 @@ class AbsSchemaRepair
                 'portfolio_account_id' => fn (Blueprint $t) => $t->unsignedBigInteger('portfolio_account_id')->nullable(),
                 'type' => fn (Blueprint $t) => $t->string('type', 30)->default('adjustment'),
                 'amount' => fn (Blueprint $t) => $t->decimal('amount', 18, 2)->default(0),
+                'currency' => fn (Blueprint $t) => $t->string('currency', 10)->nullable(),
+                'fx_rate_to_usd' => fn (Blueprint $t) => $t->decimal('fx_rate_to_usd', 18, 8)->nullable(),
+                'usd_amount' => fn (Blueprint $t) => $t->decimal('usd_amount', 18, 2)->nullable(),
+                'principal_usd_basis' => fn (Blueprint $t) => $t->decimal('principal_usd_basis', 18, 2)->nullable(),
+                'settlement_usd_amount' => fn (Blueprint $t) => $t->decimal('settlement_usd_amount', 18, 2)->nullable(),
+                'fx_gain_loss_usd' => fn (Blueprint $t) => $t->decimal('fx_gain_loss_usd', 18, 2)->default(0),
                 'transaction_date' => fn (Blueprint $t) => $t->date('transaction_date')->nullable(),
+                'performance_month' => fn (Blueprint $t) => $t->date('performance_month')->nullable(),
+                'entry_source' => fn (Blueprint $t) => $t->string('entry_source', 40)->default('admin_manual'),
                 'reference' => fn (Blueprint $t) => $t->string('reference')->nullable(),
                 'description' => fn (Blueprint $t) => $t->text('description')->nullable(),
+                'status' => fn (Blueprint $t) => $t->string('status', 20)->default('posted'),
+                'created_by' => fn (Blueprint $t) => $t->unsignedBigInteger('created_by')->nullable(),
+                'current_value_effect' => fn (Blueprint $t) => $t->decimal('current_value_effect', 18, 2)->default(0),
+                'net_contributions_effect' => fn (Blueprint $t) => $t->decimal('net_contributions_effect', 18, 2)->default(0),
+                'profit_effect' => fn (Blueprint $t) => $t->decimal('profit_effect', 18, 2)->default(0),
+                'monthly_profit_effect' => fn (Blueprint $t) => $t->decimal('monthly_profit_effect', 18, 2)->default(0),
+                'usd_current_value_effect' => fn (Blueprint $t) => $t->decimal('usd_current_value_effect', 18, 2)->nullable(),
+                'usd_net_contributions_effect' => fn (Blueprint $t) => $t->decimal('usd_net_contributions_effect', 18, 2)->nullable(),
+                'usd_profit_effect' => fn (Blueprint $t) => $t->decimal('usd_profit_effect', 18, 2)->nullable(),
+                'usd_monthly_profit_effect' => fn (Blueprint $t) => $t->decimal('usd_monthly_profit_effect', 18, 2)->nullable(),
+                'fx_source' => fn (Blueprint $t) => $t->string('fx_source', 40)->nullable(),
+                'fx_locked_at' => fn (Blueprint $t) => $t->timestamp('fx_locked_at')->nullable(),
+                'posted_at' => fn (Blueprint $t) => $t->timestamp('posted_at')->nullable(),
+                'voided_at' => fn (Blueprint $t) => $t->timestamp('voided_at')->nullable(),
+                'voided_by' => fn (Blueprint $t) => $t->unsignedBigInteger('voided_by')->nullable(),
+                'void_reason' => fn (Blueprint $t) => $t->text('void_reason')->nullable(),
                 'created_at' => fn (Blueprint $t) => $t->timestamp('created_at')->nullable(),
                 'updated_at' => fn (Blueprint $t) => $t->timestamp('updated_at')->nullable(),
             ]);
+        }
+
+        try {
+            if (Schema::hasTable('portfolio_accounts') && Schema::hasColumn('portfolio_accounts', 'opening_value_usd')) {
+                DB::table('portfolio_accounts')->whereRaw("UPPER(currency) = 'USD'")->update([
+                    'opening_value_usd' => DB::raw('opening_value'),
+                    'current_value_usd' => DB::raw('current_value'),
+                    'net_contributions_usd' => DB::raw('net_contributions'),
+                    'total_profit_usd' => DB::raw('total_profit'),
+                    'monthly_profit_usd' => DB::raw('monthly_profit'),
+                    'realized_fx_gain_loss_usd' => DB::raw('COALESCE(realized_fx_gain_loss_usd, 0)'),
+                ]);
+            }
+            if (Schema::hasTable('portfolio_transactions') && Schema::hasColumn('portfolio_transactions', 'status')) {
+                DB::table('portfolio_transactions')->whereNull('status')->update(['status' => 'posted']);
+                if (Schema::hasColumn('portfolio_transactions', 'posted_at')) {
+                    DB::table('portfolio_transactions')->where('status', 'posted')->whereNull('posted_at')->update(['posted_at' => DB::raw('COALESCE(created_at, updated_at)')]);
+                }
+                if (Schema::hasColumn('portfolio_transactions', 'current_value_effect')) {
+                    // V15.7.4: paid profit is an external distribution and never increases principal.
+                    DB::statement("UPDATE portfolio_transactions SET current_value_effect = CASE type WHEN 'deposit' THEN amount WHEN 'withdrawal' THEN -amount WHEN 'profit' THEN 0 WHEN 'loss' THEN -amount WHEN 'fee' THEN -amount ELSE current_value_effect END WHERE status = 'posted'");
+                    DB::statement("UPDATE portfolio_transactions SET net_contributions_effect = CASE type WHEN 'deposit' THEN amount WHEN 'withdrawal' THEN -amount WHEN 'profit' THEN 0 ELSE net_contributions_effect END WHERE status = 'posted'");
+                    DB::statement("UPDATE portfolio_transactions SET profit_effect = CASE type WHEN 'profit' THEN amount WHEN 'loss' THEN -amount WHEN 'fee' THEN -amount ELSE profit_effect END WHERE status = 'posted'");
+                    DB::statement("UPDATE portfolio_transactions SET monthly_profit_effect = CASE type WHEN 'profit' THEN amount WHEN 'loss' THEN -amount WHEN 'fee' THEN -amount ELSE monthly_profit_effect END WHERE status = 'posted'");
+                }
+                if (Schema::hasColumn('portfolio_transactions', 'currency') && Schema::hasColumn('portfolio_transactions', 'usd_amount')) {
+                    $usdAccountIds = DB::table('portfolio_accounts')->whereRaw("UPPER(currency) = 'USD'")->pluck('id');
+                    if ($usdAccountIds->isNotEmpty()) {
+                        DB::table('portfolio_transactions')->whereIn('portfolio_account_id', $usdAccountIds)->whereNull('currency')->update(['currency' => 'USD']);
+                        DB::table('portfolio_transactions')->whereIn('portfolio_account_id', $usdAccountIds)->update([
+                            'fx_rate_to_usd' => 1,
+                            'usd_amount' => DB::raw('amount'),
+                            'settlement_usd_amount' => DB::raw('amount'),
+                            'principal_usd_basis' => DB::raw("CASE WHEN type IN ('deposit','withdrawal') THEN amount ELSE principal_usd_basis END"),
+                            'fx_gain_loss_usd' => 0,
+                            'usd_current_value_effect' => DB::raw('current_value_effect'),
+                            'usd_net_contributions_effect' => DB::raw('net_contributions_effect'),
+                            'usd_profit_effect' => DB::raw('profit_effect'),
+                            'usd_monthly_profit_effect' => DB::raw('monthly_profit_effect'),
+                            'fx_source' => DB::raw("COALESCE(fx_source, 'native_usd')"),
+                        ]);
+                    }
+                }
+            }
+        } catch (Throwable) {
+            // Schema repair remains best-effort. Normal migrations perform the same backfill.
+        }
+
+        try {
+            if (Schema::hasTable('portfolio_transactions')) {
+                if (Schema::hasColumn('portfolio_transactions','entry_source')) {
+                    DB::table('portfolio_transactions')->whereNull('entry_source')->orWhere('entry_source','')->update(['entry_source'=>'admin_manual']);
+                }
+                if (Schema::hasColumn('portfolio_transactions','performance_month')) {
+                    DB::table('portfolio_transactions')->where('type','profit')->whereNull('performance_month')->orderBy('id')->chunkById(250, function ($rows): void {
+                        foreach ($rows as $row) {
+                            $date = \Carbon\Carbon::parse($row->transaction_date ?: $row->created_at ?: now())->startOfDay();
+                            $month = $date->day <= 5 ? $date->copy()->subMonthNoOverflow()->startOfMonth() : $date->copy()->startOfMonth();
+                            DB::table('portfolio_transactions')->where('id',$row->id)->update(['performance_month'=>$month->toDateString()]);
+                        }
+                    });
+                }
+                // Paid profit is external to capital in both investor and Admin USD ledgers.
+                if (Schema::hasColumn('portfolio_transactions','usd_current_value_effect')) {
+                    DB::table('portfolio_transactions')->where('type','profit')->update(['current_value_effect'=>0,'usd_current_value_effect'=>0]);
+                } else {
+                    DB::table('portfolio_transactions')->where('type','profit')->update(['current_value_effect'=>0]);
+                }
+            }
+
+            // Keep account rollups aligned with the preserved ledger after the V15.7.4 correction.
+            if (Schema::hasTable('portfolio_accounts') && Schema::hasTable('portfolio_transactions')) {
+                DB::table('portfolio_accounts')->orderBy('id')->chunkById(100, function ($accounts): void {
+                    foreach ($accounts as $account) {
+                        $posted = DB::table('portfolio_transactions')->where('portfolio_account_id',$account->id)->where('status','posted');
+                        $openingLocal = (float)($account->opening_value ?? 0);
+                        $currency = strtoupper((string)($account->currency ?? 'USD'));
+                        $openingUsd = (float)($account->opening_value_usd ?? ($currency === 'USD' ? $openingLocal : 0));
+                        $update = [
+                            'current_value'=>max(0,round($openingLocal + (float)(clone $posted)->sum('current_value_effect'),2)),
+                            'net_contributions'=>max(0,round($openingLocal + (float)(clone $posted)->sum('net_contributions_effect'),2)),
+                            'total_profit'=>round((float)(clone $posted)->sum('profit_effect'),2),
+                        ];
+                        if (Schema::hasColumn('portfolio_accounts','current_value_usd')) {
+                            $update['current_value_usd']=max(0,round($openingUsd + (float)(clone $posted)->sum('usd_current_value_effect'),2));
+                            $update['net_contributions_usd']=max(0,round($openingUsd + (float)(clone $posted)->sum('usd_net_contributions_effect'),2));
+                            $update['total_profit_usd']=round((float)(clone $posted)->sum('usd_profit_effect'),2);
+                            $update['realized_fx_gain_loss_usd']=round((float)(clone $posted)->sum('fx_gain_loss_usd'),2);
+                        }
+                        $monthStart=now()->startOfMonth()->toDateString();
+                        if (Schema::hasColumn('portfolio_transactions','performance_month')) {
+                            $update['monthly_profit']=round((float)DB::table('portfolio_transactions')->where('portfolio_account_id',$account->id)->where('status','posted')->where('type','profit')->whereDate('performance_month',$monthStart)->sum('amount'),2);
+                            if (Schema::hasColumn('portfolio_accounts','monthly_profit_usd')) $update['monthly_profit_usd']=round((float)DB::table('portfolio_transactions')->where('portfolio_account_id',$account->id)->where('status','posted')->where('type','profit')->whereDate('performance_month',$monthStart)->sum('usd_amount'),2);
+                        }
+                        DB::table('portfolio_accounts')->where('id',$account->id)->update($update);
+                    }
+                });
+            }
+        } catch (Throwable) {
+            // Historical payout/account reconciliation is best-effort and is also enforced by the migration.
         }
 
         if (! Schema::hasTable('monthly_statements')) {
@@ -667,11 +833,22 @@ class AbsSchemaRepair
                 $table->id();
                 $table->unsignedBigInteger('portfolio_account_id')->index();
                 $table->date('statement_month')->index();
+                $table->string('currency', 10)->nullable();
+                $table->decimal('fx_rate_to_usd', 18, 8)->nullable();
                 $table->decimal('opening_balance', 18, 2)->default(0);
                 $table->decimal('contributions', 18, 2)->default(0);
                 $table->decimal('withdrawals', 18, 2)->default(0);
                 $table->decimal('profit_loss', 18, 2)->default(0);
+                $table->decimal('profit_paid', 18, 2)->default(0);
                 $table->decimal('closing_balance', 18, 2)->default(0);
+                $table->decimal('opening_balance_usd', 18, 2)->nullable();
+                $table->decimal('contributions_usd', 18, 2)->nullable();
+                $table->decimal('withdrawals_usd', 18, 2)->nullable();
+                $table->decimal('profit_loss_usd', 18, 2)->nullable();
+                $table->decimal('profit_paid_usd', 18, 2)->nullable();
+                $table->decimal('closing_balance_usd', 18, 2)->nullable();
+                $table->date('payment_date')->nullable();
+                $table->boolean('auto_generated')->default(false)->index();
                 $table->text('notes')->nullable();
                 $table->string('pdf_path')->nullable();
                 $table->timestamp('published_at')->nullable();
@@ -682,14 +859,170 @@ class AbsSchemaRepair
             self::addMissing('monthly_statements', [
                 'portfolio_account_id' => fn (Blueprint $t) => $t->unsignedBigInteger('portfolio_account_id')->nullable(),
                 'statement_month' => fn (Blueprint $t) => $t->date('statement_month')->nullable(),
+                'currency' => fn (Blueprint $t) => $t->string('currency', 10)->nullable(),
+                'fx_rate_to_usd' => fn (Blueprint $t) => $t->decimal('fx_rate_to_usd', 18, 8)->nullable(),
                 'opening_balance' => fn (Blueprint $t) => $t->decimal('opening_balance', 18, 2)->default(0),
                 'contributions' => fn (Blueprint $t) => $t->decimal('contributions', 18, 2)->default(0),
                 'withdrawals' => fn (Blueprint $t) => $t->decimal('withdrawals', 18, 2)->default(0),
                 'profit_loss' => fn (Blueprint $t) => $t->decimal('profit_loss', 18, 2)->default(0),
+                'profit_paid' => fn (Blueprint $t) => $t->decimal('profit_paid', 18, 2)->default(0),
                 'closing_balance' => fn (Blueprint $t) => $t->decimal('closing_balance', 18, 2)->default(0),
+                'opening_balance_usd' => fn (Blueprint $t) => $t->decimal('opening_balance_usd', 18, 2)->nullable(),
+                'contributions_usd' => fn (Blueprint $t) => $t->decimal('contributions_usd', 18, 2)->nullable(),
+                'withdrawals_usd' => fn (Blueprint $t) => $t->decimal('withdrawals_usd', 18, 2)->nullable(),
+                'profit_loss_usd' => fn (Blueprint $t) => $t->decimal('profit_loss_usd', 18, 2)->nullable(),
+                'profit_paid_usd' => fn (Blueprint $t) => $t->decimal('profit_paid_usd', 18, 2)->nullable(),
+                'closing_balance_usd' => fn (Blueprint $t) => $t->decimal('closing_balance_usd', 18, 2)->nullable(),
+                'payment_date' => fn (Blueprint $t) => $t->date('payment_date')->nullable(),
+                'auto_generated' => fn (Blueprint $t) => $t->boolean('auto_generated')->default(false),
                 'notes' => fn (Blueprint $t) => $t->text('notes')->nullable(),
                 'pdf_path' => fn (Blueprint $t) => $t->string('pdf_path')->nullable(),
                 'published_at' => fn (Blueprint $t) => $t->timestamp('published_at')->nullable(),
+                'created_at' => fn (Blueprint $t) => $t->timestamp('created_at')->nullable(),
+                'updated_at' => fn (Blueprint $t) => $t->timestamp('updated_at')->nullable(),
+            ]);
+        }
+
+        try {
+            if (Schema::hasTable('monthly_statements') && Schema::hasColumn('monthly_statements', 'currency') && Schema::hasColumn('monthly_statements', 'closing_balance_usd')) {
+                $usdAccountIds = DB::table('portfolio_accounts')->whereRaw("UPPER(currency) = 'USD'")->pluck('id');
+                if ($usdAccountIds->isNotEmpty()) {
+                    DB::table('monthly_statements')->whereIn('portfolio_account_id', $usdAccountIds)->whereNull('currency')->update(['currency' => 'USD']);
+                    DB::table('monthly_statements')->whereIn('portfolio_account_id', $usdAccountIds)->update([
+                        'fx_rate_to_usd' => 1,
+                        'opening_balance_usd' => DB::raw('opening_balance'),
+                        'contributions_usd' => DB::raw('contributions'),
+                        'withdrawals_usd' => DB::raw('withdrawals'),
+                        'profit_loss_usd' => DB::raw('profit_loss'),
+                        'closing_balance_usd' => DB::raw('closing_balance'),
+                    ]);
+                }
+            }
+        } catch (Throwable) {
+            // Best-effort native-USD backfill; migrations perform the same normalization.
+        }
+
+        if (! Schema::hasTable('portfolio_requests')) {
+            Schema::create('portfolio_requests', function (Blueprint $table): void {
+                $table->id();
+                $table->unsignedBigInteger('user_id')->index();
+                $table->unsignedBigInteger('portfolio_account_id')->nullable()->index();
+                $table->string('type', 30)->index();
+                $table->decimal('amount', 18, 2)->nullable();
+                $table->string('currency', 10)->default('USD');
+                $table->string('status', 30)->default('submitted')->index();
+                $table->text('message')->nullable();
+                $table->text('admin_note')->nullable();
+                $table->unsignedBigInteger('processed_by')->nullable()->index();
+                $table->timestamp('processed_at')->nullable();
+                $table->timestamps();
+            });
+        } else {
+            self::addMissing('portfolio_requests', [
+                'user_id' => fn (Blueprint $t) => $t->unsignedBigInteger('user_id')->nullable(),
+                'portfolio_account_id' => fn (Blueprint $t) => $t->unsignedBigInteger('portfolio_account_id')->nullable(),
+                'type' => fn (Blueprint $t) => $t->string('type', 30)->default('portfolio_review'),
+                'amount' => fn (Blueprint $t) => $t->decimal('amount', 18, 2)->nullable(),
+                'currency' => fn (Blueprint $t) => $t->string('currency', 10)->default('USD'),
+                'status' => fn (Blueprint $t) => $t->string('status', 30)->default('submitted'),
+                'message' => fn (Blueprint $t) => $t->text('message')->nullable(),
+                'admin_note' => fn (Blueprint $t) => $t->text('admin_note')->nullable(),
+                'processed_by' => fn (Blueprint $t) => $t->unsignedBigInteger('processed_by')->nullable(),
+                'processed_at' => fn (Blueprint $t) => $t->timestamp('processed_at')->nullable(),
+                'created_at' => fn (Blueprint $t) => $t->timestamp('created_at')->nullable(),
+                'updated_at' => fn (Blueprint $t) => $t->timestamp('updated_at')->nullable(),
+            ]);
+        }
+
+        if (! Schema::hasTable('portfolio_investment_terms')) {
+            Schema::create('portfolio_investment_terms', function (Blueprint $table): void {
+                $table->id();
+                $table->unsignedBigInteger('portfolio_account_id')->unique();
+                $table->date('effective_from')->index();
+                $table->decimal('monthly_target_rate', 8, 4)->default(0);
+                $table->string('status', 24)->default('active')->index();
+                $table->boolean('auto_payout')->default(true);
+                $table->unsignedTinyInteger('payout_day')->nullable();
+                $table->unsignedBigInteger('created_by')->nullable()->index();
+                $table->text('notes')->nullable();
+                $table->timestamps();
+            });
+        } else {
+            self::addMissing('portfolio_investment_terms', [
+                'portfolio_account_id' => fn (Blueprint $t) => $t->unsignedBigInteger('portfolio_account_id')->nullable(),
+                'effective_from' => fn (Blueprint $t) => $t->date('effective_from')->nullable(),
+                'monthly_target_rate' => fn (Blueprint $t) => $t->decimal('monthly_target_rate', 8, 4)->default(0),
+                'status' => fn (Blueprint $t) => $t->string('status', 24)->default('active'),
+                'auto_payout' => fn (Blueprint $t) => $t->boolean('auto_payout')->default(true),
+                'payout_day' => fn (Blueprint $t) => $t->unsignedTinyInteger('payout_day')->nullable(),
+                'created_by' => fn (Blueprint $t) => $t->unsignedBigInteger('created_by')->nullable(),
+                'notes' => fn (Blueprint $t) => $t->text('notes')->nullable(),
+                'created_at' => fn (Blueprint $t) => $t->timestamp('created_at')->nullable(),
+                'updated_at' => fn (Blueprint $t) => $t->timestamp('updated_at')->nullable(),
+            ]);
+        }
+
+        if (! Schema::hasTable('portfolio_performance_plans')) {
+            Schema::create('portfolio_performance_plans', function (Blueprint $table): void {
+                $table->id();
+                $table->unsignedBigInteger('portfolio_account_id')->index();
+                $table->unsignedBigInteger('investment_term_id')->nullable()->index();
+                $table->date('plan_month')->index();
+                $table->date('accrual_start_date')->nullable()->index();
+                $table->date('accrual_end_date')->nullable();
+                $table->decimal('base_amount', 18, 2)->default(0);
+                $table->decimal('target_rate', 8, 4)->default(0);
+                $table->decimal('target_amount', 18, 2)->default(0);
+                $table->string('calculation_basis', 40)->default('calendar_month');
+                $table->string('status', 24)->default('active')->index();
+                $table->unsignedBigInteger('created_by')->nullable()->index();
+                $table->text('notes')->nullable();
+                $table->timestamps();
+            });
+        } else {
+            self::addMissing('portfolio_performance_plans', [
+                'portfolio_account_id' => fn (Blueprint $t) => $t->unsignedBigInteger('portfolio_account_id')->nullable(),
+                'investment_term_id' => fn (Blueprint $t) => $t->unsignedBigInteger('investment_term_id')->nullable(),
+                'plan_month' => fn (Blueprint $t) => $t->date('plan_month')->nullable(),
+                'accrual_start_date' => fn (Blueprint $t) => $t->date('accrual_start_date')->nullable(),
+                'accrual_end_date' => fn (Blueprint $t) => $t->date('accrual_end_date')->nullable(),
+                'base_amount' => fn (Blueprint $t) => $t->decimal('base_amount', 18, 2)->default(0),
+                'target_rate' => fn (Blueprint $t) => $t->decimal('target_rate', 8, 4)->default(0),
+                'target_amount' => fn (Blueprint $t) => $t->decimal('target_amount', 18, 2)->default(0),
+                'calculation_basis' => fn (Blueprint $t) => $t->string('calculation_basis', 40)->default('calendar_month'),
+                'status' => fn (Blueprint $t) => $t->string('status', 24)->default('active'),
+                'created_by' => fn (Blueprint $t) => $t->unsignedBigInteger('created_by')->nullable(),
+                'notes' => fn (Blueprint $t) => $t->text('notes')->nullable(),
+                'created_at' => fn (Blueprint $t) => $t->timestamp('created_at')->nullable(),
+                'updated_at' => fn (Blueprint $t) => $t->timestamp('updated_at')->nullable(),
+            ]);
+        }
+
+        if (! Schema::hasTable('portfolio_daily_accruals')) {
+            Schema::create('portfolio_daily_accruals', function (Blueprint $table): void {
+                $table->id();
+                $table->unsignedBigInteger('portfolio_performance_plan_id')->index();
+                $table->date('accrual_date')->index();
+                $table->timestamp('scheduled_at')->nullable()->index();
+                $table->decimal('planned_amount', 18, 2)->default(0);
+                $table->decimal('manual_adjustment', 18, 2)->default(0);
+                $table->decimal('posted_amount', 18, 2)->nullable();
+                $table->timestamp('posted_at')->nullable()->index();
+                $table->unsignedBigInteger('adjusted_by')->nullable()->index();
+                $table->text('admin_note')->nullable();
+                $table->timestamps();
+            });
+        } else {
+            self::addMissing('portfolio_daily_accruals', [
+                'portfolio_performance_plan_id' => fn (Blueprint $t) => $t->unsignedBigInteger('portfolio_performance_plan_id')->nullable(),
+                'accrual_date' => fn (Blueprint $t) => $t->date('accrual_date')->nullable(),
+                'scheduled_at' => fn (Blueprint $t) => $t->timestamp('scheduled_at')->nullable(),
+                'planned_amount' => fn (Blueprint $t) => $t->decimal('planned_amount', 18, 2)->default(0),
+                'manual_adjustment' => fn (Blueprint $t) => $t->decimal('manual_adjustment', 18, 2)->default(0),
+                'posted_amount' => fn (Blueprint $t) => $t->decimal('posted_amount', 18, 2)->nullable(),
+                'posted_at' => fn (Blueprint $t) => $t->timestamp('posted_at')->nullable(),
+                'adjusted_by' => fn (Blueprint $t) => $t->unsignedBigInteger('adjusted_by')->nullable(),
+                'admin_note' => fn (Blueprint $t) => $t->text('admin_note')->nullable(),
                 'created_at' => fn (Blueprint $t) => $t->timestamp('created_at')->nullable(),
                 'updated_at' => fn (Blueprint $t) => $t->timestamp('updated_at')->nullable(),
             ]);
@@ -833,6 +1166,77 @@ class AbsSchemaRepair
                 'updated_at' => fn (Blueprint $t) => $t->timestamp('updated_at')->nullable(),
             ]);
         }
+
+        if (! Schema::hasTable('support_conversations')) {
+            Schema::create('support_conversations', function (Blueprint $table): void {
+                $table->id();
+                $table->unsignedBigInteger('user_id')->nullable()->index();
+                $table->unsignedBigInteger('assigned_admin_id')->nullable()->index();
+                $table->string('name', 120);
+                $table->string('email');
+                $table->string('subject', 180)->default('Pulse Support');
+                $table->string('category', 50)->default('other')->index();
+                $table->string('channel', 20)->default('web')->index();
+                $table->string('status', 30)->default('waiting_support')->index();
+                $table->string('priority', 20)->default('normal')->index();
+                $table->timestamp('last_message_at')->nullable()->index();
+                $table->timestamp('last_customer_message_at')->nullable();
+                $table->timestamp('last_admin_message_at')->nullable();
+                $table->timestamp('assistant_handled_at')->nullable();
+                $table->timestamp('escalated_at')->nullable();
+                $table->timestamp('closed_at')->nullable();
+                $table->timestamps();
+            });
+        } else {
+            self::addMissing('support_conversations', [
+                'user_id' => fn (Blueprint $t) => $t->unsignedBigInteger('user_id')->nullable(),
+                'assigned_admin_id' => fn (Blueprint $t) => $t->unsignedBigInteger('assigned_admin_id')->nullable(),
+                'name' => fn (Blueprint $t) => $t->string('name', 120)->nullable(),
+                'email' => fn (Blueprint $t) => $t->string('email')->nullable(),
+                'subject' => fn (Blueprint $t) => $t->string('subject', 180)->default('Pulse Support'),
+                'category' => fn (Blueprint $t) => $t->string('category', 50)->default('other'),
+                'channel' => fn (Blueprint $t) => $t->string('channel', 20)->default('web'),
+                'status' => fn (Blueprint $t) => $t->string('status', 30)->default('waiting_support'),
+                'priority' => fn (Blueprint $t) => $t->string('priority', 20)->default('normal'),
+                'last_message_at' => fn (Blueprint $t) => $t->timestamp('last_message_at')->nullable(),
+                'last_customer_message_at' => fn (Blueprint $t) => $t->timestamp('last_customer_message_at')->nullable(),
+                'last_admin_message_at' => fn (Blueprint $t) => $t->timestamp('last_admin_message_at')->nullable(),
+                'assistant_handled_at' => fn (Blueprint $t) => $t->timestamp('assistant_handled_at')->nullable(),
+                'escalated_at' => fn (Blueprint $t) => $t->timestamp('escalated_at')->nullable(),
+                'closed_at' => fn (Blueprint $t) => $t->timestamp('closed_at')->nullable(),
+                'created_at' => fn (Blueprint $t) => $t->timestamp('created_at')->nullable(),
+                'updated_at' => fn (Blueprint $t) => $t->timestamp('updated_at')->nullable(),
+            ]);
+        }
+
+        if (! Schema::hasTable('support_messages')) {
+            Schema::create('support_messages', function (Blueprint $table): void {
+                $table->id();
+                $table->unsignedBigInteger('support_conversation_id')->index();
+                $table->unsignedBigInteger('user_id')->nullable()->index();
+                $table->string('sender_type', 20)->index();
+                $table->string('message_type', 30)->default('text');
+                $table->longText('body');
+                $table->json('metadata')->nullable();
+                $table->timestamp('read_by_customer_at')->nullable();
+                $table->timestamp('read_by_admin_at')->nullable();
+                $table->timestamps();
+            });
+        } else {
+            self::addMissing('support_messages', [
+                'support_conversation_id' => fn (Blueprint $t) => $t->unsignedBigInteger('support_conversation_id')->nullable(),
+                'user_id' => fn (Blueprint $t) => $t->unsignedBigInteger('user_id')->nullable(),
+                'sender_type' => fn (Blueprint $t) => $t->string('sender_type', 20)->default('system'),
+                'message_type' => fn (Blueprint $t) => $t->string('message_type', 30)->default('text'),
+                'body' => fn (Blueprint $t) => $t->longText('body')->nullable(),
+                'metadata' => fn (Blueprint $t) => $t->json('metadata')->nullable(),
+                'read_by_customer_at' => fn (Blueprint $t) => $t->timestamp('read_by_customer_at')->nullable(),
+                'read_by_admin_at' => fn (Blueprint $t) => $t->timestamp('read_by_admin_at')->nullable(),
+                'created_at' => fn (Blueprint $t) => $t->timestamp('created_at')->nullable(),
+                'updated_at' => fn (Blueprint $t) => $t->timestamp('updated_at')->nullable(),
+            ]);
+        }
+
     }
 
     private static function widenLegacyEnums(): void

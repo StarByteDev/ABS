@@ -5,7 +5,7 @@
 <section class="enterprise-command-bar compact">
     <div>
         <h2>Create an ABS account with access ready from day one</h2>
-        <p>Set the user identity, account role, Private Member status and Pulse plan dates in one controlled administration flow.</p>
+        <p>Set the user identity, account role and service access in one controlled administration flow.</p>
     </div>
     <a class="button button-ghost" href="{{ route('admin.users') }}">← Back to User Directory</a>
 </section>
@@ -24,11 +24,11 @@
             <label>Confirm password<input type="password" name="password_confirmation" autocomplete="new-password" required></label>
             <label>Account role
                 <select name="role" required>
-                    <option value="user" @selected(old('role','user')==='user')>Standard user</option>
-                    <option value="private_member" @selected(old('role')==='private_member')>Private Member</option>
+                    <option value="user" @selected(old('role',request('role','user'))==='user')>Standard user</option>
+                    <option value="private_investor" @selected(old('role',request('role'))==='private_investor')>Private Investor</option>
                     <option value="admin" @selected(old('role')==='admin')>Administrator</option>
                 </select>
-                <small>Private Member role activates the restricted reporting portal when the account is Active.</small>
+                <small>Private Investor access adds the investor portfolio and open-ended Pulse Professional access while the account is active.</small>
             </label>
             <label>Account status
                 <select name="status" required>
@@ -46,7 +46,7 @@
         <div class="enterprise-section-head"><div><h2>Role access</h2><p>What each account role controls.</p></div></div>
         <div class="enterprise-access-map">
             <div><span>USER</span><b>Standard user</b><p>ABS account, live market pages and any Pulse plan explicitly assigned below.</p></div>
-            <div><span>PRIVATE</span><b>Private Member</b><p>Adds invitation-only reporting. Financial reporting records remain managed separately in Private Member Reporting.</p></div>
+            <div><span>PRIVATE</span><b>Private Investor</b><p>Adds portfolio reporting, statements, investment/withdrawal requests and full Pulse access under Admin control.</p></div>
             <div><span>ADMIN</span><b>Administrator</b><p>Full Enterprise Console access. Assign only to trusted platform administrators.</p></div>
         </div>
     </article>
@@ -54,7 +54,7 @@
 
 <section class="enterprise-surface">
     <div class="enterprise-section-head"><div><h2>Pulse plan & access period</h2><p>Optional. Assign a plan immediately, set exact dates and restrict individual capabilities if required.</p></div></div>
-    <label class="enterprise-master-toggle"><input type="checkbox" name="assign_pulse" value="1" @checked(old('assign_pulse'))><span><b>Assign Pulse access to this user</b><small>If left off, the user account is created without Pulse entitlement and can be assigned later.</small></span></label>
+    <label class="enterprise-master-toggle"><input type="checkbox" name="assign_pulse" value="1" @checked(old('assign_pulse'))><span><b>Assign Pulse access to this user</b><small>Standard users can be created without Pulse access. Private Investor accounts automatically receive Pulse Professional access; the plan selector below applies to standard-user provisioning.</small></span></label>
     <div class="enterprise-form-grid user-access-create-grid">
         <label>Pulse plan<select name="pulse_plan_id"><option value="">Select a plan</option>@foreach($plans as $plan)<option value="{{ $plan->id }}" @selected((string)old('pulse_plan_id')===(string)$plan->id)>{{ $plan->name }}{{ $plan->is_trial ? ' — Trial' : '' }}</option>@endforeach</select></label>
         <label>Access status<select name="pulse_status">@foreach(['active'=>'Active','pending'=>'Pending','suspended'=>'Suspended','expired'=>'Expired','revoked'=>'Revoked'] as $key=>$label)<option value="{{ $key }}" @selected(old('pulse_status','active')===$key)>{{ $label }}</option>@endforeach</select></label>

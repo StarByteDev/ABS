@@ -13,6 +13,20 @@ return [
         'api_key' => env('FMP_API_KEY'),
         'economic_calendar_url' => env('FMP_ECONOMIC_CALENDAR_URL', 'https://financialmodelingprep.com/stable/economic-calendar'),
     ],
+    'finance_calendar' => [
+        'calendar_url' => env('FINANCE_CALENDAR_URL', 'https://www.financecalendar.com/wp-json/fc/v1/calendar'),
+        'enabled' => filter_var(env('FINANCE_CALENDAR_ENABLED', true), FILTER_VALIDATE_BOOL),
+    ],
+    'xoomar_calendar' => [
+        'calendar_url' => env('XOOMAR_CALENDAR_URL', 'https://xoomar.com/api/markets/calendar'),
+        'enabled' => filter_var(env('XOOMAR_CALENDAR_ENABLED', true), FILTER_VALIDATE_BOOL),
+        'api_key' => env('XOOMAR_API_KEY'),
+    ],
+    'trading_economics' => [
+        'calendar_url' => env('TRADING_ECONOMICS_CALENDAR_URL', 'https://api.tradingeconomics.com/calendar'),
+        'api_key' => env('TRADING_ECONOMICS_API_KEY'),
+        'fallback_enabled' => filter_var(env('TRADING_ECONOMICS_FALLBACK_ENABLED', false), FILTER_VALIDATE_BOOL),
+    ],
     'binance' => [
         'base_url' => env('BINANCE_MARKET_BASE_URL', 'https://data-api.binance.vision'),
         'base_urls' => array_filter(array_map('trim', explode(',', env('BINANCE_MARKET_BASE_URLS', 'https://data-api.binance.vision,https://api.binance.com,https://api1.binance.com')))),

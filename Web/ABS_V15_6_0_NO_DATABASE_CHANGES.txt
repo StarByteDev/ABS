@@ -1,0 +1,3 @@
+ABS V15.6.0 requires no new database migration.
+
+This release reuses the existing news, economic_events, Pulse scanner and settings schema. It adds an in-platform live-headline reader, visible Best Signal scan progress, and a fallback Economic Calendar provider. Existing V15.5.0 strategy validation, multi-signal research behavior, paper-trade lifecycle and Admin workflow remain compatible.

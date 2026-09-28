@@ -7,11 +7,13 @@ use App\Models\PulsePlan;
 use App\Models\PulsePromotionCode;
 use App\Models\PulsePromotionRedemption;
 use App\Models\PulseSystemSetting;
+use App\Models\PulseAlert;
 use App\Models\User;
 use App\Models\UserServiceAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class PulseMembershipService
@@ -96,6 +98,93 @@ class PulseMembershipService
         })->values();
     }
 
+    /**
+     * Short, customer-facing plan value points shared by web, email and mobile.
+     * Keep these concise so all clients describe the same package consistently.
+     */
+    public function planHighlights(PulsePlan $plan): array
+    {
+        $highlights = [
+            'Best Signal access with active package',
+            ($plan->pair_access_mode === 'all' ? 'Full synchronized market universe' : 'Up to '.number_format(max(1, (int) $plan->max_selected_pairs)).' selected markets'),
+            '15M + 4H Pulse strategy intelligence',
+        ];
+
+        if ($plan->allows('signals', true)) $highlights[] = 'Qualified signal details with entry, targets and protective stop';
+        if ($plan->allows('alerts', false)) $highlights[] = 'Pulse alerts and watchlist monitoring';
+        if ($plan->allows('reports', false)) $highlights[] = 'Performance and trading reports';
+        if ($plan->allows('mobile_api', false)) $highlights[] = 'ABS Pulse mobile access';
+
+        return array_values(array_unique(array_slice($highlights, 0, 6)));
+    }
+
+    /**
+     * One normalized payment-request presentation for web and mobile clients.
+     */
+    public function requestStatusPayload(PulseMembershipRequest $request): array
+    {
+        $request->loadMissing('plan');
+        $status = (string) $request->status;
+        [$label, $headline, $message] = match ($status) {
+            'submitted' => ['Awaiting verification', 'Payment submitted', 'Your transaction is queued for administrator verification. Access activates after the payment is confirmed on-chain.'],
+            'under_review' => ['Under review', 'Verification in progress', 'Your payment is being reviewed. No further action is needed unless ABS contacts you for additional information.'],
+            'approved' => ['Active', 'Payment approved', 'Your payment was approved and the selected Pulse access has been activated.'],
+            'rejected' => ['Needs attention', 'Payment not approved', 'The payment could not be approved. Review the administrator note and contact support if you need assistance.'],
+            'cancelled' => ['Cancelled', 'Request cancelled', 'This payment request was cancelled and no package activation was applied.'],
+            default => [ucfirst(str_replace('_', ' ', $status)), 'Payment request update', 'Review the latest status shown in your ABS Pulse account.'],
+        };
+
+        return [
+            'id' => (int) $request->id,
+            'status' => $status,
+            'status_label' => $label,
+            'headline' => $headline,
+            'message' => $message,
+            'plan_name' => $request->plan?->name,
+            'amount' => (float) $request->final_amount,
+            'currency' => (string) $request->currency,
+            'network' => $request->network,
+            'payment_reference' => $request->payment_reference,
+            'activation_days' => (int) $request->activation_days,
+            'submitted_at' => $request->created_at?->toIso8601String(),
+            'reviewed_at' => $request->reviewed_at?->toIso8601String(),
+            'admin_note' => $request->admin_notes,
+            'benefits' => $request->plan ? $this->planHighlights($request->plan) : [],
+            'timeline' => [
+                ['key' => 'submitted', 'label' => 'Payment submitted', 'complete' => true],
+                ['key' => 'verification', 'label' => 'Transaction verification', 'complete' => in_array($status, ['approved','rejected'], true), 'active' => in_array($status, ['submitted','under_review'], true)],
+                ['key' => 'activation', 'label' => 'Pulse access active', 'complete' => $status === 'approved'],
+            ],
+        ];
+    }
+
+    /**
+     * Persistent in-app alert for every administrator, independent of email delivery.
+     * Existing pulse_alerts storage is used; no schema change is required.
+     */
+    public function notifyAdministrators(PulseMembershipRequest $request, string $source = 'web'): void
+    {
+        try {
+            if (! Schema::hasTable('pulse_alerts') || ! Schema::hasTable('users')) return;
+            $request->loadMissing(['user','plan']);
+            $admins = User::query()->where('role', 'admin')->where('status', 'active')->get(['id']);
+            foreach ($admins as $admin) {
+                PulseAlert::query()->create([
+                    'user_id' => $admin->id,
+                    'type' => 'package_payment',
+                    'title' => 'Pulse payment awaiting verification',
+                    'message' => ($request->user?->name ?? 'A member').' submitted '.number_format((float) $request->final_amount, 2).' '.$request->currency.' for '.($request->plan?->name ?? 'Pulse access').'.',
+                    'severity' => 'info',
+                    'is_read' => false,
+                    'action_url' => route('admin.pulse.memberships', ['q' => $request->user?->email]),
+                    'data' => ['membership_request_id' => $request->id, 'source' => $source],
+                ]);
+            }
+        } catch (\Throwable) {
+            // Email + pending-payment counters still surface the request if alerts are unavailable.
+        }
+    }
+
     public function mobilePlanPayload(PulsePlan $plan, ?UserServiceAccess $access): array
     {
         $next = $this->nextUpgradePlan($access);
@@ -121,6 +210,7 @@ class PulseMembershipService
             'subscription_state' => $current ? 'active' : (($next && (int) $next->id === (int) $plan->id) ? 'next_upgrade' : 'available'),
             'commerce_model' => 'direct_usdt_admin_verification',
             'commerce_label' => 'USDT transfer · Admin verified',
+            'benefits' => $this->planHighlights($plan),
         ];
     }
 

@@ -1,0 +1,16 @@
+ABS V15.6.7 — ADDITIVE / NON-DESTRUCTIVE DATABASE CHANGE ONLY
+
+This production release preserves all existing ABS Pulse users, memberships, payments, signals, trades, investor accounts, monthly statements, requests, support history, strategy data and content.
+
+Additive transaction-control fields are added to portfolio_transactions so financial corrections can be audited safely:
+- status (posted / draft / voided)
+- created_by
+- exact balance-effect columns
+- posted_at
+- voided_at / voided_by / void_reason
+
+Existing portfolio transaction rows are preserved and backfilled with the same balance effects used by the historical ABS transaction logic. No investor transaction is deleted by this migration.
+
+Posted portfolio activity cannot be hard-deleted from the Admin workflow. Draft entries may be deleted before they affect a balance. Posted mistakes are corrected by Void / Reverse, which reverses the recorded balance effect while retaining the original financial record and correction reason.
+
+Migration down() intentionally does not remove these audit columns or financial history. This follows the permanent ABS live-production data-preservation rule.

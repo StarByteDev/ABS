@@ -140,7 +140,12 @@ class _SignalsScreenState extends State<SignalsScreen> {
       'scans.remaining',
       JsonTools.at(usage, 'scanner.remaining', JsonTools.at(usage, 'scanner_runs_remaining', '—')),
     );
-    final scanAllowance = scanUnlimited ? 'UNLIMITED SCANS' : '${JsonTools.text(scanRemaining)} SCANS LEFT';
+    final remainingText = JsonTools.text(scanRemaining, '—');
+    final scanAllowance = scanUnlimited
+        ? 'UNLIMITED SCANS'
+        : remainingText == '—'
+            ? 'PLAN LIMIT'
+            : '$remainingText SCANS LEFT';
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -157,28 +162,36 @@ class _SignalsScreenState extends State<SignalsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
-                    width: 46,
-                    height: 46,
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
-                      color: AbsColors.gold.withValues(alpha: .10),
-                      borderRadius: BorderRadius.circular(15),
-                      border: Border.all(color: AbsColors.gold.withValues(alpha: .28)),
+                      color: AbsColors.gold.withOpacity(.10),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AbsColors.gold.withOpacity(.28)),
                     ),
-                    child: const Icon(Icons.radar_rounded, color: AbsColors.gold, size: 24),
+                    child: const Icon(Icons.radar_rounded, color: AbsColors.gold, size: 22),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 11),
                   const Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('MARKET SCAN', style: TextStyle(color: AbsColors.goldSoft, fontSize: 10.5, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-                        SizedBox(height: 4),
-                        Text('Find fresh opportunities', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20)),
+                        Text('MARKET SCAN', style: TextStyle(color: AbsColors.goldSoft, fontSize: 9.5, fontWeight: FontWeight.w900, letterSpacing: 1.1)),
+                        SizedBox(height: 3),
+                        Text('Find fresh opportunities', maxLines: 2, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, height: 1.15)),
                       ],
                     ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 11),
+              Wrap(
+                spacing: 7,
+                runSpacing: 7,
+                children: [
                   StatusChip('$selectedPairs MARKETS'),
                   StatusChip(healthy ? 'DATA READY' : 'DATA UPDATING', good: healthy),
                   StatusChip(scanAllowance),
@@ -188,7 +201,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
               Text(
                 session.proMode
                     ? 'Evaluate your selected markets across 15M and 4H using the strategies and minimum score configured for your Pulse plan.'
-                    : 'One tap checks your selected markets and shows only setups that pass your ABS strategy and signal requirements.',
+                    : 'Scan selected markets across the ABS strategy engine. Only qualifying setups appear as signals.',
                 style: const TextStyle(color: AbsColors.muted, fontSize: 12, height: 1.45),
               ),
               const SizedBox(height: 15),
@@ -295,7 +308,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
                 Container(
                   width: 58,
                   height: 58,
-                  decoration: BoxDecoration(color: AbsColors.purple.withValues(alpha: .08), borderRadius: BorderRadius.circular(18)),
+                  decoration: BoxDecoration(color: AbsColors.purple.withOpacity(.08), borderRadius: BorderRadius.circular(18)),
                   child: const Icon(Icons.radar_rounded, color: AbsColors.purpleSoft, size: 28),
                 ),
                 const SizedBox(height: 13),
@@ -344,7 +357,7 @@ class _SignalFlowStep extends StatelessWidget {
             width: 26,
             height: 26,
             alignment: Alignment.center,
-            decoration: BoxDecoration(color: AbsColors.purple.withValues(alpha: .14), borderRadius: BorderRadius.circular(9), border: Border.all(color: AbsColors.purple.withValues(alpha: .30))),
+            decoration: BoxDecoration(color: AbsColors.purple.withOpacity(.14), borderRadius: BorderRadius.circular(9), border: Border.all(color: AbsColors.purple.withOpacity(.30))),
             child: Text(number, style: const TextStyle(color: AbsColors.purpleSoft, fontSize: 11, fontWeight: FontWeight.w900)),
           ),
           const SizedBox(height: 7),

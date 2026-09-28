@@ -1,6 +1,9 @@
-# ABS Flutter Mobile V1.3.2 — V15.1.6 API Coverage
+# ABS Flutter Mobile V1.4.1 — V15.7.4 API Coverage
 
 Base URL: `/api/v1`
+
+The mobile client remains server-authoritative: it does not create a parallel market-data,
+signal, investment-accounting or Binance execution engine.
 
 ## Public
 
@@ -8,24 +11,21 @@ Base URL: `/api/v1`
 |---|---|
 | Bootstrap | `GET /bootstrap` |
 | Rewarded Free Signal | `GET /pulse/free-signal/status`, `POST /pulse/free-signal/session`, `POST /pulse/free-signal/claim` |
-| Registration | `POST /auth/register` |
-| Login | `POST /auth/login` |
-| Activation resend | `POST /auth/activation/resend` |
-| Forgot password | `POST /auth/forgot-password` |
-| Market overview | `GET /market/overview` |
-| Market movers | `GET /market/movers` |
-| Market chart | `GET /market/chart/{symbol}` |
-| Services | `GET /products` |
-| News | `GET /news`, `GET /news/live`, `GET /news/{slug}` |
-| Research | `GET /research`, `GET /research/{slug}` |
-| Learning | `GET /learning`, `GET /learning/{slug}` |
-| Calendar | `GET /economic-calendar` |
-| Legal | `GET /legal/{type}` |
-| Search | `GET /search` |
-| Newsletter | `POST /newsletter` |
-| Contact | `POST /contact` |
+| Registration / login | `POST /auth/register`, `POST /auth/login` |
 
-Password-reset links are sent by the backend email workflow and can complete on the ABS secure web reset page. The API `POST /auth/reset-password` remains available for future universal/deep-link handling.
+Pending email activation: the mobile app keeps the registration token and exposes only public/basic features until verification. Login also sends `allow_unverified_basic_access: true` so a compatible backend can return a limited-access token for a pending account.
+
+| Activation / password recovery | `POST /auth/activation/resend`, `POST /auth/forgot-password` |
+| Market | `GET /market/overview`, `GET /market/movers`, `GET /market/chart/{symbol}` |
+| ABS content | `GET /products`, `/news`, `/news/live`, `/research`, `/learning` and detail routes |
+| Economic calendar | `GET /economic-calendar` |
+| Legal / search | `GET /legal/{type}`, `GET /search` |
+| Contact / newsletter | `POST /contact`, `POST /newsletter` |
+
+The V1.4.1 Free Signal recovery chain preserves backend qualification first. If the public
+flow returns no setup, the app can recover a persisted reveal, use the strongest active
+member signal for an eligible Pulse member, or finally show **BTCUSDT 4H market context**
+from `/market/chart/BTCUSDT` without issuing entry, stop-loss or take-profit levels.
 
 ## Authenticated account
 
@@ -55,36 +55,48 @@ Password-reset links are sent by the backend email workflow and can complete on 
 
 | Area | API |
 |---|---|
-| Dashboard | `GET /pulse/dashboard` |
-| Usage | `GET /pulse/usage` |
+| Dashboard / usage | `GET /pulse/dashboard`, `GET /pulse/usage` |
 | Pairs | `GET /pulse/pairs` |
-| Strategy intelligence | `GET /pulse/reports/strategies`, `GET /pulse/reports/learning` |
-| Readiness | `GET /pulse/execution/readiness` |
-| Ticket | `GET /pulse/execution/ticket` |
+| Readiness / ticket | `GET /pulse/execution/readiness`, `GET /pulse/execution/ticket` |
 | Positions | `GET /pulse/positions` |
 | Risk | `GET/PUT /pulse/risk-controls` |
 | Settings | `GET/PUT /pulse/settings` |
 | Scanner | `GET /pulse/scanner/overview`, `POST /pulse/scanner/run` |
 | Signals | `GET /pulse/signals/overview`, `GET /pulse/signals/{id}` |
 | Share / explain | `POST /pulse/signals/{id}/share`, `POST /pulse/signals/{id}/explain` |
-| Validation | `GET /pulse/signals/{id}/validation` |
-| Dismiss | `PATCH /pulse/signals/{id}/dismiss` |
-| Execute | `POST /pulse/signals/{id}/execute` |
+| Validation / dismiss / execute | signal detail action routes |
 | Trades | `GET /pulse/trades`, `GET /pulse/trades/{id}` |
-| Close/sync | `POST /pulse/trades/{id}/close`, `POST /pulse/trades/sync` |
+| Close / sync | `POST /pulse/trades/{id}/close`, `POST /pulse/trades/sync` |
 | Emergency stop | `POST /pulse/emergency-stop` |
 | Orders | `GET /pulse/orders` |
-| Reports | `GET /pulse/reports`, `GET /pulse/reports/signals`, `GET /pulse/reports/strategies`, `GET /pulse/reports/simulation`, `GET /pulse/reports/learning` |
-| Market health | `GET /pulse/market-data/health` |
-| Central prices | `GET /pulse/market-data/prices` |
+| Reports | `GET /pulse/reports`, `/signals`, `/strategies`, `/simulation`, `/learning` |
+| Market health / prices | `GET /pulse/market-data/health`, `GET /pulse/market-data/prices` |
 | Binance | `GET/POST /pulse/binance/connections` + test/activate/delete |
 | Alerts | `GET /pulse/alerts` + read/read-all |
 
-## Private Member
+## Private Investor — V15.7.4
 
-| Area | API |
+| Area | API / behavior |
 |---|---|
-| Account | `GET /private/account` |
-| Statement | `GET /private/statements/{statement}` |
+| Investor account | `GET /private/account` |
+| Monthly statement | `GET /private/statements/{statement}` |
+| Investor request | tries `POST /private/requests`, then `POST /private/account/requests` when exposed by the deployed backend |
+| Request fallback | secure web investor portal if the mobile request route is not exposed |
 
-Admin APIs remain a web/admin responsibility and are intentionally not exposed as a mobile administrator console in V1.1.
+The V1.4.1 investor UI can consume both the earlier compact account payload and richer
+V15.7.x fields. It separates original-currency principal, USD-at-effective-date reporting,
+agreed monthly rate/effective date, current-month progress, Profit Paid, Capital Withdrawal,
+statements, transactions and requests whenever those fields are returned.
+
+### Accounting semantics preserved from V15.7.4
+
+- daily performance accrues from the agreed monthly rate;
+- due months are settled idempotently under the backend schedule;
+- **Profit Paid** is an external profit distribution with zero investor-capital effect;
+- **Capital Withdrawal** means principal return only;
+- completed due months can automatically create/reconcile statements;
+- principal remains in its original currency/amount while ABS can retain the USD equivalent
+  captured at the investment effective date for consolidated reporting.
+
+Admin-only controls remain a web/admin responsibility and are not replicated as a mobile
+administrator console.

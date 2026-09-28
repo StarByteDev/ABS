@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 echo "====================================================="
-echo "Alpha Block Solutions V14.6.2 - MySQL Local Setup"
+echo "Alpha Block Solutions V15.3.0 - MySQL Local Setup"
 echo "====================================================="
 
 command -v php >/dev/null || { echo "ERROR: PHP was not found in PATH."; exit 1; }
@@ -25,6 +25,7 @@ echo "Preloading public market dashboard data..."
 php artisan abs:cache-market || echo "WARNING: Market providers are temporarily unavailable. The homepage will retry automatically in the browser."
 
 echo
-echo "ABS V14.6.2 MySQL setup completed successfully."
-echo "Run: php artisan serve"
+echo "ABS V15.3.0 MySQL setup completed successfully."
+echo "For automatic market/research cadence, run php artisan schedule:work in a second terminal."
+echo "Run web: php artisan serve"
 echo "Open: http://127.0.0.1:8000"

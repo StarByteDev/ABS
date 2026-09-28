@@ -45,7 +45,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = SessionScope.of(context).user ?? {};
+    final session = SessionScope.of(context);
+    final user = session.user ?? {};
+    final verified = session.emailVerified;
     return AbsPage(
       title: 'Profile & Security',
       subtitle: 'ABS account information',
@@ -53,6 +55,71 @@ class _ProfileScreenState extends State<ProfileScreen> {
         key: form,
         child: ListView(
           children: [
+            if (!verified) ...[
+              AbsCard(
+                accent: AbsColors.gold,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: AbsColors.gold.withOpacity(.10),
+                            borderRadius: BorderRadius.circular(13),
+                          ),
+                          child: const Icon(
+                            Icons.mark_email_unread_outlined,
+                            color: AbsColors.gold,
+                            size: 21,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Account not activated', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                              SizedBox(height: 3),
+                              Text('Basic access is available while you verify your email.', style: TextStyle(color: AbsColors.muted, fontSize: 10.5)),
+                            ],
+                          ),
+                        ),
+                        const StatusChip('ACTION NEEDED', warning: true),
+                      ],
+                    ),
+                    const SizedBox(height: 11),
+                    Text(
+                      'Open the ABS activation link sent to ${JsonTools.text(user['email'], 'your email')}. Full membership, scanner, signals, positions and trading controls unlock after verification.',
+                      style: const TextStyle(color: AbsColors.muted, fontSize: 11.5, height: 1.4),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: saving ? null : _resendActivation,
+                            icon: const Icon(Icons.outgoing_mail, size: 17),
+                            label: const Text('Resend link'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: saving ? null : _checkActivation,
+                            icon: const Icon(Icons.refresh_rounded, size: 17),
+                            label: const Text('Check status'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
             AbsCard(
               child: Row(
                 children: [
@@ -68,7 +135,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
                   ),
-                  StatusChip(JsonTools.text(user['status'], 'active').toUpperCase(), good: JsonTools.text(user['status']) == 'active'),
+                  StatusChip(
+                    verified ? 'ACTIVATED' : 'NOT ACTIVATED',
+                    good: verified,
+                    warning: !verified,
+                  ),
                 ],
               ),
             ),
@@ -89,13 +160,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 18),
             const AbsSectionTitle('Security'),
             const SizedBox(height: 10),
-            OutlinedButton.icon(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ChangePasswordScreen())), icon: const Icon(Icons.password), label: const Text('Change password')),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SessionsScreen())), icon: const Icon(Icons.devices), label: const Text('Active sessions')),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RegisteredDevicesScreen())), icon: const Icon(Icons.phone_android), label: const Text('Registered mobile devices')),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(onPressed: _logoutAll, icon: const Icon(Icons.phonelink_erase), label: const Text('Sign out from all devices')),
+            if (verified) ...[
+              OutlinedButton.icon(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ChangePasswordScreen())), icon: const Icon(Icons.password), label: const Text('Change password')),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SessionsScreen())), icon: const Icon(Icons.devices), label: const Text('Active sessions')),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RegisteredDevicesScreen())), icon: const Icon(Icons.phone_android), label: const Text('Registered mobile devices')),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(onPressed: _logoutAll, icon: const Icon(Icons.phonelink_erase), label: const Text('Sign out from all devices')),
+            ] else
+              const AbsCard(
+                child: Text(
+                  'Advanced security sessions and trading-account controls become available after email activation.',
+                  style: TextStyle(color: AbsColors.muted, fontSize: 11.5, height: 1.4),
+                ),
+              ),
           ],
         ),
       ),
@@ -113,12 +192,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'country_code': code.text.trim().isEmpty ? null : code.text.trim(),
         'phone': phone.text.trim().isEmpty ? null : phone.text.trim(),
       });
-      final emailVerify = JsonTools.boolean(JsonTools.map(response)['email_verification_required']);
+      final root = JsonTools.map(response);
+      final emailVerify = JsonTools.boolean(
+        root['email_verification_required'] ??
+            JsonTools.at(root, 'data.email_verification_required', false),
+      );
       if (emailVerify) {
-        await SessionScope.of(context).logout();
+        final current = Map<String, dynamic>.from(SessionScope.of(context).user ?? {});
+        current['name'] = name.text.trim();
+        current['email'] = email.text.trim();
+        current['email_verified_at'] = null;
+        current['activation_status'] = 'pending';
+        await SessionScope.of(context).applyUserSnapshot(current);
         if (!mounted) return;
-        showSnack(context, 'Profile saved. Activate your changed email, then sign in again.');
-        Navigator.of(context).popUntil((r) => r.isFirst);
+        showSnack(context, 'Profile saved. Basic access stays available while the new email is activated.');
       } else {
         await SessionScope.of(context).refreshIdentity();
         if (!mounted) return;
@@ -126,6 +213,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } on ApiException catch (e) {
       if (mounted) showSnack(context, e.message, error: true);
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  Future<void> _resendActivation() async {
+    setState(() => saving = true);
+    try {
+      await SessionScope.of(context).api.post(
+        '/auth/activation/resend',
+        body: {'email': JsonTools.text((SessionScope.of(context).user ?? <String, dynamic>{})['email'], email.text.trim())},
+      );
+      if (mounted) showSnack(context, 'Activation email sent.');
+    } on ApiException catch (e) {
+      if (mounted) showSnack(context, e.message, error: true);
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  Future<void> _checkActivation() async {
+    setState(() => saving = true);
+    try {
+      await SessionScope.of(context).refreshIdentity();
+      if (!mounted) return;
+      showSnack(context, 'Account activated. Full ABS features are unlocked.');
+      setState(() {});
+    } on ApiException catch (e) {
+      if (mounted) {
+        showSnack(
+          context,
+          e.statusCode == 403 ? 'Activation is not confirmed yet. Open the email link, then check again.' : e.message,
+          error: true,
+        );
+      }
     } finally {
       if (mounted) setState(() => saving = false);
     }

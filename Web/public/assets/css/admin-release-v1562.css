@@ -1,0 +1,58 @@
+/* ABS V15.6.2 — live patch and previous-build recovery */
+.abs-admin-v1562 .release62-hero,
+.abs-admin-v1562 .release62-card,
+.abs-admin-v1562 .release62-protection article{
+  background:linear-gradient(145deg,rgba(8,23,37,.97),rgba(5,15,26,.98));
+  border:1px solid rgba(78,111,137,.42);
+  box-shadow:0 18px 55px rgba(0,0,0,.18);
+}
+.abs-admin-v1562 .release62-hero{display:flex;align-items:center;justify-content:space-between;gap:28px;padding:26px;border-radius:18px;margin-bottom:16px}
+.abs-admin-v1562 .release62-hero>div:first-child{max-width:850px}
+.abs-admin-v1562 .release62-hero span,
+.abs-admin-v1562 .release62-card-head span{display:block;color:#d5a748;font-size:10px;line-height:1.2;font-weight:850;letter-spacing:.17em;text-transform:uppercase}
+.abs-admin-v1562 .release62-hero h2{margin:8px 0 7px;color:#f3f7fb;font-size:25px;line-height:1.16}
+.abs-admin-v1562 .release62-hero p,.abs-admin-v1562 .release62-card>p{margin:0;color:#91a8ba;line-height:1.6}
+.abs-admin-v1562 .release62-version{min-width:220px;border:1px solid rgba(213,167,72,.42);background:rgba(213,167,72,.055);border-radius:14px;padding:16px 18px}
+.abs-admin-v1562 .release62-version small{display:block;color:#8199ab;font-size:10px;letter-spacing:.13em}
+.abs-admin-v1562 .release62-version strong{display:block;color:#f5d485;font-size:16px;margin:5px 0 7px;word-break:break-word}
+.abs-admin-v1562 .release62-version em{font-style:normal;color:#71c8ea;font-size:11px}
+.abs-admin-v1562 .release62-protection{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.abs-admin-v1562 .release62-protection article{border-radius:14px;padding:15px;display:flex;gap:12px;align-items:flex-start}
+.abs-admin-v1562 .release62-protection i{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;border:1px solid rgba(213,167,72,.4);color:#d5a748;font-style:normal;background:rgba(213,167,72,.06)}
+.abs-admin-v1562 .release62-protection b{display:block;color:#eef5fa;font-size:13px;margin-bottom:3px}
+.abs-admin-v1562 .release62-protection span{display:block;color:#8098a9;font-size:11px;line-height:1.5}
+.abs-admin-v1562 .release62-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.abs-admin-v1562 .release62-card{border-radius:17px;padding:21px;margin-bottom:16px}
+.abs-admin-v1562 .release62-grid .release62-card{margin-bottom:0}
+.abs-admin-v1562 .release62-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:14px}
+.abs-admin-v1562 .release62-card-head h3{margin:5px 0 0;color:#edf5fa;font-size:19px}
+.abs-admin-v1562 .release62-state{border:1px solid rgba(114,199,234,.35);color:#81cdef;background:rgba(73,169,211,.08);border-radius:999px;padding:6px 9px;font-size:9px;letter-spacing:.12em;white-space:nowrap}
+.abs-admin-v1562 .release62-state.safe{border-color:rgba(88,194,135,.36);color:#78d7a1;background:rgba(50,159,101,.08)}
+.abs-admin-v1562 .release62-current-backup,.abs-admin-v1562 .release62-package-main,.abs-admin-v1562 .release62-restore-row>div:first-child{margin:16px 0;border:1px solid rgba(57,87,111,.52);background:rgba(255,255,255,.018);border-radius:12px;padding:14px}
+.abs-admin-v1562 .release62-current-backup small,.abs-admin-v1562 .release62-package-main small,.abs-admin-v1562 .release62-restore-row small{display:block;color:#6f899d;font-size:9px;letter-spacing:.12em}
+.abs-admin-v1562 .release62-current-backup strong,.abs-admin-v1562 .release62-package-main strong,.abs-admin-v1562 .release62-restore-row strong{display:block;color:#eaf2f8;font-size:12px;margin:4px 0;word-break:break-word}
+.abs-admin-v1562 .release62-current-backup span,.abs-admin-v1562 .release62-package-main span,.abs-admin-v1562 .release62-restore-row span{display:block;color:#7f98aa;font-size:10px}
+.abs-admin-v1562 .release62-package-main code{display:block;margin-top:8px;color:#78c8e8;font-size:9px;word-break:break-all}
+.abs-admin-v1562 .release62-empty{border:1px dashed rgba(73,105,129,.52);border-radius:12px;padding:15px;color:#7890a1;background:rgba(255,255,255,.012);margin:15px 0}
+.abs-admin-v1562 .release62-upload{margin-top:16px;display:flex;gap:12px;align-items:end}
+.abs-admin-v1562 .release62-upload label{flex:1;display:block;border:1px dashed rgba(112,155,185,.55);border-radius:12px;padding:13px;background:rgba(58,127,163,.035);cursor:pointer}
+.abs-admin-v1562 .release62-upload input[type=file]{display:block;width:100%;color:#8ea6b8;font-size:11px;margin-bottom:7px}
+.abs-admin-v1562 .release62-upload strong{display:block;color:#dfeaf1;font-size:12px}.abs-admin-v1562 .release62-upload span{display:block;color:#6e8799;font-size:10px;margin-top:2px}
+.abs-admin-v1562 .release62-package{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center}
+.abs-admin-v1562 .release62-package-main{margin:0}
+.abs-admin-v1562 .release62-package-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.abs-admin-v1562 .release62-package-actions form{margin:0}.abs-admin-v1562 .release62-install{display:flex;gap:7px;align-items:center}
+.abs-admin-v1562 .release62-install input,.abs-admin-v1562 .release62-restore-form input[type=password]{min-height:38px;border:1px solid #2a475d;border-radius:8px;background:#03101b;color:#e7f1f7;padding:8px 10px;font:inherit;font-size:11px}
+.abs-admin-v1562 .release62-restore-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,.8fr);gap:18px;align-items:start;margin-top:16px}
+.abs-admin-v1562 .release62-restore-row>div:first-child{margin:0}
+.abs-admin-v1562 .release62-restore-form{border-left:1px solid rgba(66,98,123,.4);padding-left:18px;display:grid;gap:10px}
+.abs-admin-v1562 .release62-restore-form input[type=password]{width:100%}
+.abs-admin-v1562 .release62-restore-form label{display:flex;gap:8px;align-items:flex-start;color:#8ca3b4;font-size:10px;line-height:1.45}
+.abs-admin-v1562 .release-rollback-button{background:linear-gradient(135deg,#d6a548,#b57a28)!important;color:#08101a!important;border:0!important;font-weight:800!important}
+.abs-admin-v1562 .release62-emergency{margin-top:15px;padding-top:13px;border-top:1px solid rgba(57,87,111,.34);color:#7891a3;font-size:10px}.abs-admin-v1562 .release62-emergency a{color:#73c8ed;text-decoration:none}
+.abs-admin-v1562 .release62-audit{display:grid;gap:7px}.abs-admin-v1562 .release62-audit>div{display:grid;grid-template-columns:150px minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid rgba(51,80,101,.38);background:rgba(255,255,255,.012);border-radius:9px;padding:10px 11px}.abs-admin-v1562 .release62-audit time{color:#6f899c;font-size:10px}.abs-admin-v1562 .release62-audit strong{color:#dfe8ee;font-size:11px}.abs-admin-v1562 .release62-audit span{color:#d4aa55;font-size:10px;text-align:right}
+@media(max-width:1040px){.abs-admin-v1562 .release62-protection{grid-template-columns:1fr}.abs-admin-v1562 .release62-grid{grid-template-columns:1fr}.abs-admin-v1562 .release62-package,.abs-admin-v1562 .release62-restore-row{grid-template-columns:1fr}.abs-admin-v1562 .release62-package-actions{justify-content:flex-start}.abs-admin-v1562 .release62-restore-form{border-left:0;border-top:1px solid rgba(66,98,123,.4);padding-left:0;padding-top:16px}}
+@media(max-width:700px){.abs-admin-v1562 .release62-hero{align-items:flex-start;flex-direction:column}.abs-admin-v1562 .release62-version{width:100%}.abs-admin-v1562 .release62-upload{align-items:stretch;flex-direction:column}.abs-admin-v1562 .release62-package-actions{align-items:stretch;flex-direction:column}.abs-admin-v1562 .release62-install{align-items:stretch;flex-direction:column}.abs-admin-v1562 .release62-audit>div{grid-template-columns:1fr}.abs-admin-v1562 .release62-audit span{text-align:left}}
+
+/* ABS V15.6.3 pending package-payment visibility */
+.abs-nav-count{margin-left:auto;min-width:20px;height:20px;padding:0 6px;display:grid;place-items:center;border:1px solid rgba(217,173,75,.45);border-radius:999px;background:rgba(217,173,75,.12);color:#e9c45f;font-size:9px;font-style:normal}.abs-exec-alert{position:relative}.abs-exec-alert> b{position:absolute;right:-5px;top:-5px;min-width:18px;height:18px;padding:0 4px;display:grid;place-items:center;border:2px solid #06111d;border-radius:999px;background:#d9ad4b;color:#06111d;font-size:9px}.abs-exec-alert.has-pending{border-color:rgba(217,173,75,.65)!important;color:#e7c05b!important}

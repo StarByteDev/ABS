@@ -65,6 +65,52 @@ class JsonTools {
         .trim();
   }
 
+
+  static List<Map<String, dynamic>> collectionItems(
+    dynamic response, {
+    List<String> keys = const [
+      'items',
+      'results',
+      'articles',
+      'news',
+      'headlines',
+      'events',
+      'calendar',
+      'releases',
+      'upcoming',
+      'previous',
+    ],
+  }) {
+    List<Map<String, dynamic>> read(dynamic value, int depth) {
+      if (depth > 4 || value == null) return <Map<String, dynamic>>[];
+      if (value is List) return mapList(value);
+      if (value is! Map) return <Map<String, dynamic>>[];
+      final current = map(value);
+
+      final direct = current['data'];
+      if (direct is List) return mapList(direct);
+      if (direct is Map) {
+        final nestedData = read(direct, depth + 1);
+        if (nestedData.isNotEmpty) return nestedData;
+      }
+
+      for (final key in keys) {
+        final candidate = current[key];
+        if (candidate is List) {
+          final rows = mapList(candidate);
+          if (rows.isNotEmpty) return rows;
+        }
+        if (candidate is Map) {
+          final rows = read(candidate, depth + 1);
+          if (rows.isNotEmpty) return rows;
+        }
+      }
+      return <Map<String, dynamic>>[];
+    }
+
+    return read(response, 0);
+  }
+
   static List<Map<String, dynamic>> pageItems(dynamic response) {
     final root = map(response);
     final data = root['data'];

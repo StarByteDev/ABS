@@ -170,7 +170,7 @@ class AdminDashboardController extends Controller
                 'Expiring in 7 days' => $expiring7,
                 'Expiring in 30 days' => $expiring30,
                 'Expired Pulse access' => $expired,
-                'Private members' => User::where('role', 'private_member')->whereNotNull('private_member_approved_at')->count(),
+                'Private investors' => User::whereIn('role', ['private_member','private_investor'])->whereNotNull('private_member_approved_at')->count(),
                 'Membership requests' => PulseMembershipRequest::query()->whereIn('status',['submitted','under_review'])->count(),
             ],
             'planRows' => $planRows,
@@ -213,7 +213,7 @@ class AdminDashboardController extends Controller
             'userLevels' => [
                 ['label' => 'Standard users', 'value' => User::query()->where('role', 'user')->where('status', 'active')->count(), 'note' => 'Core ABS account access'],
                 ['label' => 'Pulse customers', 'value' => (clone $activePulse)->count(), 'note' => 'Active package entitlement'],
-                ['label' => 'Private members', 'value' => User::query()->where('role', 'private_member')->where('status', 'active')->count(), 'note' => 'Private reporting access'],
+                ['label' => 'Private investors', 'value' => User::query()->whereIn('role', ['private_member','private_investor'])->where('status', 'active')->count(), 'note' => 'Portfolio reporting access'],
                 ['label' => 'Administrators', 'value' => User::query()->where('role', 'admin')->where('status', 'active')->count(), 'note' => 'Enterprise control authority'],
             ],
             'tradingReport' => [

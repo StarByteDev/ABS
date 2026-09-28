@@ -1,0 +1,13 @@
+ABS V15.7.3 — NO DATABASE SCHEMA CHANGES
+
+This release is an application/UI/control-flow correction on top of the additive V15.7.1 and V15.7.2 Private Investor schema.
+
+No table or column is added, removed, renamed or rewritten by V15.7.3.
+No existing investor, user, transaction, statement, request, agreement, payment, trade or audit record is deleted or recalculated during deployment.
+
+V15.7.3 adds explicit principal-currency selectors for Admin and investor users while enforcing the existing principal-protection accounting invariant:
+- an empty portfolio may choose/change its principal currency;
+- once financial history exists, principal currency is locked;
+- Admin USD carrying basis and FX gain/loss remain separate from investor principal.
+
+Deploy over V15.7.2 using the normal ABS backup/patch workflow. Existing V15.7.1/V15.7.2 migrations remain valid and should still be run normally if a server has not applied them yet.

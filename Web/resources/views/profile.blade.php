@@ -8,7 +8,7 @@
     $accessStatus = $pulseAccessActive ? 'Active' : ucfirst((string) ($pulseAccess?->status ?: 'Not active'));
     $expiry = $pulseAccess?->ends_at;
     $daysRemaining = $expiry ? max(0, now()->diffInDays($expiry, false)) : null;
-    $roleLabel = $user->isAdmin() ? 'Administrator' : ($user->isPrivateMember() ? 'Private Member' : 'ABS Member');
+    $roleLabel = $user->isAdmin() ? 'Administrator' : ($user->isPrivateMember() ? 'Private Investor' : 'ABS Member');
     $verified = $user->hasVerifiedEmail();
     $marketCore = collect($market['core'] ?? [])->take(4);
     $pnl30 = (float) ($profileStats['realized_pnl_30d'] ?? 0);
@@ -100,12 +100,14 @@
                 <span class="pp-status-chip {{ $pulseAccessActive ? 'good' : 'warn' }}">{{ $pulseAccessActive ? 'ACTIVE' : 'NOT ACTIVE' }}</span>
                 <?php if ($pulseAccessActive): ?><a href="{{ route('pulse.dashboard') }}">Open Pulse Dashboard →</a><?php else: ?><a href="{{ route('pulse.plans') }}">Explore Pulse Plans →</a><?php endif; ?>
             </article>
+            <?php if ($user->isPrivateMember()): ?>
             <article class="pp-service-tile">
                 <span class="pp-service-icon">@include('pulse.partials.icon', ['name' => 'document'])</span>
-                <div><small>INVITATION SERVICE</small><h3>Private Member Portal</h3><p>Invitation-only private reporting and account statement access for approved members.</p></div>
-                <span class="pp-status-chip {{ $user->isPrivateMember() ? 'good' : 'muted' }}">{{ $user->isPrivateMember() ? 'ACTIVE' : 'RESTRICTED' }}</span>
-                <?php if ($user->isPrivateMember()): ?><a href="{{ route('private.index') }}">Open Private Portal →</a><?php else: ?><span class="pp-service-disabled">Not assigned to this account</span><?php endif; ?>
+                <div><small>PRIVATE ACCOUNT SERVICE</small><h3>Investor Portfolio</h3><p>Secure portfolio reporting, monthly statements, account activity and service requests.</p></div>
+                <span class="pp-status-chip good">ACTIVE</span>
+                <a href="{{ route('private.index') }}">Open Investor Portfolio →</a>
             </article>
+            <?php endif; ?>
             <?php if ($user->isAdmin()): ?>
                 <article class="pp-service-tile">
                     <span class="pp-service-icon">@include('pulse.partials.icon', ['name' => 'settings'])</span>

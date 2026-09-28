@@ -6,7 +6,8 @@ import '../core/session.dart';
 import '../core/theme.dart';
 import '../widgets/abs_ui.dart';
 import 'content_screens.dart';
-import 'free_signal_screen.dart';
+import '../template_rebase/screens/free_signal_screen.dart';
+import 'profile_screen.dart';
 
 class GuestLandingScreen extends StatefulWidget {
   const GuestLandingScreen({super.key});
@@ -482,10 +483,10 @@ class _PublicExploreMarketsPageState extends State<_PublicExploreMarketsPage> {
                         return Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: color.withValues(alpha: .16),
+                            color: color.withOpacity(.16),
                             borderRadius: BorderRadius.circular(13),
                             border: Border.all(
-                              color: color.withValues(alpha: .28),
+                              color: color.withOpacity(.28),
                             ),
                           ),
                           child: Column(
@@ -621,7 +622,15 @@ class _GuestMorePage extends StatelessWidget {
   const _GuestMorePage();
   @override
   Widget build(BuildContext context) {
+    final session = SessionScope.of(context);
+    final limited = session.limitedAccount;
     final items = <({IconData icon, String title, Widget page})>[
+      if (limited)
+        (
+          icon: Icons.person_outline_rounded,
+          title: 'Profile',
+          page: const ProfileScreen(),
+        ),
       (
         icon: Icons.card_giftcard_rounded,
         title: 'Free Signal',
@@ -680,10 +689,18 @@ class _GuestMorePage extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
             children: [
-              const _PublicHeader(
-                title: 'More',
-                subtitle: 'Research, learning, services and account access',
+              _PublicHeader(
+                title: limited ? 'Your ABS account' : 'More',
+                subtitle: limited
+                    ? 'Basic access is active while email verification is pending'
+                    : 'Research, learning, services and account access',
               ),
+              if (limited) ...[
+                const SizedBox(height: 14),
+                _PendingActivationCard(
+                  email: JsonTools.text(session.user?['email'], ''),
+                ),
+              ],
               const SizedBox(height: 18),
               GridView.builder(
                 itemCount: items.length,
@@ -693,7 +710,7 @@ class _GuestMorePage extends StatelessWidget {
                   crossAxisCount: 2,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
-                  childAspectRatio: 1.28,
+                  childAspectRatio: 1.38,
                 ),
                 itemBuilder: (_, i) {
                   final item = items[i];
@@ -703,6 +720,7 @@ class _GuestMorePage extends StatelessWidget {
                             .push(MaterialPageRoute(builder: (_) => item.page)),
                     borderRadius: BorderRadius.circular(18),
                     child: AbsCard(
+                      padding: const EdgeInsets.all(14),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -710,14 +728,16 @@ class _GuestMorePage extends StatelessWidget {
                           Icon(
                             item.icon,
                             color: AbsColors.purpleSoft,
-                            size: 24,
+                            size: 23,
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 10),
                           Text(
                             item.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               fontWeight: FontWeight.w900,
-                              fontSize: 13,
+                              fontSize: 12.5,
                             ),
                           ),
                         ],
@@ -727,25 +747,156 @@ class _GuestMorePage extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: () => Navigator.of(
-                  context,
-                ).push(MaterialPageRoute(builder: (_) => const LoginScreen())),
-                icon: const Icon(Icons.login_rounded),
-                label: const Text('Sign in to ABS Pulse'),
-              ),
-              const SizedBox(height: 9),
-              OutlinedButton(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const RegisterScreen()),
+              if (limited) ...[
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                  ),
+                  icon: const Icon(Icons.manage_accounts_outlined),
+                  label: const Text('Open profile & activation'),
                 ),
-                child: const Text('Create account'),
-              ),
+                const SizedBox(height: 9),
+                TextButton.icon(
+                  onPressed: () => session.logout(),
+                  icon: const Icon(Icons.logout_rounded),
+                  label: const Text('Sign out'),
+                ),
+              ] else ...[
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).push(MaterialPageRoute(builder: (_) => const LoginScreen())),
+                  icon: const Icon(Icons.login_rounded),
+                  label: const Text('Sign in to Pulse'),
+                ),
+                const SizedBox(height: 9),
+                OutlinedButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                  ),
+                  child: const Text('Create account'),
+                ),
+              ],
             ],
           ),
         ),
       ),
     );
+  }
+}
+
+class _PendingActivationCard extends StatefulWidget {
+  const _PendingActivationCard({required this.email});
+  final String email;
+
+  @override
+  State<_PendingActivationCard> createState() => _PendingActivationCardState();
+}
+
+class _PendingActivationCardState extends State<_PendingActivationCard> {
+  bool sending = false;
+  bool checking = false;
+
+  @override
+  Widget build(BuildContext context) => AbsCard(
+        accent: AbsColors.gold,
+        padding: const EdgeInsets.all(15),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AbsColors.gold.withOpacity(.10),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.mark_email_unread_outlined,
+                    color: AbsColors.gold,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Email activation pending',
+                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Basic features stay available now.',
+                        style: TextStyle(color: AbsColors.muted, fontSize: 10.5),
+                      ),
+                    ],
+                  ),
+                ),
+                const StatusChip('LIMITED', warning: true),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Activate ${widget.email.isEmpty ? 'your email' : widget.email} to unlock membership, scanner, signals, positions, trading setup and private account features.',
+              style: const TextStyle(color: AbsColors.muted, fontSize: 11.5, height: 1.4),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: sending ? null : _resend,
+                    child: Text(sending ? 'Sending...' : 'Resend email'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: checking ? null : _check,
+                    child: Text(checking ? 'Checking...' : 'I activated it'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+
+  Future<void> _resend() async {
+    setState(() => sending = true);
+    try {
+      await SessionScope.of(context).api.post(
+        '/auth/activation/resend',
+        body: {'email': widget.email},
+      );
+      if (mounted) showSnack(context, 'Activation email sent.');
+    } on ApiException catch (e) {
+      if (mounted) showSnack(context, e.message, error: true);
+    } finally {
+      if (mounted) setState(() => sending = false);
+    }
+  }
+
+  Future<void> _check() async {
+    setState(() => checking = true);
+    try {
+      await SessionScope.of(context).refreshIdentity();
+      if (mounted) showSnack(context, 'Account activated. Full ABS access is now available.');
+    } on ApiException catch (e) {
+      if (mounted) {
+        showSnack(
+          context,
+          e.statusCode == 403 ? 'Activation is not confirmed yet.' : e.message,
+          error: true,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => checking = false);
+    }
   }
 }
 
@@ -788,11 +939,23 @@ class _PublicHeader extends StatelessWidget {
             icon: const Icon(Icons.search_rounded, color: AbsColors.muted),
           ),
           IconButton(
-            onPressed: () => Navigator.of(context)
-                .push(MaterialPageRoute(builder: (_) => const LoginScreen())),
-            icon: const Icon(
-              Icons.person_outline_rounded,
-              color: AbsColors.muted,
+            onPressed: () {
+              final session = SessionScope.of(context);
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => session.authenticated
+                      ? const ProfileScreen()
+                      : const LoginScreen(),
+                ),
+              );
+            },
+            icon: Icon(
+              SessionScope.of(context).authenticated
+                  ? Icons.verified_user_outlined
+                  : Icons.person_outline_rounded,
+              color: SessionScope.of(context).limitedAccount
+                  ? AbsColors.gold
+                  : AbsColors.muted,
             ),
           ),
         ],
@@ -827,9 +990,9 @@ class _AlertStrip extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
     decoration: BoxDecoration(
-      color: AbsColors.purple.withValues(alpha: .10),
+      color: AbsColors.purple.withOpacity(.10),
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: AbsColors.purple.withValues(alpha: .34)),
+      border: Border.all(color: AbsColors.purple.withOpacity(.34)),
     ),
     child: Row(
       children: [
@@ -1117,10 +1280,10 @@ class _PublicAssetRow extends StatelessWidget {
               height: 32,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: AbsColors.purple.withValues(alpha: .10),
+                color: AbsColors.purple.withOpacity(.10),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: AbsColors.purple.withValues(alpha: .22),
+                  color: AbsColors.purple.withOpacity(.22),
                 ),
               ),
               child: Text(
@@ -1272,7 +1435,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final session = SessionScope.of(context);
     return AbsPage(
-      title: 'ABS Pulse',
+      title: 'Pulse',
       subtitle: 'Secure access to your trading intelligence',
       child: ListView(
         children: [
@@ -1415,7 +1578,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: AbsColors.panel.withValues(alpha: .72),
+              color: AbsColors.panel.withOpacity(.72),
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: AbsColors.lineSoft),
             ),
@@ -1458,10 +1621,10 @@ class _LoginScreenState extends State<LoginScreen> {
       final body = JsonTools.map(e.body);
       if (e.statusCode == 403 &&
           JsonTools.boolean(body['activation_required'])) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => ActivationRequiredScreen(email: _email.text.trim()),
-          ),
+        showSnack(
+          context,
+          'Your email is still awaiting activation. ABS will keep basic access available when the server returns a limited-access token. You can resend the activation email from this screen.',
+          error: true,
         );
         return;
       }
@@ -1480,7 +1643,7 @@ class _TrustChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: AbsColors.panel2.withValues(alpha: .9),
+        color: AbsColors.panel2.withOpacity(.9),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: AbsColors.lineSoft),
       ),
@@ -1538,7 +1701,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final session = SessionScope.of(context);
     return AbsPage(
       title: 'Create account',
-      subtitle: 'Start with ABS, then activate from email',
+      subtitle: 'Create your account and start with basic access immediately',
       child: Form(
         key: _form,
         child: ListView(
@@ -1639,10 +1802,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'password': _password.text,
       });
       if (!mounted) return;
+      if (session.authenticated) {
+        showSnack(
+          context,
+          session.emailVerified
+              ? 'Account created. Welcome to ABS.'
+              : 'Account created. Basic access is ready now — activate your email to unlock all account and trading features.',
+        );
+        Navigator.of(context).popUntil((r) => r.isFirst);
+        return;
+      }
+      showSnack(
+        context,
+        'Account created. Sign in to continue while you wait for the activation email.',
+      );
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => ActivationRequiredScreen(email: _email.text.trim()),
-        ),
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
       );
     } on ApiException catch (e) {
       if (!mounted) return;

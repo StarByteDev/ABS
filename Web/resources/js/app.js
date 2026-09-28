@@ -716,6 +716,15 @@
         }
     };
 
+    const safeInternalUrl = (value) => {
+        try {
+            const url = new URL(String(value || ''), window.location.origin);
+            return url.origin === window.location.origin ? `${url.pathname}${url.search}${url.hash}` : '/news';
+        } catch (_) {
+            return '/news';
+        }
+    };
+
     const relativePublishedTime = (value) => {
         const timestamp = Date.parse(value || '');
         if (!Number.isFinite(timestamp)) return 'Recently published';
@@ -732,9 +741,7 @@
         link.className = 'final-headline-card';
         link.dataset.liveNewsItem = '1';
         link.dataset.external = '1';
-        link.href = safeExternalUrl(item.url);
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
+        link.href = safeInternalUrl(item.abs_url);
 
         const image = document.createElement('img');
         const fallback = `/assets/images/home/news-${(index % 4) + 1}.png`;
@@ -749,7 +756,7 @@
         const meta = document.createElement('small');
         meta.innerHTML = `${relativePublishedTime(item.published_at)} <i>•</i> <span>${String(item.source_name || item.category || 'MARKETS').toUpperCase()}</span>`;
         const excerpt = document.createElement('p');
-        excerpt.textContent = item.excerpt || 'Open the verified report for the complete market context and source details.';
+        excerpt.textContent = item.excerpt || 'Open the Market Brief for source details and Pulse context.';
         content.append(meta, title, excerpt);
         link.append(image, content);
         return link;
@@ -760,9 +767,7 @@
         link.className = 'panel live-headline-card';
         link.dataset.liveNewsItem = '1';
         link.dataset.external = '1';
-        link.href = safeExternalUrl(item.url);
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
+        link.href = safeInternalUrl(item.abs_url);
 
         const meta = document.createElement('div');
         meta.className = 'headline-source';
@@ -782,7 +787,7 @@
         }
         const source = document.createElement('span');
         source.className = 'source-link';
-        source.textContent = 'Open original article ↗';
+        source.textContent = 'Open Market Brief →';
         link.append(source);
         return link;
     };

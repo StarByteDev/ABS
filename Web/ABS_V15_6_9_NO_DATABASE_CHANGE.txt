@@ -1,0 +1,6 @@
+ABS V15.6.9 — NO DATABASE SCHEMA CHANGE
+
+This release changes application code, views, routes and investor administration workflow only.
+No migration is added. Existing users, memberships, payments, signals, trades, portfolio transactions, statements, requests, performance plans, accruals, support history and strategy records are preserved.
+
+The V15.6.2+ code-only previous-build rollback rule remains in force.

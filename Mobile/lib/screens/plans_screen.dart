@@ -2,12 +2,14 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../core/api_client.dart';
 import '../core/json_tools.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../widgets/abs_ui.dart';
+import '../template_rebase/screens/auth_screen.dart';
 
 class PlansScreen extends StatefulWidget {
   const PlansScreen({super.key});
@@ -17,46 +19,182 @@ class PlansScreen extends StatefulWidget {
 
 class _PlansScreenState extends State<PlansScreen> {
   bool loading = true;
+  bool sessionExpired = false;
   String? error;
   Map<String, dynamic> membership = {};
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final session = SessionScope.of(context);
+    if (!session.authenticated || !session.emailVerified) {
+      loading = false;
+      return;
+    }
     if (loading && membership.isEmpty) _load();
   }
 
   Future<void> _load() async {
+    final session = SessionScope.of(context);
+    if (!session.authenticated || !session.emailVerified) {
+      if (mounted) setState(() => loading = false);
+      return;
+    }
     setState(() {
       loading = true;
+      sessionExpired = false;
       error = null;
     });
     try {
       membership = JsonTools.map(
         JsonTools.at(
-          await SessionScope.of(context).api.get('/pulse/membership'),
+          await session.api.get('/pulse/membership'),
           'data',
           <String, dynamic>{},
         ),
       );
     } on ApiException catch (e) {
-      error = e.message;
+      if (e.statusCode == 401) {
+        sessionExpired = true;
+      } else {
+        error = e.message;
+      }
     } finally {
       if (mounted) setState(() => loading = false);
     }
   }
 
   @override
-  Widget build(BuildContext context) => AbsPage(
-    title: 'Pulse Membership',
-    subtitle: 'Current plan, upgrade path and request status',
-    actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh))],
-    child: loading
-        ? const LoadingBlock()
-        : error != null
-        ? ErrorBlock(message: error!, onRetry: _load)
-        : ListView(children: _content()),
-  );
+  Widget build(BuildContext context) {
+    final session = SessionScope.of(context);
+    return AbsPage(
+      title: 'Pulse Membership',
+      subtitle: 'Plans, access and membership requests',
+      actions: session.authenticated && session.emailVerified
+          ? [IconButton(onPressed: loading ? null : _load, icon: const Icon(Icons.refresh))]
+          : null,
+      child: !session.authenticated
+          ? _guestState()
+          : !session.emailVerified
+              ? _activationState(session)
+              : sessionExpired
+                  ? _expiredState()
+                  : loading
+                      ? const LoadingBlock(label: 'Loading Pulse membership...')
+                      : error != null
+                          ? ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              children: [
+                                SizedBox(width: double.infinity, child: ErrorBlock(message: error!, onRetry: _load)),
+                              ],
+                            )
+                          : ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              children: _content(),
+                            ),
+    );
+  }
+
+  Widget _guestState() => ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          PremiumHeroCard(
+            eyebrow: 'PULSE MEMBERSHIP',
+            title: 'Sign in to view your Pulse access',
+            message: 'Your available plan, upgrade path and payment-request status are linked to your ABS account.',
+            trailing: const Icon(Icons.workspace_premium_rounded, color: AbsColors.gold, size: 38),
+            footer: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AuthScreen())),
+                icon: const Icon(Icons.login_rounded),
+                label: const Text('Sign in to Pulse'),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const AbsCard(
+            child: Text(
+              'Public Markets, Free Signal and Pulse Intelligence remain available without membership.',
+              style: TextStyle(color: AbsColors.muted, height: 1.45),
+            ),
+          ),
+        ],
+      );
+
+  Widget _activationState(AppSession session) => ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          PremiumHeroCard(
+            eyebrow: 'ACCOUNT ACTIVATION',
+            title: 'Activate your email to unlock Pulse plans',
+            message: 'Basic ABS access remains available now. Membership, scanner, signals and trading tools unlock after email activation.',
+            trailing: const Icon(Icons.mark_email_unread_outlined, color: AbsColors.gold, size: 38),
+            footer: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () => _resendActivation(session),
+                  icon: const Icon(Icons.forward_to_inbox_rounded),
+                  label: const Text('Resend activation'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _checkActivation(session),
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Check status'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+
+  Widget _expiredState() => ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          PremiumHeroCard(
+            eyebrow: 'SESSION',
+            title: 'Sign in again to refresh membership',
+            message: 'Your saved ABS session is no longer accepted by the server. Sign in again to securely load your current plan and requests.',
+            trailing: const Icon(Icons.lock_clock_outlined, color: AbsColors.gold, size: 38),
+            footer: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AuthScreen())),
+                icon: const Icon(Icons.login_rounded),
+                label: const Text('Sign in again'),
+              ),
+            ),
+          ),
+        ],
+      );
+
+  Future<void> _resendActivation(AppSession session) async {
+    final email = JsonTools.text(session.user?['email'], '');
+    if (email.isEmpty) return;
+    try {
+      await session.api.post('/auth/activation/resend', body: {'email': email});
+      if (mounted) showSnack(context, 'Activation email sent. Check your inbox and spam folder.');
+    } on ApiException catch (e) {
+      if (mounted) showSnack(context, e.message, error: true);
+    }
+  }
+
+  Future<void> _checkActivation(AppSession session) async {
+    try {
+      await session.refreshIdentity();
+      if (!mounted) return;
+      if (session.emailVerified) {
+        showSnack(context, 'Account activated. Loading your Pulse membership.');
+        await _load();
+      } else {
+        showSnack(context, 'Activation is still pending. Open the email link, then check again.');
+      }
+    } on ApiException catch (e) {
+      if (mounted) showSnack(context, e.message, error: true);
+    }
+  }
 
   List<Widget> _content() {
     final access = JsonTools.map(membership['access']);
@@ -70,6 +208,31 @@ class _PlansScreenState extends State<PlansScreen> {
       'payment_instructions': membership['payment_instructions'],
       'proof_required': membership['proof_required'],
     };
+    if (currentPlan.isEmpty && plans.isEmpty && requests.isEmpty) {
+      final session = SessionScope.of(context);
+      return [
+        PremiumHeroCard(
+          eyebrow: session.hasPulseAccess ? 'PULSE ACCESS ACTIVE' : 'PULSE MEMBERSHIP',
+          title: session.hasPulseAccess ? 'Your Pulse access is active' : 'Membership details are syncing',
+          message: session.hasPulseAccess
+              ? 'ABS recognizes your Pulse access. Plan details are temporarily unavailable; refresh to load the current package and expiry.'
+              : 'ABS did not return membership catalogue data yet. Pull to refresh or try again shortly.',
+          trailing: Icon(
+            session.hasPulseAccess ? Icons.verified_rounded : Icons.sync_rounded,
+            color: AbsColors.gold,
+            size: 38,
+          ),
+          footer: SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _load,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Refresh membership'),
+            ),
+          ),
+        ),
+      ];
+    }
     return [
       if (currentPlan.isNotEmpty) ...[
         AbsCard(
@@ -329,7 +492,7 @@ class _PlanCard extends StatelessWidget {
                             )
                         ? () => _openRequest(context)
                         : null,
-                    child: const Text('Request Plan'),
+                    child: const Text('Pay with USDT'),
                   ),
               ],
             ),
@@ -363,10 +526,18 @@ class _MembershipRequestSheet extends StatefulWidget {
 class _MembershipRequestSheetState extends State<_MembershipRequestSheet> {
   final reference = TextEditingController();
   final notes = TextEditingController();
-  bool loadingQuote = false;
+  bool loadingPayment = true;
   bool submitting = false;
-  Map<String, dynamic> quote = {};
+  bool acknowledged = false;
+  String? paymentError;
+  Map<String, dynamic> payment = <String, dynamic>{};
   File? proof;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadPaymentDetails());
+  }
 
   @override
   void dispose() {
@@ -375,121 +546,293 @@ class _MembershipRequestSheetState extends State<_MembershipRequestSheet> {
     super.dispose();
   }
 
+  Map<String, dynamic> get _quote => JsonTools.map(payment['quote']);
+
+  String get _currency => JsonTools.text(
+        _quote['currency'] ?? widget.plan['currency'],
+        'USDT',
+      );
+
+  dynamic get _amountRaw => _quote['final_amount'] ??
+      _quote['amount'] ??
+      widget.plan['price'] ??
+      widget.plan['monthly_price'] ??
+      widget.plan['amount'] ??
+      JsonTools.at(widget.plan, 'pricing.amount');
+
+  String get _network => JsonTools.text(
+        payment['network'] ?? widget.commerce['network'],
+        '',
+      );
+
+  String get _wallet => JsonTools.text(
+        payment['wallet_address'] ?? widget.commerce['wallet_address'],
+        '',
+      );
+
+  String get _instructions => JsonTools.text(
+        payment['payment_instructions'] ?? widget.commerce['payment_instructions'],
+        '',
+      );
+
+  bool get _proofRequired => JsonTools.boolean(
+        payment['proof_required'],
+        JsonTools.boolean(widget.commerce['proof_required']),
+      );
+
+  int get _durationDays {
+    for (final value in <dynamic>[
+      widget.plan['duration_days'],
+      widget.plan['plan_days'],
+      widget.plan['days'],
+      widget.plan['access_days'],
+      JsonTools.at(widget.plan, 'pricing.duration_days'),
+    ]) {
+      final days = JsonTools.integer(value);
+      if (days > 0) return days;
+    }
+    return 30;
+  }
+
+  bool get _paymentReady =>
+      !loadingPayment && paymentError == null && payment.isNotEmpty && _wallet.isNotEmpty && _network.isNotEmpty;
+
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
-    final payment = quote;
-    final q = JsonTools.map(quote['quote']);
-    final proofRequired = JsonTools.boolean(
-      payment['proof_required'],
-      JsonTools.boolean(widget.commerce['proof_required']),
-    );
-    return Padding(
-      padding: EdgeInsets.fromLTRB(18, 18, 18, 18 + bottom),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Request ${JsonTools.text(widget.plan['name'])}',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Get the current server quote before submitting payment details.',
-              style: TextStyle(color: AbsColors.muted),
-            ),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: loadingQuote ? null : _getQuote,
-                child: Text(loadingQuote ? 'Checking...' : 'Get current quote'),
-              ),
-            ),
-            if (quote.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              AbsCard(
-                child: Column(
-                  children: [
-                    KeyValueRow(
-                      'Final amount',
-                      '${JsonTools.text(q['currency'], 'USDT')} ${number(q['final_amount'])}',
-                    ),
-                    KeyValueRow('Network', JsonTools.text(payment['network'])),
-                    KeyValueRow(
-                      'Wallet',
-                      JsonTools.text(payment['wallet_address']),
-                    ),
-                    if (JsonTools.text(
-                      payment['payment_instructions'],
-                      '',
-                    ).isNotEmpty)
-                      KeyValueRow(
-                        'Instructions',
-                        JsonTools.text(payment['payment_instructions']),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: reference,
-                decoration: const InputDecoration(
-                  labelText: 'USDT transaction reference / hash',
-                ),
-              ),
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: _pickProof,
-                icon: const Icon(Icons.attach_file),
-                label: Text(
-                  proof == null
-                      ? (proofRequired
-                            ? 'Attach payment proof (required)'
-                            : 'Attach payment proof')
-                      : proof!.path.split(Platform.pathSeparator).last,
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: notes,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Notes (optional)',
-                ),
-              ),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: submitting ? null : _submit,
-                  child: Text(
-                    submitting ? 'Submitting...' : 'Submit membership request',
+    final planName = JsonTools.text(widget.plan['name'], 'Pulse plan');
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(18, 12, 18, 18 + bottom),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 46,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AbsColors.muted.withOpacity(.35),
+                    borderRadius: BorderRadius.circular(99),
                   ),
                 ),
               ),
+              const SizedBox(height: 18),
+              const Text(
+                'ABS PULSE · SECURE PACKAGE PAYMENT',
+                style: TextStyle(
+                  color: AbsColors.cyanSoft,
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.35,
+                ),
+              ),
+              const SizedBox(height: 7),
+              Text(
+                planName,
+                style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 7),
+              const Text(
+                'Transfer the exact package amount, keep the blockchain transaction ID, then submit it to ABS for manual verification.',
+                style: TextStyle(color: AbsColors.muted, height: 1.45),
+              ),
+              const SizedBox(height: 16),
+              if (loadingPayment)
+                const AbsCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      LinearProgressIndicator(minHeight: 2),
+                      SizedBox(height: 12),
+                      Text('Preparing secure payment instructions...', style: TextStyle(fontWeight: FontWeight.w800)),
+                      SizedBox(height: 4),
+                      Text('ABS is loading the exact amount, network and destination wallet for this package.', style: TextStyle(color: AbsColors.muted, height: 1.4)),
+                    ],
+                  ),
+                )
+              else if (paymentError != null)
+                ErrorBlock(message: paymentError!, onRetry: _loadPaymentDetails)
+              else ...[
+                AbsCard(
+                  accent: AbsColors.gold,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('PAYMENT SUMMARY', style: TextStyle(color: AbsColors.cyanSoft, fontSize: 9.5, fontWeight: FontWeight.w900, letterSpacing: 1.1)),
+                                SizedBox(height: 4),
+                                Text('Direct USDT transfer', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+                              ],
+                            ),
+                          ),
+                          const StatusChip('SECURE VERIFICATION', good: true),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      KeyValueRow('Amount to transfer', '$_currency ${number(_amountRaw)}'),
+                      KeyValueRow('Access after approval', '$_durationDays days'),
+                      const Divider(height: 24),
+                      const Text('TRANSFER DESTINATION', style: TextStyle(color: AbsColors.muted, fontSize: 9.5, fontWeight: FontWeight.w900, letterSpacing: .9)),
+                      const SizedBox(height: 9),
+                      KeyValueRow('Network', _network.isEmpty ? 'Not configured' : _network),
+                      const SizedBox(height: 6),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AbsColors.bg.withOpacity(.45),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AbsColors.line),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: SelectableText(
+                                _wallet.isEmpty ? 'Wallet not configured' : _wallet,
+                                style: TextStyle(
+                                  color: _wallet.isEmpty ? AbsColors.red : AbsColors.text,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ),
+                            if (_wallet.isNotEmpty)
+                              IconButton(
+                                tooltip: 'Copy wallet address',
+                                onPressed: () async {
+                                  await Clipboard.setData(ClipboardData(text: _wallet));
+                                  if (mounted) showSnack(context, 'Wallet address copied.');
+                                },
+                                icon: const Icon(Icons.copy_rounded, size: 19),
+                              ),
+                          ],
+                        ),
+                      ),
+                      if (_instructions.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Text(_instructions, style: const TextStyle(color: AbsColors.muted, fontSize: 11.5, height: 1.45)),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                AbsCard(
+                  accent: AbsColors.cyan,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text('HOW TO ACTIVATE', style: TextStyle(color: AbsColors.cyanSoft, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.0)),
+                      SizedBox(height: 12),
+                      _PaymentStep(number: '1', title: 'Transfer', detail: 'Send the exact USDT amount to the wallet shown above using the displayed network.'),
+                      SizedBox(height: 10),
+                      _PaymentStep(number: '2', title: 'Keep the TXID', detail: 'Copy the blockchain transaction ID after your transfer is submitted.'),
+                      SizedBox(height: 10),
+                      _PaymentStep(number: '3', title: 'Submit for verification', detail: 'ABS reviews the transaction and activates the package after confirmation.'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text('VERIFY YOUR PAYMENT', style: TextStyle(color: AbsColors.cyanSoft, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.0)),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: reference,
+                  decoration: const InputDecoration(
+                    labelText: 'USDT transaction ID / hash',
+                    hintText: 'Paste the blockchain TXID',
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _pickProof,
+                    icon: const Icon(Icons.attach_file_rounded),
+                    label: Text(
+                      proof == null
+                          ? (_proofRequired ? 'Attach payment proof (required)' : 'Attach payment proof (optional)')
+                          : proof!.path.split(Platform.pathSeparator).last,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: notes,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Note (optional)',
+                    hintText: 'Anything the verification team should know',
+                  ),
+                ),
+                const SizedBox(height: 10),
+                AbsCard(
+                  child: CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    value: acknowledged,
+                    onChanged: (v) => setState(() => acknowledged = v == true),
+                    title: const Text(
+                      'I confirm the wallet address and network before transfer and acknowledge the Terms, Risk Disclosure and Market Disclaimer.',
+                      style: TextStyle(fontSize: 11.5, height: 1.4),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: submitting || !_paymentReady || !acknowledged ? null : _submit,
+                    icon: submitting
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.verified_user_outlined),
+                    label: Text(submitting ? 'Submitting...' : 'Submit Payment for Verification'),
+                  ),
+                ),
+                if (!_paymentReady && _wallet.isEmpty) ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Payment submission is disabled until ABS returns a configured destination wallet and network.',
+                    style: TextStyle(color: AbsColors.gold, fontSize: 10.5, height: 1.4),
+                  ),
+                ],
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Future<void> _getQuote() async {
-    setState(() => loadingQuote = true);
+  Future<void> _loadPaymentDetails() async {
+    if (!mounted) return;
+    setState(() {
+      loadingPayment = true;
+      paymentError = null;
+    });
     try {
       final response = await SessionScope.of(context).api.post(
         '/pulse/membership/quote',
         body: {'pulse_plan_id': JsonTools.integer(widget.plan['id'])},
       );
-      quote = JsonTools.map(
-        JsonTools.at(response, 'data', <String, dynamic>{}),
-      );
+      payment = JsonTools.map(JsonTools.at(response, 'data', <String, dynamic>{}));
+      if (payment.isEmpty) {
+        throw const FormatException('Empty payment response');
+      }
     } on ApiException catch (e) {
-      if (mounted) showSnack(context, e.message, error: true);
+      paymentError = e.message;
+    } catch (_) {
+      paymentError = 'ABS could not load the package payment instructions. Please retry.';
     } finally {
-      if (mounted) setState(() => loadingQuote = false);
+      if (mounted) setState(() => loadingPayment = false);
     }
   }
 
@@ -503,25 +846,20 @@ class _MembershipRequestSheetState extends State<_MembershipRequestSheet> {
   }
 
   Future<void> _submit() async {
-    if (quote.isEmpty) return;
-    final proofRequired = JsonTools.boolean(
-      quote['proof_required'],
-      JsonTools.boolean(widget.commerce['proof_required']),
-    );
-    if (reference.text.trim().length < 6) {
-      showSnack(
-        context,
-        'Enter the USDT transaction reference or hash.',
-        error: true,
-      );
+    if (!_paymentReady) {
+      showSnack(context, 'Refresh the secure payment instructions before submitting.', error: true);
       return;
     }
-    if (proofRequired && proof == null) {
-      showSnack(
-        context,
-        'Payment proof is required for this request.',
-        error: true,
-      );
+    if (reference.text.trim().length < 6) {
+      showSnack(context, 'Enter the USDT blockchain transaction ID / hash.', error: true);
+      return;
+    }
+    if (_proofRequired && proof == null) {
+      showSnack(context, 'Payment proof is required for this package request.', error: true);
+      return;
+    }
+    if (!acknowledged) {
+      showSnack(context, 'Confirm the payment acknowledgement before submitting.', error: true);
       return;
     }
     setState(() => submitting = true);
@@ -542,7 +880,7 @@ class _MembershipRequestSheetState extends State<_MembershipRequestSheet> {
         context,
         JsonTools.text(
           JsonTools.map(response)['message'],
-          'Membership request submitted.',
+          'Payment submitted for ABS verification.',
         ),
       );
       Navigator.of(context).pop(true);
@@ -552,4 +890,40 @@ class _MembershipRequestSheetState extends State<_MembershipRequestSheet> {
       if (mounted) setState(() => submitting = false);
     }
   }
+}
+
+class _PaymentStep extends StatelessWidget {
+  const _PaymentStep({required this.number, required this.title, required this.detail});
+  final String number;
+  final String title;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AbsColors.cyan.withOpacity(.08),
+              borderRadius: BorderRadius.circular(9),
+              border: Border.all(color: AbsColors.cyan.withOpacity(.26)),
+            ),
+            child: Text(number, style: const TextStyle(color: AbsColors.cyanSoft, fontWeight: FontWeight.w900)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12.5)),
+                const SizedBox(height: 2),
+                Text(detail, style: const TextStyle(color: AbsColors.muted, fontSize: 10.5, height: 1.4)),
+              ],
+            ),
+          ),
+        ],
+      );
 }

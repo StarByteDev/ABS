@@ -114,7 +114,7 @@ class AbsCard extends StatelessWidget {
         color: AbsColors.panel,
         gradient: gradient,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: accent?.withValues(alpha: .40) ?? AbsColors.lineSoft),
+        border: Border.all(color: accent?.withOpacity(.40) ?? AbsColors.lineSoft),
         boxShadow: const [
           BoxShadow(color: Color(0x26000000), blurRadius: 24, offset: Offset(0, 12)),
         ],
@@ -251,7 +251,7 @@ class MetricCard extends StatelessWidget {
                 Container(
                   width: 30,
                   height: 30,
-                  decoration: BoxDecoration(color: AbsColors.cyan.withValues(alpha: .09), borderRadius: BorderRadius.circular(10)),
+                  decoration: BoxDecoration(color: AbsColors.cyan.withOpacity(.09), borderRadius: BorderRadius.circular(10)),
                   child: Icon(icon, size: 16, color: AbsColors.cyanSoft),
                 ),
                 const SizedBox(width: 8),
@@ -295,9 +295,9 @@ class StatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5.5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.085),
+        color: color.withOpacity(0.085),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.32)),
+        border: Border.all(color: color.withOpacity(0.32)),
       ),
       child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: color, fontSize: 9.5, fontWeight: FontWeight.w900, letterSpacing: .35)),
     );
@@ -345,9 +345,9 @@ class _ExperienceChoice extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? AbsColors.cyan.withValues(alpha: .13) : Colors.transparent,
+          color: selected ? AbsColors.cyan.withOpacity(.13) : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
-          border: selected ? Border.all(color: AbsColors.cyan.withValues(alpha: .35)) : null,
+          border: selected ? Border.all(color: AbsColors.cyan.withOpacity(.35)) : null,
         ),
         child: Text(label, style: TextStyle(color: selected ? AbsColors.text : AbsColors.muted, fontSize: 11, fontWeight: FontWeight.w900)),
       ),
@@ -383,7 +383,7 @@ class QuickActionCard extends StatelessWidget {
             Container(
               width: 42,
               height: 42,
-              decoration: BoxDecoration(color: accent.withValues(alpha: .10), borderRadius: BorderRadius.circular(13)),
+              decoration: BoxDecoration(color: accent.withOpacity(.10), borderRadius: BorderRadius.circular(13)),
               child: Icon(icon, color: accent, size: 21),
             ),
             const SizedBox(width: 12),
@@ -436,9 +436,9 @@ class GuidedStepCard extends StatelessWidget {
             height: 34,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: accent.withValues(alpha: .10),
+              color: accent.withOpacity(.10),
               borderRadius: BorderRadius.circular(11),
-              border: Border.all(color: accent.withValues(alpha: .28)),
+              border: Border.all(color: accent.withOpacity(.28)),
             ),
             child: complete ? Icon(Icons.check_rounded, size: 18, color: accent) : Text('$number', style: TextStyle(color: accent, fontWeight: FontWeight.w900)),
           ),

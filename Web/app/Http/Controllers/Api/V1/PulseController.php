@@ -112,10 +112,12 @@ class PulseController extends Controller
             'network' => $commerce['network'],
             'payment_instructions' => $commerce['payment_instructions'],
             'proof_required' => (bool) $commerce['proof_required'],
-            'requests' => PulseMembershipRequest::query()->where('user_id', $user->id)->with('plan')->latest()->limit(20)->get()->map(fn (PulseMembershipRequest $item) => [
-                'id' => $item->id, 'plan_name' => $item->plan?->name, 'amount' => (float)$item->final_amount, 'currency' => $item->currency,
-                'payment_reference' => $item->payment_reference, 'status' => $item->status, 'submitted_at' => $item->created_at, 'reviewed_at' => $item->reviewed_at,
-            ]),
+            'requests' => PulseMembershipRequest::query()->where('user_id', $user->id)->with('plan')->latest()->limit(20)->get()->map(fn (PulseMembershipRequest $item) => $membership->requestStatusPayload($item)),
+            'payment_flow' => [
+                'model' => 'direct_usdt_admin_verification',
+                'steps' => ['Choose package', 'Transfer exact USDT amount', 'Submit TXID', 'Administrator verifies transaction', 'Pulse access activates'],
+                'support_email' => config('brand.support_email'),
+            ],
         ]]);
     }
 
@@ -135,7 +137,9 @@ class PulseController extends Controller
             'network' => $commerce['network'],
             'payment_instructions' => $commerce['payment_instructions'],
             'proof_required' => (bool)$commerce['proof_required'],
-            'message' => 'Transfer the exact USDT amount and submit the transaction reference. Admin verification activates the package.',
+            'message' => 'Transfer the exact USDT amount and submit the transaction reference. Administrator verification activates the package.',
+            'benefits' => $membership->planHighlights($plan),
+            'payment_flow' => ['Transfer exact amount', 'Submit TXID', 'Verification', 'Activation'],
         ]]);
     }
 
@@ -156,8 +160,13 @@ class PulseController extends Controller
         $quote = $membership->quote($plan);
         $item = $membership->createRequest($request,$request->user(),$plan,null,$quote,$commerce);
         $audit->record('api.membership_request_submitted',$request->user(),'PulseMembershipRequest',$item->id,null,['plan_id'=>$plan->id,'amount'=>$quote['final_amount'],'currency'=>$quote['currency']],$request);
+        $membership->notifyAdministrators($item, 'mobile_api');
         try { $mail->adminNewSubscription($item,'mobile_api'); $mail->planRequestReceived($item); } catch (\Throwable) {}
-        return response()->json(['message'=>'Payment submitted for Admin verification.','data'=>$item->fresh('plan')],201);
+        $fresh = $item->fresh('plan');
+        return response()->json([
+            'message' => 'Payment submitted. Transaction verification is pending.',
+            'data' => $membership->requestStatusPayload($fresh),
+        ],201);
     }
 
     public function cancelMembershipRequest(Request $request, PulseMembershipRequest $membershipRequest, PulseAuditService $audit)
@@ -386,7 +395,7 @@ class PulseController extends Controller
     {
         abort_unless((int)$signal->user_id===(int)$request->user()->id,403);
         try{$text=$ai->explain($request->user(),$signal);}catch(RuntimeException $e){return response()->json(['message'=>$e->getMessage()],422);}
-        return response()->json(['message'=>'AI explanation ready.','data'=>['explanation'=>$text]]);
+        return response()->json(['message'=>'Pulse Insight ready.','data'=>['explanation'=>$text]]);
     }
 
     public function signals(Request $request)

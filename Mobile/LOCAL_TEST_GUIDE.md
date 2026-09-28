@@ -1,54 +1,68 @@
-# ABS Pulse V1.3.5 Local Test Guide
+# Pulse V1.6.4+164 — priority emulator checks
 
-This source connects to the live ABS V15.1.6 API by default. No web deployment is required.
+1. Confirm the launcher, splash/app title and Account/About copy display **Pulse**, not `ABS Pulse`.
+2. Open **News → Calendar → Previous** and compare several completed releases against the web calendar. Previous / Forecast / Actual should populate whenever those values exist in the ABS/provider payload.
+3. Confirm a past release with no provider Actual says **Not reported**, not `Pending`; missing Previous/Forecast says **Not provided**.
+4. Check rate decisions, inflation/employment releases and text-style forecasts such as `Held at ...` / `Economists expect ...`; both numeric and text values should render.
+5. Re-test V1.6.3 Direct USDT membership and Find Best Signal flows.
 
-## Windows Android emulator
+# V1.6.3 priority emulator checks
 
-1. Extract the ZIP into a new empty folder.
-2. Install Flutter and Android Studio, then confirm `flutter doctor` is healthy.
-3. Start an Android emulator.
-4. Open the extracted folder and run:
+1. Open **Account → Pulse Membership**, tap **Pay with USDT**, and confirm there is no Get current quote button. Payment amount/network/wallet should load automatically and TXID/proof submission should match the web flow.
+2. Open **Pulse → Signals**, confirm **Find Best Signal** is visible. Tap it and verify animated Universe → 15M → 4H → Rank progress while the server scan runs.
+3. Confirm a qualifying signal shows direction, score, Entry, Stop and Target through the signal card and opens Signal Detail.
+4. If nothing qualifies, confirm the app states that the full scan completed with no qualified setup instead of claiming a filter mismatch.
+5. Run a Best Signal scan on web, then open/re-open the mobile Pulse tab and verify the active signal list refreshes.
+
+# ABS Pulse V1.6.2+162 — Local Test
+
+Use a **new empty folder** for this build. Do not overwrite an older V1.5.x folder.
+
+## Windows quick test
+
+1. Extract the V1.6.2 ZIP into a new empty folder.
+2. Open the extracted project folder in Command Prompt.
+3. Start your Android emulator.
+4. Run:
+
+```bat
+flutter clean
+flutter pub get
+flutter analyze
+flutter test
+flutter run
+```
+
+You can also use:
 
 ```bat
 RUN_ANDROID.bat
 ```
 
-The runner repairs generated Android settings, installs Flutter packages, lists devices and starts the app.
+## What you should see first
 
-## Manual Flutter run
+The app must open with the **new supplied-template UI**, not the previous Pulse shell. Bottom navigation must be:
 
-```bash
-flutter clean
-flutter pub get
-flutter analyze
-flutter test
-flutter run --dart-define=ABS_API_BASE_URL=https://alphablocksolutions.com/api/v1
-```
+`Home | Pulse | Free Signal | News | Account`
 
-## Test checklist
+## Priority checks
 
-- Continue as a guest and open **Free Signal**. Confirm the new compact premium layout fits above the navigation cleanly.
-- Complete the consent and Google test rewarded ad, then claim the signal.
-- Confirm the signal remains visible during the page session and the server cooldown appears after leaving it.
-- Register or sign in, then verify Pulse dashboard, markets, watchlist, scanner and member signals.
-- Open a signal and test native **Share** and **AI Explain** when the backend enables explanation.
-- Check Reports for Overview, Signals, Strategies and Simulation across 7, 30 and 90 days.
-- Open Plans and test the direct USDT quote/request flow with non-production data only.
-- Connect Binance Testnet and verify readiness, scanner, trade review, positions, guarded close and reconciliation before any LIVE use.
-- Open **News → CALENDAR** and test **Past / Today / Upcoming**, Impact and Currency filters. Confirm past events show **Actual / Forecast / Previous** where the backend supplies those values.
-- Verify ABS News and Live Market Wire cards remain readable on smaller Android devices.
-- Verify profile, sessions, devices, notifications, alerts, research, learning and private member screens allowed by the account.
+1. Home uses the compact template market dashboard and real ABS market data.
+2. Pulse uses the template Signals / Watchlist layout.
+3. Free Signal uses the gold template-style rewarded card.
+4. News opens **Calendar first**, with **Upcoming** selected.
+5. Account uses the template card/menu layout.
+6. Create a test account: it should remain usable with basic access while activation is pending when the backend returns a limited token.
+7. Account should show **Account not activated**, **Resend link**, and **Check status**.
+8. After activation, verify Scanner, Signals, Positions, Membership and account tools.
+9. Open Private Investor only with an authorized investor account.
 
-## AdMob configuration
+If Flutter reports a compile error, send the **first red compiler error**, not only the final Gradle exit-code line.
 
-Google sample IDs are included so rewarded ads can be tested safely. Before publishing, replace the Android and iOS sample application IDs and provide the production rewarded-unit IDs:
 
-```bash
-flutter run \
-  --dart-define=ABS_ADMOB_REWARDED_ANDROID=YOUR_ANDROID_REWARDED_UNIT \
-  --dart-define=ABS_ADMOB_REWARDED_IOS=YOUR_IOS_REWARDED_UNIT
-```
-
-Keep ABS API, Binance and signing secrets outside Flutter source.
-
-The included Gradle configuration uses Android debug signing when `android/key.properties` is absent. Add the private production keystore only on the authorized release machine.
+## V1.6.2 focused checks
+1. Create Account: confirm Full name, Email, country code, Mobile number and Password are visible; register with a valid international number.
+2. News > Calendar > Previous: confirm Previous/Forecast/Actual use returned values and historical rows never say Pending when Actual is absent.
+3. Home > Market overview: confirm only real populated ABS metrics are shown; no `Not supplied` metric cards.
+4. Account > Membership as guest/unverified: confirm premium sign-in/activation states instead of the narrow Unauthenticated error card.
+5. Membership as a verified user: confirm plan/access/request data loads and Refresh works.

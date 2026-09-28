@@ -1,0 +1,9 @@
+ABS V15.6.4 — ADDITIVE DATABASE CHANGE ONLY
+
+Creates only:
+- support_conversations
+- support_messages
+
+No existing table is dropped, truncated, renamed or cleared.
+No existing user, membership, payment, signal, trade, strategy, content or history row is deleted or replaced.
+The migration down() intentionally retains support records for production safety.

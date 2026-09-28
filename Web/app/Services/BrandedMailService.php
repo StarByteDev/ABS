@@ -3,6 +3,11 @@
 namespace App\Services;
 
 use App\Models\ContactMessage;
+use App\Models\MonthlyStatement;
+use App\Models\PortfolioAccount;
+use App\Models\PortfolioRequest;
+use App\Models\PortfolioTransaction;
+use App\Models\PortfolioInvestmentTerm;
 use App\Models\EmailDeliveryLog;
 use App\Models\PulseAlert;
 use App\Models\PulseMembershipRequest;
@@ -74,30 +79,30 @@ class BrandedMailService
 
         $request->loadMissing(['user', 'plan', 'promotion']);
         if (! $request->user) return;
+        $benefits = $request->plan ? app(PulseMembershipService::class)->planHighlights($request->plan) : [];
 
-        $this->send($recipient, 'New Pulse package subscription: '.($request->plan?->name ?? 'Pulse plan'), [
-            'eyebrow' => 'ADMIN SUBSCRIPTION ALERT',
-            'title' => 'New Pulse package subscription',
+        $this->send($recipient, 'Pulse payment awaiting verification — '.($request->plan?->name ?? 'Pulse plan'), [
+            'eyebrow' => 'PAYMENT VERIFICATION REQUIRED',
+            'title' => 'A Pulse payment is ready for review',
             'greeting' => 'Hello Admin,',
-            'intro' => $request->user->name.' submitted a Pulse package payment for verification.',
-            'body' => $request->status === 'approved'
-                ? 'The request was automatically approved by the existing ABS membership rules. Review the subscription if needed.'
-                : 'Verify the submitted USDT transaction. When approved, the selected Pulse package is activated for the approved access period.',
+            'intro' => $request->user->name.' has submitted a direct USDT payment for '.($request->plan?->name ?? 'Pulse access').'.',
+            'body' => 'Verify the transaction reference against the configured wallet and network. Approving the request activates the selected package for the recorded access period.',
+            'bullets' => $benefits ? array_map(fn ($item) => 'Package: '.$item, array_slice($benefits, 0, 4)) : [],
             'facts' => array_filter([
-                'User' => $request->user->name,
-                'Email' => $request->user->email,
+                'Member' => $request->user->name.' · '.$request->user->email,
                 'Plan' => $request->plan?->name ?? 'Pulse plan',
                 'Amount' => number_format((float) $request->final_amount, 2).' '.$request->currency,
-                'Status' => ucfirst(str_replace('_', ' ', (string) $request->status)),
+                'Network' => $request->network,
+                'Transaction ID' => $request->payment_reference,
+                'Payment proof' => $request->payment_proof_path ? 'Attached to request' : 'Not provided',
+                'Member note' => $request->user_notes,
                 'Request' => '#'.$request->id,
-                'Payment reference' => $request->payment_reference,
-                'Promotion' => $request->promotion_code_snapshot,
-                'Source' => $source === 'mobile_api' ? 'Mobile API / Flutter' : 'Website',
+                'Source' => $source === 'mobile_api' ? 'ABS Pulse mobile' : 'ABS Pulse web',
                 'Submitted at' => $request->created_at?->format('d M Y H:i:s'),
             ]),
-            'buttonText' => 'Verify Package Payment',
+            'buttonText' => 'Review Payment',
             'buttonUrl' => route('admin.pulse.memberships', ['q' => $request->user->email]),
-            'notice' => 'This is an administrator event notification. Change the recipient or disable this alert from Admin → Email Communications.',
+            'notice' => 'Confirm the transaction independently before approval. The member remains in verification-pending status until the request is approved.',
         ], 'admin_new_package_subscription', $request->user, ['source' => $source, 'membership_request_id' => $request->id]);
     }
 
@@ -198,45 +203,54 @@ class BrandedMailService
         if (! $this->enabled('transactional_emails_enabled', true)) return;
         $request->loadMissing(['user', 'plan']);
         if (! $request->user) return;
-        $this->send($request->user->email, 'We received your Pulse plan request', [
-            'eyebrow' => 'PLAN REQUEST RECEIVED',
-            'title' => 'Your request is being reviewed',
+        $benefits = $request->plan ? app(PulseMembershipService::class)->planHighlights($request->plan) : [];
+        $this->send($request->user->email, 'Payment received — Pulse verification pending', [
+            'eyebrow' => 'PAYMENT SUBMITTED',
+            'title' => 'Your payment is awaiting verification',
             'greeting' => 'Hi '.$this->firstName($request->user).',',
-            'intro' => 'We received your request for '.($request->plan?->name ?? 'Pulse access').'.',
-            'body' => 'Submitted payment details will be reviewed before access is activated. You can track the request from your account.',
-            'facts' => [
+            'intro' => 'We received your payment details for '.($request->plan?->name ?? 'Pulse access').'.',
+            'body' => 'Your transaction is now queued for verification. Once the USDT transfer is confirmed, your package will be activated and you will receive a separate access-confirmation email.',
+            'bullets' => $benefits,
+            'facts' => array_filter([
                 'Request' => '#'.$request->id,
                 'Plan' => $request->plan?->name ?? 'Pulse plan',
                 'Amount' => number_format((float) $request->final_amount, 2).' '.$request->currency,
-                'Status' => 'Submitted for verification',
-            ],
-            'buttonText' => 'View Plan Requests',
+                'Network' => $request->network,
+                'Transaction ID' => $request->payment_reference,
+                'Access after approval' => max(1, (int) $request->activation_days).' days',
+                'Status' => 'Awaiting verification',
+            ]),
+            'buttonText' => 'Track Payment Status',
             'buttonUrl' => route('pulse.membership.index'),
-            'notice' => 'Keep the USDT transaction reference available until Admin verification is complete. Your selected Pulse package activates only after approval.',
-        ], 'plan_request_received', $request->user);
+            'notice' => 'No further action is required unless the ABS team requests additional information. Keep your transaction reference for your records.',
+        ], 'plan_request_received', $request->user, ['membership_request_id' => $request->id]);
     }
 
     public function planActivated(PulseMembershipRequest $request): void
     {
         if (! $this->enabled('transactional_emails_enabled', true)) return;
-        $request->loadMissing(['user', 'plan']);
+        $request->loadMissing(['user', 'plan', 'activatedAccess']);
         if (! $request->user) return;
-        $this->send($request->user->email, 'Your Pulse access is active', [
+        $benefits = $request->plan ? app(PulseMembershipService::class)->planHighlights($request->plan) : [];
+        $this->send($request->user->email, 'Pulse access activated — '.($request->plan?->name ?? 'ABS Pulse'), [
             'eyebrow' => 'ACCESS ACTIVATED',
-            'title' => 'Your Pulse plan is ready',
+            'title' => 'Your Pulse package is active',
             'greeting' => 'Hi '.$this->firstName($request->user).',',
-            'intro' => 'Your '.($request->plan?->name ?? 'Pulse').' access has been activated.',
-            'body' => 'Sign in to review current market intelligence, signals, risk information and the trading tools included with your plan.',
+            'intro' => 'Your '.($request->plan?->name ?? 'Pulse').' payment has been verified and your access is now active.',
+            'body' => 'You can sign in immediately and use the market intelligence, signal and account features included with your package.',
+            'bullets' => $benefits,
             'facts' => array_filter([
                 'Plan' => $request->plan?->name ?? 'Pulse plan',
+                'Payment request' => '#'.$request->id,
                 'Access period' => max(1, (int) $request->activation_days).' days',
+                'Access until' => $request->activatedAccess?->ends_at?->format('d M Y H:i'),
                 'Status' => 'Active',
                 'Approval note' => $request->admin_notes ?: null,
             ]),
-            'buttonText' => 'Open Pulse',
+            'buttonText' => 'Open ABS Pulse',
             'buttonUrl' => route('pulse.dashboard'),
-            'notice' => 'No market signal or strategy can guarantee a profit or prevent a loss. Review every setup and keep risk within your limits.',
-        ], 'plan_activated', $request->user);
+            'notice' => 'Pulse market intelligence supports decision-making but does not guarantee a trading outcome. Review each setup and manage risk independently.',
+        ], 'plan_activated', $request->user, ['membership_request_id' => $request->id]);
     }
 
     public function planRequestDeclined(PulseMembershipRequest $request): void
@@ -391,6 +405,244 @@ class BrandedMailService
         $this->pulseAlert($user, $alert);
     }
 
+    public function investorTransactionPosted(User $user, PortfolioAccount $account, PortfolioTransaction $transaction): void
+    {
+        if (! $this->enabled('transactional_emails_enabled', true)) return;
+        $account->loadMissing('investmentTerm');
+        $term = $account->investmentTerm;
+        $label = match ($transaction->type) {
+            'deposit' => 'Investment added',
+            'withdrawal' => 'Withdrawal recorded',
+            'profit' => 'Portfolio profit recorded',
+            'loss' => 'Portfolio loss recorded',
+            'fee' => 'Portfolio fee recorded',
+            default => 'Portfolio adjustment recorded',
+        };
+        $this->send($user->email, $label.' — ABS Private Investor', [
+            'eyebrow' => 'PRIVATE INVESTOR ACCOUNT ACTIVITY',
+            'title' => $label,
+            'greeting' => 'Hi '.$this->firstName($user).',',
+            'intro' => 'A confirmed entry has been posted to your private investor portfolio.',
+            'body' => 'Your portfolio dashboard and transaction ledger now reflect this activity. Published monthly statements remain the official month-end record.',
+            'facts' => array_filter([
+                'Activity' => ucfirst((string) $transaction->type),
+                'Amount' => $account->currency.' '.number_format((float) $transaction->amount, 2),
+                'Transaction date' => $transaction->transaction_date?->format('d M Y'),
+                'Reference' => $transaction->reference,
+                'Agreed monthly rate' => $transaction->type === 'deposit' && $term ? number_format((float)$term->monthly_target_rate,2).'%' : null,
+                'Performance starts' => $transaction->type === 'deposit' && $term ? $term->effective_from?->format('d M Y') : null,
+                'Portfolio value' => $account->currency.' '.number_format((float) $account->fresh()->current_value, 2),
+                'Description' => $transaction->description,
+            ]),
+            'buttonText' => 'Review Portfolio Activity',
+            'buttonUrl' => route('private.transactions'),
+            'notice' => 'If you do not recognize this portfolio activity, contact ABS Support from your account.',
+        ], 'private_investor_transaction_posted', $user, ['portfolio_transaction_id'=>$transaction->id,'portfolio_account_id'=>$account->id]);
+    }
+
+    public function investorTransactionVoided(User $user, PortfolioAccount $account, PortfolioTransaction $transaction): void
+    {
+        if (! $this->enabled('transactional_emails_enabled', true)) return;
+        $this->send($user->email, 'Portfolio entry corrected — ABS Private Investor', [
+            'eyebrow' => 'PRIVATE INVESTOR ACCOUNT CORRECTION',
+            'title' => 'A portfolio entry was corrected',
+            'greeting' => 'Hi '.$this->firstName($user).',',
+            'intro' => 'A previously posted portfolio entry has been voided and its balance effect reversed.',
+            'body' => 'The original entry remains visible in your activity history as a corrected record so your account audit trail stays complete.',
+            'facts' => array_filter([
+                'Original activity' => ucfirst((string) $transaction->type),
+                'Original amount' => $account->currency.' '.number_format((float) $transaction->amount, 2),
+                'Original date' => $transaction->transaction_date?->format('d M Y'),
+                'Correction reason' => $transaction->void_reason,
+                'Corrected portfolio value' => $account->currency.' '.number_format((float) $account->fresh()->current_value, 2),
+            ]),
+            'buttonText' => 'Review Transaction History',
+            'buttonUrl' => route('private.transactions'),
+            'notice' => 'For questions about this correction, open Pulse Support from your ABS account.',
+        ], 'private_investor_transaction_voided', $user, ['portfolio_transaction_id'=>$transaction->id,'portfolio_account_id'=>$account->id]);
+    }
+
+
+    public function investorTransactionUpdated(User $user, PortfolioAccount $account, PortfolioTransaction $transaction, array $before): void
+    {
+        if (! $this->enabled('transactional_emails_enabled', true)) return;
+        $this->send($user->email, 'Portfolio activity updated — ABS Private Investor', [
+            'eyebrow' => 'PRIVATE INVESTOR ACCOUNT UPDATE',
+            'title' => 'A portfolio entry was updated',
+            'greeting' => 'Hi '.$this->firstName($user).',',
+            'intro' => 'ABS Administration updated a previously posted portfolio entry and recalculated its balance effect.',
+            'body' => 'Your secure portfolio dashboard and transaction history now reflect the corrected information.',
+            'facts' => array_filter([
+                'Updated activity' => ucfirst((string) $transaction->type),
+                'Updated amount' => $account->currency.' '.number_format((float) $transaction->amount, 2),
+                'Previous amount' => isset($before['amount']) ? $account->currency.' '.number_format((float) $before['amount'], 2) : null,
+                'Effective date' => $transaction->transaction_date?->format('d M Y'),
+                'Reference' => $transaction->reference,
+                'Current portfolio value' => $account->currency.' '.number_format((float) $account->current_value, 2),
+            ]),
+            'buttonText' => 'Review Portfolio Activity',
+            'buttonUrl' => route('private.transactions'),
+            'notice' => 'If you have a question about this change, contact ABS Support from your account.',
+        ], 'private_investor_transaction_updated', $user, ['portfolio_transaction_id'=>$transaction->id,'portfolio_account_id'=>$account->id]);
+    }
+
+    public function investorTransactionDeleted(User $user, PortfolioAccount $account, array $snapshot): void
+    {
+        if (! $this->enabled('transactional_emails_enabled', true)) return;
+        $this->send($user->email, 'Portfolio activity corrected — ABS Private Investor', [
+            'eyebrow' => 'PRIVATE INVESTOR ACCOUNT CORRECTION',
+            'title' => 'A portfolio entry was removed',
+            'greeting' => 'Hi '.$this->firstName($user).',',
+            'intro' => 'ABS Administration removed an incorrect portfolio entry and reversed its balance effect.',
+            'body' => 'Your current portfolio value and transaction history have been recalculated to exclude the removed entry.',
+            'facts' => array_filter([
+                'Removed activity' => ucfirst((string) ($snapshot['type'] ?? 'activity')),
+                'Removed amount' => $account->currency.' '.number_format((float) ($snapshot['amount'] ?? 0), 2),
+                'Original date' => !empty($snapshot['transaction_date']) ? \Carbon\Carbon::parse($snapshot['transaction_date'])->format('d M Y') : null,
+                'Reference' => $snapshot['reference'] ?? null,
+                'Current portfolio value' => $account->currency.' '.number_format((float) $account->current_value, 2),
+            ]),
+            'buttonText' => 'Review Portfolio Activity',
+            'buttonUrl' => route('private.transactions'),
+            'notice' => 'If you do not recognize this correction, contact ABS Support from your account.',
+        ], 'private_investor_transaction_deleted', $user, ['deleted_portfolio_transaction_id'=>$snapshot['id'] ?? null,'portfolio_account_id'=>$account->id]);
+    }
+
+    public function investorInvestmentTermsUpdated(User $user, PortfolioAccount $account, PortfolioInvestmentTerm $term): void
+    {
+        if (! $this->enabled('transactional_emails_enabled', true)) return;
+        $fullMonthTarget = (float)$account->net_contributions * ((float)$term->monthly_target_rate / 100);
+        $this->send($user->email, 'Private Investor terms updated — Alpha Block Solutions', [
+            'eyebrow' => 'PRIVATE INVESTOR TERMS',
+            'title' => 'Your portfolio terms have been updated',
+            'greeting' => 'Hi '.$this->firstName($user).',',
+            'intro' => 'The monthly performance terms attached to your private investor portfolio have been updated.',
+            'body' => 'Your dashboard will use these terms for provisional monthly progress from the effective date. Published statements remain the official month-end record.',
+            'facts' => [
+                'Portfolio currency' => $account->currency,
+                'Agreed monthly rate' => number_format((float)$term->monthly_target_rate,2).'%',
+                'Effective from' => $term->effective_from?->format('d M Y'),
+                'Current net investment' => $account->currency.' '.number_format((float)$account->net_contributions,2),
+                'Full-month target at current capital' => $account->currency.' '.number_format($fullMonthTarget,2),
+                'Status' => ucfirst((string)$term->status),
+            ],
+            'buttonText' => 'Open Investor Portfolio',
+            'buttonUrl' => route('private.index'),
+            'notice' => 'Current-month progress may be prorated when capital starts or changes during the month.',
+        ], 'private_investor_terms_updated', $user, ['portfolio_account_id'=>$account->id,'investment_term_id'=>$term->id]);
+    }
+
+    public function investorStatementPublished(User $user, PortfolioAccount $account, MonthlyStatement $statement): void
+    {
+        if (! $this->enabled('transactional_emails_enabled', true)) return;
+        $this->send($user->email, $statement->statement_month->format('F Y').' investor statement available', [
+            'eyebrow' => 'PRIVATE INVESTOR MONTHLY REPORT',
+            'title' => 'Your monthly portfolio statement is available',
+            'greeting' => 'Hi '.$this->firstName($user).',',
+            'intro' => 'Your '.$statement->statement_month->format('F Y').' private investor statement has been published.',
+            'body' => 'Review the month-end valuation, capital activity and published profit or loss from your secure investor area.',
+            'facts' => array_filter([
+                'Opening balance' => $account->currency.' '.number_format((float)$statement->opening_balance,2),
+                'Additional investment' => $account->currency.' '.number_format((float)$statement->contributions,2),
+                'Withdrawals' => $account->currency.' '.number_format((float)$statement->withdrawals,2),
+                'Profit / Loss' => $account->currency.' '.number_format((float)$statement->profit_loss,2),
+                'Closing balance' => $account->currency.' '.number_format((float)$statement->closing_balance,2),
+            ]),
+            'buttonText' => 'Open Monthly Statement',
+            'buttonUrl' => route('private.statement', $statement),
+            'notice' => 'This statement is available only through your authenticated ABS account.',
+        ], 'private_investor_statement_published', $user, ['monthly_statement_id'=>$statement->id,'portfolio_account_id'=>$account->id]);
+    }
+
+    public function investorRequestReceived(User $user, PortfolioRequest $portfolioRequest): void
+    {
+        if (! $this->enabled('transactional_emails_enabled', true)) return;
+        $title = ucwords(str_replace('_',' ',(string)$portfolioRequest->type));
+        $this->send($user->email, $title.' request received — ABS Private Investor', [
+            'eyebrow' => 'PRIVATE INVESTOR SERVICE REQUEST',
+            'title' => 'Your request has been received',
+            'greeting' => 'Hi '.$this->firstName($user).',',
+            'intro' => 'Your '.$title.' request is now in the ABS review queue.',
+            'body' => 'You can follow its status from your private investor area. Any confirmed capital movement will appear separately in your audited portfolio activity ledger.',
+            'facts' => array_filter([
+                'Request' => '#'.$portfolioRequest->id.' · '.$title,
+                'Amount' => $portfolioRequest->amount ? $portfolioRequest->currency.' '.number_format((float)$portfolioRequest->amount,2) : null,
+                'Status' => 'Submitted',
+                'Submitted at' => $portfolioRequest->created_at?->format('d M Y H:i'),
+            ]),
+            'buttonText' => 'Track Your Request',
+            'buttonUrl' => route('private.requests'),
+            'notice' => 'Submitting a request does not change your portfolio balance. A confirmed transaction is recorded only after review and completion.',
+        ], 'private_investor_request_received', $user, ['portfolio_request_id'=>$portfolioRequest->id]);
+    }
+
+    public function investorRequestUpdated(User $user, PortfolioRequest $portfolioRequest): void
+    {
+        if (! $this->enabled('transactional_emails_enabled', true)) return;
+        $title = ucwords(str_replace('_',' ',(string)$portfolioRequest->type));
+        $status = ucwords(str_replace('_',' ',(string)$portfolioRequest->status));
+        $this->send($user->email, $title.' request updated — '.$status, [
+            'eyebrow' => 'PRIVATE INVESTOR SERVICE REQUEST',
+            'title' => $title.' request: '.$status,
+            'greeting' => 'Hi '.$this->firstName($user).',',
+            'intro' => 'The status of your private investor request has been updated.',
+            'facts' => array_filter([
+                'Request' => '#'.$portfolioRequest->id.' · '.$title,
+                'Amount' => $portfolioRequest->amount ? $portfolioRequest->currency.' '.number_format((float)$portfolioRequest->amount,2) : null,
+                'Status' => $status,
+                'Admin note' => $portfolioRequest->admin_note,
+                'Updated at' => now()->format('d M Y H:i'),
+            ]),
+            'buttonText' => 'Track Your Request',
+            'buttonUrl' => route('private.requests'),
+            'notice' => 'Request approval does not by itself alter your portfolio balance. Confirmed capital activity is recorded separately in your transaction ledger.',
+        ], 'private_investor_request_updated', $user, ['portfolio_request_id'=>$portfolioRequest->id]);
+    }
+
+    public function investorRequestCancelled(User $user, PortfolioRequest $portfolioRequest): void
+    {
+        if (! $this->enabled('transactional_emails_enabled', true)) return;
+        $title = ucwords(str_replace('_',' ',(string)$portfolioRequest->type));
+        $this->send($user->email, $title.' request cancelled — ABS Private Investor', [
+            'eyebrow' => 'PRIVATE INVESTOR SERVICE REQUEST',
+            'title' => 'Your request was cancelled',
+            'greeting' => 'Hi '.$this->firstName($user).',',
+            'intro' => 'Your '.$title.' request has been cancelled from your account.',
+            'facts' => array_filter([
+                'Request' => '#'.$portfolioRequest->id.' · '.$title,
+                'Amount' => $portfolioRequest->amount ? $portfolioRequest->currency.' '.number_format((float)$portfolioRequest->amount,2) : null,
+                'Status' => 'Cancelled',
+                'Updated at' => now()->format('d M Y H:i'),
+            ]),
+            'buttonText' => 'Open Investor Requests',
+            'buttonUrl' => route('private.requests'),
+            'notice' => 'Cancelling a request does not alter your portfolio balance or confirmed transaction history.',
+        ], 'private_investor_request_cancelled', $user, ['portfolio_request_id'=>$portfolioRequest->id]);
+    }
+
+    public function adminInvestorRequest(User $user, PortfolioRequest $portfolioRequest): void
+    {
+        $recipient = $this->adminNotificationEmail();
+        if (! $recipient) return;
+        $title = ucwords(str_replace('_',' ',(string)$portfolioRequest->type));
+        $this->send($recipient, 'Private Investor request — '.$user->name, [
+            'eyebrow' => 'PRIVATE INVESTOR REQUEST',
+            'title' => $title.' requires review',
+            'greeting' => 'Hello Admin,',
+            'intro' => $user->name.' submitted a private investor request.',
+            'facts' => array_filter([
+                'Investor' => $user->name.' · '.$user->email,
+                'Request' => '#'.$portfolioRequest->id.' · '.$title,
+                'Amount' => $portfolioRequest->amount ? $portfolioRequest->currency.' '.number_format((float)$portfolioRequest->amount,2) : null,
+                'Message' => $portfolioRequest->message,
+                'Submitted at' => $portfolioRequest->created_at?->format('d M Y H:i'),
+            ]),
+            'buttonText' => 'Review Investor Request',
+            'buttonUrl' => route('admin.private-investors.requests'),
+            'notice' => 'Review the request and confirmed portfolio record before recording any capital movement.',
+        ], 'admin_private_investor_request', $user, ['portfolio_request_id'=>$portfolioRequest->id]);
+    }
+
     public function newsletterSubscribed(string $email): void
     {
         if (! $this->enabled('transactional_emails_enabled', true)) return;
@@ -447,6 +699,43 @@ class BrandedMailService
         ], 'daily_market_brief', $user);
     }
 
+    /**
+     * Admin-facing transport health. A log/array transport is useful locally but
+     * is not an email delivery channel and must never be reported as delivered.
+     */
+    public function deliveryHealth(): array
+    {
+        $configured = (string) config('mail.default', 'log');
+        $effective = $this->effectiveMailer();
+        $host = trim((string) config('mail.mailers.smtp.host', ''));
+        $username = trim((string) config('mail.mailers.smtp.username', ''));
+        $sendmailCommand = trim((string) config('mail.mailers.sendmail.path', '/usr/sbin/sendmail -bs -i'));
+        $sendmailBinary = preg_split('/\s+/', $sendmailCommand)[0] ?? '/usr/sbin/sendmail';
+        $sendmailReady = $effective === 'sendmail' && @is_executable($sendmailBinary);
+        $smtpReady = $effective === 'smtp' && $host !== '' && ! in_array(strtolower($host), ['127.0.0.1', 'localhost'], true);
+        $delivery = match ($effective) {
+            'log', 'array' => false,
+            'smtp' => $smtpReady,
+            'sendmail' => $sendmailReady,
+            default => true,
+        };
+
+        return [
+            'configured_mailer' => $configured,
+            'effective_mailer' => $effective,
+            'delivery_transport' => $delivery,
+            'smtp_host' => $host,
+            'smtp_username_configured' => $username !== '' && strtolower($username) !== 'null',
+            'smtp_ready' => $smtpReady,
+            'sendmail_ready' => $sendmailReady,
+            'from_address' => (string) config('mail.from.address'),
+            'status' => $delivery ? 'ready' : 'setup_required',
+            'message' => $delivery
+                ? 'Outbound email uses the '.strtoupper($effective).' transport.'
+                : 'Outbound email is currently using a non-delivery transport. Configure SMTP or sendmail before relying on production notifications.',
+        ];
+    }
+
     public function testEmail(string $email): void
     {
         $this->send($email, 'ABS email system test', [
@@ -482,15 +771,24 @@ class BrandedMailService
         ], $data);
 
         $log = $this->createLog($email, $subject, $event, $user, $metadata);
+        $mailer = $this->effectiveMailer();
+        $health = $this->deliveryHealth();
+        if (! ($health['delivery_transport'] ?? false)) {
+            $message = 'Email was not delivered because the active mail transport is not production-ready. Configure SMTP or sendmail in Admin before relying on inbox notifications.';
+            if ($log) $log->update(['status' => 'not_delivered', 'error_message' => $message]);
+            Log::warning('ABS email delivery transport is not configured', ['event' => $event, 'recipient' => $email, 'subject' => $subject, 'mailer' => $mailer]);
+            return;
+        }
+
         try {
-            Mail::send('emails.branded', $payload, function (Message $message) use ($email, $subject): void {
+            Mail::mailer($mailer)->send('emails.branded', $payload, function (Message $message) use ($email, $subject): void {
                 $message->to($email)->subject($subject);
                 if (config('brand.support_email')) $message->replyTo(config('brand.support_email'));
             });
             if ($log) $log->update(['status' => 'sent', 'sent_at' => now(), 'error_message' => null]);
         } catch (Throwable $e) {
             if ($log) $log->update(['status' => 'failed', 'error_message' => mb_substr($e->getMessage(), 0, 2000)]);
-            Log::warning('ABS email delivery failed', ['event' => $event, 'recipient' => $email, 'subject' => $subject, 'error' => $e->getMessage()]);
+            Log::warning('ABS email delivery failed', ['event' => $event, 'recipient' => $email, 'subject' => $subject, 'mailer' => $mailer, 'error' => $e->getMessage()]);
         }
     }
 
@@ -510,6 +808,19 @@ class BrandedMailService
             Log::notice('ABS email logging unavailable', ['error' => $e->getMessage()]);
             return null;
         }
+    }
+
+    private function effectiveMailer(): string
+    {
+        $configured = strtolower(trim((string) config('mail.default', 'log')));
+        if (in_array($configured, ['log', 'array', 'failover'], true)) {
+            $host = strtolower(trim((string) config('mail.mailers.smtp.host', '')));
+            if ($host !== '' && ! in_array($host, ['127.0.0.1', 'localhost'], true)) return 'smtp';
+            $sendmailCommand = trim((string) config('mail.mailers.sendmail.path', '/usr/sbin/sendmail -bs -i'));
+            $sendmailBinary = preg_split('/\s+/', $sendmailCommand)[0] ?? '/usr/sbin/sendmail';
+            if (@is_executable($sendmailBinary)) return 'sendmail';
+        }
+        return $configured !== '' ? $configured : 'log';
     }
 
     private function adminNotificationEmail(): ?string

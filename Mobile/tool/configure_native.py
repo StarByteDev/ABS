@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Repair Flutter native hosts for ABS mobile.
+"""Repair Flutter native hosts for Pulse mobile.
 
 Safe to run repeatedly. It hard-pins Android compileSdk/NDK and rewrites
 local.properties from the Flutter/Android SDK selected by RUN_ANDROID.bat.
@@ -11,7 +11,7 @@ import re
 ROOT = Path(__file__).resolve().parents[1]
 OLD_IDS = ['com.alphablocksolutions.abs_mobile', 'com.alphablocksolutions.absmobile', 'com.alphablocksolutions.abs_pulse']
 NEW_ID = 'com.alphablocksolutions.abs'
-APP_NAME = 'ABS Pulse'
+APP_NAME = 'Pulse'
 ANDROID_COMPILE_SDK = 36
 ANDROID_MIN_SDK = 23
 ANDROID_NDK = '27.0.12077973'
@@ -55,7 +55,7 @@ main_manifest = ROOT / 'android/app/src/main/AndroidManifest.xml'
 values_dir = ROOT / 'android/app/src/main/res/values'
 values_dir.mkdir(parents=True, exist_ok=True)
 strings_xml = values_dir / 'strings.xml'
-strings_xml.write_text('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <string name="app_name">ABS Pulse</string>\n</resources>\n', encoding='utf-8')
+strings_xml.write_text('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <string name="app_name">Pulse</string>\n</resources>\n', encoding='utf-8')
 changed.append(str(strings_xml.relative_to(ROOT)))
 
 for manifest in [
@@ -71,9 +71,9 @@ for manifest in [
             if close != -1:
                 text = text[:close+1] + '\n    <uses-permission android:name="android.permission.INTERNET" />' + text[close+1:]
         if 'android:label=' in text:
-            text = re.sub(r'android:label="[^"]*"', 'android:label="ABS Pulse"', text)
+            text = re.sub(r'android:label="[^"]*"', 'android:label="Pulse"', text)
         else:
-            text = text.replace('<application', '<application android:label="ABS Pulse"', 1)
+            text = text.replace('<application', '<application android:label="Pulse"', 1)
         if text != original:
             manifest.write_text(text, encoding='utf-8')
             changed.append(str(manifest.relative_to(ROOT)))
@@ -98,12 +98,12 @@ if plist.exists():
     text = plist.read_text(encoding='utf-8')
     original = text
     text = re.sub(r'(<key>CFBundleDisplayName</key>\s*<string>)[^<]*(</string>)', rf'\g<1>{APP_NAME}\g<2>', text, count=1)
-    text = re.sub(r'(<key>CFBundleName</key>\s*<string>)[^<]*(</string>)', rf'\g<1>ABS Pulse\g<2>', text, count=1)
+    text = re.sub(r'(<key>CFBundleName</key>\s*<string>)[^<]*(</string>)', rf'\g<1>Pulse\g<2>', text, count=1)
     if text != original:
         plist.write_text(text, encoding='utf-8')
         changed.append(str(plist.relative_to(ROOT)))
 
-print('ABS native configuration complete')
+print('Pulse native configuration complete')
 print(f'  applicationId: {NEW_ID}')
 print(f'  compileSdk: {ANDROID_COMPILE_SDK}')
 print(f'  minSdk: {ANDROID_MIN_SDK}')

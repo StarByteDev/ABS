@@ -1,0 +1,7 @@
+ABS V15.5.0 — NO DATABASE MIGRATION REQUIRED
+
+This release reuses the existing scanner-run, signal, validation, market-data-run, audit and trade tables.
+
+Multi-signal scan traceability is stored through existing PulseSignal records plus the existing PulseScannerRun.summary JSON field. Existing V15.4 price snapshots continue to use pulse_market_data_runs.summary.price_snapshot.
+
+No live Binance automatic-trading permission is enabled by this release.

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminAdsController;
 use App\Http\Controllers\Admin\AdminBackupController;
 use App\Http\Controllers\Admin\AdminContentController;
 use App\Http\Controllers\Admin\AdminDashboardController;
@@ -12,6 +13,9 @@ use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AdminPulseController;
 use App\Http\Controllers\Admin\AdminReleaseController;
 use App\Http\Controllers\Admin\AdminRewardedSignalController;
+use App\Http\Controllers\Admin\AdminStrategyDashboardController;
+use App\Http\Controllers\Admin\AdminStrategyWorkflowController;
+use App\Http\Controllers\Admin\AdminSupportController;
 use App\Http\Controllers\Pulse\AlertController as PulseAlertController;
 use App\Http\Controllers\Pulse\BinanceController as PulseBinanceController;
 use App\Http\Controllers\Pulse\DashboardController as PulseDashboardController;
@@ -27,6 +31,7 @@ use App\Http\Controllers\Pulse\ScannerController as PulseScannerController;
 use App\Http\Controllers\Pulse\SettingsController as PulseSettingsController;
 use App\Http\Controllers\Pulse\SignalController as PulseSignalController;
 use App\Http\Controllers\Pulse\SignalUtilityController as PulseSignalUtilityController;
+use App\Http\Controllers\Pulse\SupportController as PulseSupportController;
 use App\Http\Controllers\Pulse\PublicRewardedSignalController;
 use App\Http\Controllers\Pulse\TradeController as PulseTradeController;
 use App\Http\Controllers\AuthController;
@@ -61,6 +66,7 @@ Route::get('/legal/risk-disclosure', [LegalController::class, 'risk'])->name('le
 Route::get('/legal/market-disclaimer', [LegalController::class, 'disclaimer'])->name('legal.disclaimer');
 
 Route::get('/news', [NewsController::class, 'index'])->name('news.index');
+Route::get('/news/live/{id}', [NewsController::class, 'liveShow'])->where('id', '[a-fA-F0-9]{64}')->name('news.live.show');
 Route::get('/news/{article:slug}', [NewsController::class, 'show'])->name('news.show');
 Route::redirect('/research', '/news', 301)->name('research.index');
 Route::get('/research/{report:slug}', [PageController::class, 'researchShowRedirect'])->name('research.show');
@@ -95,6 +101,11 @@ Route::middleware(['auth', 'account.active'])->group(function () {
     Route::get('/pulse/membership/checkout/{plan}', [PulseMembershipController::class, 'checkout'])->name('pulse.membership.checkout');
     Route::post('/pulse/membership/request', [PulseMembershipController::class, 'store'])->name('pulse.membership.store');
     Route::patch('/pulse/membership/requests/{membershipRequest}/cancel', [PulseMembershipController::class, 'cancel'])->name('pulse.membership.cancel');
+
+    Route::get('/pulse/support', [PulseSupportController::class, 'index'])->name('pulse.support.index');
+    Route::post('/pulse/support/messages', [PulseSupportController::class, 'message'])->middleware('throttle:30,1')->name('pulse.support.message');
+    Route::get('/pulse/support/conversations/{conversation}/messages', [PulseSupportController::class, 'messages'])->name('pulse.support.messages');
+    Route::patch('/pulse/support/conversations/{conversation}/close', [PulseSupportController::class, 'close'])->name('pulse.support.close');
 
     Route::middleware('pulse.access')->prefix('pulse')->name('pulse.')->group(function () {
         Route::get('/dashboard', PulseDashboardController::class)->name('dashboard');
@@ -134,6 +145,12 @@ Route::middleware(['auth', 'account.active'])->group(function () {
 
 Route::middleware(['auth', 'account.active', 'private.member'])->prefix('private')->name('private.')->group(function () {
     Route::get('/', [PrivatePortalController::class, 'index'])->name('index');
+    Route::get('/transactions', [PrivatePortalController::class, 'transactions'])->name('transactions');
+    Route::get('/statements', [PrivatePortalController::class, 'statements'])->name('statements');
+    Route::get('/requests', [PrivatePortalController::class, 'requests'])->name('requests');
+    Route::patch('/currency', [PrivatePortalController::class, 'updateCurrency'])->middleware('throttle:10,1')->name('currency.update');
+    Route::post('/requests', [PrivatePortalController::class, 'storeRequest'])->middleware('throttle:10,1')->name('requests.store');
+    Route::patch('/requests/{portfolioRequest}/cancel', [PrivatePortalController::class, 'cancelRequest'])->name('requests.cancel');
     Route::get('/statements/{statement}', [PrivatePortalController::class, 'statement'])->name('statement');
     Route::get('/statements/{statement}/export', [PrivatePortalController::class, 'exportStatement'])->name('statement.export');
 });
@@ -151,10 +168,55 @@ Route::middleware(['auth', 'account.active', 'role:admin'])->prefix('admin')->na
     Route::delete('/users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');
     Route::post('/users/{userId}/restore', [AdminUserController::class, 'restore'])->name('users.restore');
     Route::delete('/users/{userId}/force', [AdminUserController::class, 'forceDelete'])->name('users.force-delete');
+    // V15.6.5 Private Investor Management. Legacy /portfolios routes remain compatible.
     Route::get('/portfolios', [AdminPortfolioController::class, 'index'])->name('portfolios');
     Route::post('/portfolios', [AdminPortfolioController::class, 'store'])->name('portfolios.store');
     Route::post('/portfolios/{account}/transactions', [AdminPortfolioController::class, 'transaction'])->name('portfolios.transaction');
     Route::post('/portfolios/{account}/statements', [AdminPortfolioController::class, 'statement'])->name('portfolios.statement');
+
+    Route::prefix('private-investors')->name('private-investors.')->group(function () {
+        Route::get('/', [AdminPortfolioController::class, 'index'])->name('overview');
+        Route::get('/investors', [AdminPortfolioController::class, 'investors'])->name('investors');
+        Route::get('/activity', [AdminPortfolioController::class, 'activity'])->name('activity');
+        Route::get('/monthly-performance', [AdminPortfolioController::class, 'monthlyPerformance'])->name('monthly-performance');
+        Route::get('/reports', [AdminPortfolioController::class, 'reports'])->name('reports');
+        Route::get('/reports/export', [AdminPortfolioController::class, 'exportReports'])->name('reports.export');
+        Route::get('/fx-quote', [AdminPortfolioController::class, 'fxQuote'])->name('fx-quote');
+        Route::get('/requests', [AdminPortfolioController::class, 'requests'])->name('requests');
+        Route::get('/statements', [AdminPortfolioController::class, 'statements'])->name('statements');
+        Route::post('/accounts', [AdminPortfolioController::class, 'createForUser'])->name('accounts.store');
+        Route::put('/accounts/{account}', [AdminPortfolioController::class, 'updateAccount'])->name('accounts.update');
+        Route::patch('/accounts/{account}/currency', [AdminPortfolioController::class, 'updateCurrency'])->name('accounts.currency.update');
+        Route::get('/accounts/{account}/investment-setup', [AdminPortfolioController::class, 'investmentSetup'])->name('investment-setup');
+        Route::post('/accounts/{account}/investment-terms', [AdminPortfolioController::class, 'saveInvestmentTerm'])->name('investment-terms.store');
+        Route::get('/accounts/{account}/portfolio-values', [AdminPortfolioController::class, 'portfolioValues'])->name('portfolio-values');
+        Route::post('/accounts/{account}/portfolio-values/reset', [AdminPortfolioController::class, 'resetAccountValues'])->name('portfolio-values.reset');
+        Route::post('/accounts/{account}/portfolio-values/recalculate', [AdminPortfolioController::class, 'recalculateAccountValues'])->name('portfolio-values.recalculate');
+        Route::get('/accounts/{account}/performance', [AdminPortfolioController::class, 'accountPerformance'])->name('account-performance');
+        Route::get('/accounts/{account}/transactions', [AdminPortfolioController::class, 'accountTransactions'])->name('account-transactions');
+        Route::get('/accounts/{account}/statements', [AdminPortfolioController::class, 'accountStatements'])->name('account-statements');
+        Route::get('/accounts/{account}/requests', [AdminPortfolioController::class, 'accountRequests'])->name('account-requests');
+        Route::post('/accounts/{account}/transactions', [AdminPortfolioController::class, 'transaction'])->name('transactions.store');
+        Route::patch('/transactions/{transaction}', [AdminPortfolioController::class, 'updateTransaction'])->name('transactions.update');
+        Route::delete('/transactions/{transaction}', [AdminPortfolioController::class, 'deleteTransaction'])->name('transactions.delete');
+        Route::post('/transactions/{transaction}/post', [AdminPortfolioController::class, 'postDraftTransaction'])->name('transactions.post');
+        Route::delete('/transactions/{transaction}/draft', [AdminPortfolioController::class, 'deleteDraftTransaction'])->name('transactions.delete-draft');
+        Route::patch('/transactions/{transaction}/void', [AdminPortfolioController::class, 'voidTransaction'])->name('transactions.void');
+        Route::post('/accounts/{account}/performance-plan', [AdminPortfolioController::class, 'savePerformancePlan'])->name('performance-plan.store');
+        Route::patch('/accounts/{account}/daily-accruals/{accrual}', [AdminPortfolioController::class, 'adjustDailyAccrual'])->name('daily-accruals.update');
+        Route::post('/accounts/{account}/statements', [AdminPortfolioController::class, 'statement'])->name('statements.store');
+        Route::put('/requests/{portfolioRequest}', [AdminPortfolioController::class, 'requestStatus'])->name('requests.update');
+        Route::get('/accounts/{account}', [AdminPortfolioController::class, 'show'])->name('show');
+    });
+
+    Route::get('/support', [AdminSupportController::class, 'index'])->name('support.index');
+    Route::post('/support/start/{user}', [AdminSupportController::class, 'start'])->name('support.start');
+    Route::put('/support/presence', [AdminSupportController::class, 'presence'])->name('support.presence');
+    Route::post('/support/heartbeat', [AdminSupportController::class, 'heartbeat'])->middleware('throttle:30,1')->name('support.heartbeat');
+    Route::get('/support/{conversation}', [AdminSupportController::class, 'show'])->name('support.show');
+    Route::post('/support/{conversation}/messages', [AdminSupportController::class, 'message'])->middleware('throttle:60,1')->name('support.message');
+    Route::get('/support/{conversation}/messages', [AdminSupportController::class, 'messages'])->name('support.messages');
+    Route::put('/support/{conversation}', [AdminSupportController::class, 'update'])->name('support.update');
 
     Route::get('/content/{type}', [AdminContentController::class, 'index'])->name('content.index');
     Route::get('/content/{type}/create', [AdminContentController::class, 'create'])->name('content.create');
@@ -205,8 +267,23 @@ Route::middleware(['auth', 'account.active', 'role:admin'])->prefix('admin')->na
 
     Route::get('/market-data', [AdminMarketDataController::class, 'index'])->name('market-data');
     Route::post('/market-data/refresh', [AdminMarketDataController::class, 'refresh'])->middleware('throttle:2,1')->name('market-data.refresh');
+    Route::get('/ads', [AdminAdsController::class, 'index'])->name('ads.index');
+    Route::put('/ads', [AdminAdsController::class, 'update'])->name('ads.update');
 
     Route::prefix('pulse')->name('pulse.')->group(function () {
+        Route::get('/strategy-dashboard', [AdminStrategyWorkflowController::class, 'overview'])->name('strategy-dashboard');
+        Route::get('/price-source', [AdminStrategyWorkflowController::class, 'priceSource'])->name('price-source');
+        Route::get('/latest-prices', [AdminStrategyWorkflowController::class, 'latestPrices'])->name('latest-prices');
+        Route::get('/price-history', [AdminStrategyWorkflowController::class, 'priceHistory'])->name('price-history');
+        Route::get('/price-history/{marketRun}', [AdminStrategyWorkflowController::class, 'priceHistoryShow'])->whereNumber('marketRun')->name('price-history.show');
+        Route::get('/scan-signals', [AdminStrategyWorkflowController::class, 'scanSignals'])->name('scan-signals');
+        Route::get('/paper-trades', [AdminStrategyWorkflowController::class, 'paperTrades'])->name('paper-trades');
+        Route::get('/trade-results', [AdminStrategyWorkflowController::class, 'tradeResults'])->name('trade-results');
+        Route::get('/strategy-performance', [AdminStrategyWorkflowController::class, 'strategyPerformance'])->name('strategy-performance');
+        Route::put('/strategy-dashboard/engine', [AdminStrategyDashboardController::class, 'updateEngine'])->name('strategy-dashboard.engine');
+        Route::post('/strategy-dashboard/run-now', [AdminStrategyDashboardController::class, 'runNow'])->middleware('throttle:4,1')->name('strategy-dashboard.run-now');
+        Route::get('/scan-audit', [AdminStrategyDashboardController::class, 'scanAudit'])->name('scan-audit');
+        Route::get('/scan-audit/{scannerRun}', [AdminStrategyDashboardController::class, 'scanAuditShow'])->whereNumber('scannerRun')->name('scan-audit.show');
         Route::get('/', [AdminPulseController::class, 'dashboard'])->name('dashboard');
         Route::get('/plans', [AdminPulseController::class, 'plans'])->name('plans');
         Route::post('/plans', [AdminPulseController::class, 'storePlan'])->name('plans.store');

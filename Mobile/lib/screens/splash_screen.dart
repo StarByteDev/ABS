@@ -1,6 +1,7 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 
+import '../core/app_config.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../widgets/abs_ui.dart';
@@ -76,7 +77,7 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                     borderRadius: BorderRadius.circular(36),
                     border: Border.all(
-                      color: AbsColors.gold.withValues(alpha: .28),
+                      color: AbsColors.gold.withOpacity(.28),
                     ),
                     boxShadow: const [
                       BoxShadow(
@@ -119,7 +120,7 @@ class _SplashScreenState extends State<SplashScreen>
                   vertical: 7,
                 ),
                 decoration: BoxDecoration(
-                  color: AbsColors.panel2.withValues(alpha: .9),
+                  color: AbsColors.panel2.withOpacity(.9),
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(color: AbsColors.lineSoft),
                 ),
@@ -224,13 +225,13 @@ class UpdateRequiredScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 const Text(
-                  'ABS Pulse update required',
+                  'Pulse update required',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'This backend requires ABS Pulse $requiredVersion or later. Update the application before continuing.',
+                  'This backend requires Pulse $requiredVersion or later. Update the application before continuing.',
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: AbsColors.muted),
                 ),
@@ -284,7 +285,7 @@ class BackendCompatibilityScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'This mobile release requires ABS backend 15.1.6 or later. The connected backend reports $backendBuild.',
+                  'This mobile release requires ABS backend ${AppConfig.minimumBackendBuild} or later. The connected backend reports $backendBuild.',
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: AbsColors.muted),
                 ),

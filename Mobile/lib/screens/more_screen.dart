@@ -9,10 +9,12 @@ import '../widgets/abs_ui.dart';
 import 'account_extra_screens.dart';
 import 'alerts_screen.dart';
 import 'content_screens.dart';
-import 'free_signal_screen.dart';
+import '../template_rebase/screens/free_signal_screen.dart';
+import 'help_center_screen.dart';
 import 'market_extra_screens.dart';
 import 'plans_screen.dart';
 import 'profile_screen.dart';
+import 'private_investor_screen.dart';
 import 'reports_screen.dart';
 import 'scanner_screen.dart';
 import 'strategies_screen.dart';
@@ -251,7 +253,7 @@ class MoreScreen extends StatelessWidget {
               _MoreItem(
                 Icons.help_outline_rounded,
                 'Help Center',
-                () => _push(context, const ExploreAbsScreen()),
+                () => _push(context, const HelpCenterScreen()),
               ),
               _MoreItem(
                 Icons.mail_outline_rounded,
@@ -273,8 +275,8 @@ class MoreScreen extends StatelessWidget {
               ),
               _MoreItem(
                 Icons.account_balance_outlined,
-                'Private Member',
-                () => _push(context, const PrivateMemberScreen()),
+                'Private Investor',
+                () => _push(context, const PrivateInvestorHubScreen()),
               ),
               _MoreItem(
                 Icons.gavel_outlined,
@@ -290,8 +292,8 @@ class MoreScreen extends StatelessWidget {
             label: const Text('Sign out securely'),
           ),
           const SizedBox(height: 12),
-          const Text(
-            'ABS Pulse 1.3.2 · Backend V15.1.6',
+          Text(
+            'Pulse ${AppConfig.mobileVersion}+${AppConfig.mobileBuild} · Backend V${AppConfig.supportedBackendBuild}',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: AbsColors.muted2,
@@ -370,10 +372,10 @@ class _MoreGrid extends StatelessWidget {
                 width: 35,
                 height: 35,
                 decoration: BoxDecoration(
-                  color: AbsColors.purple.withValues(alpha: .10),
+                  color: AbsColors.purple.withOpacity(.10),
                   borderRadius: BorderRadius.circular(11),
                   border: Border.all(
-                    color: AbsColors.purple.withValues(alpha: .22),
+                    color: AbsColors.purple.withOpacity(.22),
                   ),
                 ),
                 child: Icon(item.icon, color: AbsColors.purpleSoft, size: 18),

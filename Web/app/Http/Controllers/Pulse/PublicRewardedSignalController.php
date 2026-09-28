@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Pulse;
 
 use App\Http\Controllers\Controller;
+use App\Services\AdCmsService;
 use App\Services\PulseMembershipService;
 use App\Services\PulsePublicRewardedSignalService;
 use Illuminate\Http\JsonResponse;
@@ -11,12 +12,18 @@ use Symfony\Component\HttpFoundation\Cookie;
 
 class PublicRewardedSignalController extends Controller
 {
-    public function index(Request $request, PulsePublicRewardedSignalService $rewards, PulseMembershipService $membership)
+    public function index(Request $request, PulsePublicRewardedSignalService $rewards, PulseMembershipService $membership, AdCmsService $ads)
     {
         $visitor = $rewards->visitor($request);
         $response = response()->view('pulse.public-signal', [
             'status' => $rewards->status($visitor['raw']),
             'plans' => $membership->orderedPublicPlans(),
+            'adCms' => [
+                'head' => $ads->headCode(),
+                'top' => $ads->snippet('free_signal_top'),
+                'inline' => $ads->snippet('free_signal_inline'),
+                'footer' => $ads->snippet('free_signal_footer'),
+            ],
         ]);
 
         return $visitor['is_new'] ? $response->withCookie($this->visitorCookie($visitor['raw'])) : $response;
@@ -30,7 +37,7 @@ class PublicRewardedSignalController extends Controller
             $response = response()->json(['ok' => true, ...$payload]);
         } catch (\Throwable $e) {
             $message = $e->getMessage();
-            $code = str_contains($message, 'No new qualified Pulse opportunity') ? 'market_wait' : 'reward_session_unavailable';
+            $code = str_contains($message, 'No qualified Pulse signal is available') || str_contains($message, 'market outlook cannot be calculated') ? 'market_wait' : 'reward_session_unavailable';
             $response = response()->json(['ok' => false, 'code' => $code, 'message' => $message], 422);
         }
 

@@ -11,13 +11,15 @@ class PortfolioAccount extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'account_name', 'currency', 'opening_value', 'current_value', 'net_contributions', 'total_profit', 'monthly_profit', 'valuation_date', 'is_active', 'notes'];
+    protected $fillable = ['user_id', 'account_name', 'currency', 'opening_value', 'current_value', 'net_contributions', 'total_profit', 'monthly_profit', 'opening_value_usd', 'current_value_usd', 'net_contributions_usd', 'total_profit_usd', 'monthly_profit_usd', 'realized_fx_gain_loss_usd', 'valuation_date', 'is_active', 'notes'];
+
+    protected $hidden = ['opening_value_usd', 'current_value_usd', 'net_contributions_usd', 'total_profit_usd', 'monthly_profit_usd', 'realized_fx_gain_loss_usd'];
 
     protected function casts(): array
     {
         return [
             'opening_value' => 'decimal:2', 'current_value' => 'decimal:2', 'net_contributions' => 'decimal:2',
-            'total_profit' => 'decimal:2', 'monthly_profit' => 'decimal:2', 'valuation_date' => 'date', 'is_active' => 'boolean',
+            'total_profit' => 'decimal:2', 'monthly_profit' => 'decimal:2', 'opening_value_usd' => 'decimal:2', 'current_value_usd' => 'decimal:2', 'net_contributions_usd' => 'decimal:2', 'total_profit_usd' => 'decimal:2', 'monthly_profit_usd' => 'decimal:2', 'realized_fx_gain_loss_usd' => 'decimal:2', 'valuation_date' => 'date', 'is_active' => 'boolean',
         ];
     }
 
@@ -34,5 +36,20 @@ class PortfolioAccount extends Model
     public function statements(): HasMany
     {
         return $this->hasMany(MonthlyStatement::class)->latest('statement_month');
+    }
+
+    public function requests(): HasMany
+    {
+        return $this->hasMany(PortfolioRequest::class, 'portfolio_account_id')->latest();
+    }
+
+    public function performancePlans(): HasMany
+    {
+        return $this->hasMany(PortfolioPerformancePlan::class, 'portfolio_account_id')->latest('plan_month');
+    }
+
+    public function investmentTerm()
+    {
+        return $this->hasOne(PortfolioInvestmentTerm::class, 'portfolio_account_id');
     }
 }

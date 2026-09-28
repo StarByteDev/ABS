@@ -1,0 +1,4 @@
+ABS V15.6.8 — NO DATABASE SCHEMA CHANGE
+
+This patch does not add, drop, rename, truncate, replace or reset database tables or columns.
+Existing users, memberships, payments, signals, trades, portfolio records, investor statements, requests, support conversations and strategy history are preserved.

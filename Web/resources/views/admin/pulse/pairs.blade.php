@@ -1,9 +1,10 @@
 @extends('admin.layout')
 @section('title','Binance Futures Markets | ABS Admin')
-@section('heading','Binance Futures Markets')
+@section('heading','Engine Setup · Market Universe')
 @section('content')
+@include('admin.pulse.partials.strategy-lab-nav')
 <div class="enterprise-command-bar admin-market-command">
-    <div><span class="release-eyebrow">PULSE MARKET CATALOG</span><h2>Exchange-synchronized trading market control</h2><p>Keep the Pulse catalog aligned with currently tradable Binance USD‑M perpetual Futures markets. Users only see enabled markets that are also permitted by their Pulse package.</p></div>
+    <div><span class="release-eyebrow">PULSE MARKET CATALOG</span><h2>Exchange-synchronized trading market control</h2><p>Choose which Binance USD‑M markets the Strategy Lab is allowed to scan.</p></div>
     <form method="POST" action="{{ route('admin.pulse.pairs.sync') }}">@csrf<button class="button button-primary">↻ Sync Binance Futures Markets</button></form>
 </div>
 

@@ -7,7 +7,9 @@ import '../core/theme.dart';
 import '../widgets/abs_ui.dart';
 import 'account_extra_screens.dart';
 import 'content_screens.dart';
+import 'help_center_screen.dart';
 import 'plans_screen.dart';
+import 'profile_screen.dart';
 import 'positions_screen.dart';
 import 'scanner_screen.dart';
 import 'signal_detail_screen.dart';
@@ -121,7 +123,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   Text('${_greeting()}, $firstName', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
                   const SizedBox(height: 4),
-                  Text(session.proMode ? 'Professional mode · advanced market and trading detail' : 'Clear mode · focused actions and essential information', style: const TextStyle(color: AbsColors.muted, fontSize: 11.5)),
+                  Text(session.proMode ? 'Professional mode · advanced market and trading detail' : 'Simple mode · guided actions and essential information', style: const TextStyle(color: AbsColors.muted, fontSize: 11.5)),
                 ],
               ),
             ),
@@ -132,30 +134,88 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
         const SizedBox(height: 14),
-        PremiumHeroCard(
-          eyebrow: ready ? 'Trading ready' : 'Trading setup',
-          title: ready ? 'Your Pulse account is ready' : 'Complete setup before your first trade',
-          message: ready
-              ? 'ABS is connected to your selected environment and continues to enforce server-side execution, protection and account checks.'
-              : 'ABS will guide you through Binance, risk, market selection and execution settings. Nothing is sent to the exchange until readiness checks pass.',
-          trailing: Container(
-            width: 58,
-            height: 58,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: (ready ? AbsColors.green : AbsColors.gold).withValues(alpha: .09),
-              border: Border.all(color: (ready ? AbsColors.green : AbsColors.gold).withValues(alpha: .32)),
-            ),
-            child: Icon(ready ? Icons.verified_rounded : Icons.route_rounded, color: ready ? AbsColors.green : AbsColors.gold, size: 28),
+        AbsCard(
+          accent: ready ? AbsColors.green : AbsColors.gold,
+          padding: const EdgeInsets.all(15),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF15152C), Color(0xFF0B1421)],
           ),
-          footer: Wrap(
-            spacing: 7,
-            runSpacing: 7,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              StatusChip(planName.toUpperCase(), good: true),
-              StatusChip(env == 'LIVE' ? 'LIVE ACCOUNT' : 'TESTNET', warning: env == 'LIVE'),
-              StatusChip(feedHealthy ? 'MARKET FEED HEALTHY' : 'MARKET FEED CHECK', good: feedHealthy),
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: (ready ? AbsColors.green : AbsColors.gold).withOpacity(.10),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: (ready ? AbsColors.green : AbsColors.gold).withOpacity(.28),
+                      ),
+                    ),
+                    child: Icon(
+                      ready ? Icons.verified_rounded : Icons.route_rounded,
+                      color: ready ? AbsColors.green : AbsColors.gold,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          ready ? 'ACCOUNT READY' : 'NEXT STEP',
+                          style: const TextStyle(
+                            color: AbsColors.goldSoft,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.05,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          ready ? 'Pulse is ready to use' : 'Finish trading setup',
+                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                        ),
+                      ],
+                    ),
+                  ),
+                  StatusChip(ready ? 'READY' : 'SETUP', good: ready, warning: !ready),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                ready
+                    ? 'Your exchange environment, protection checks and ABS market feed are connected.'
+                    : 'Connect Binance, set risk limits and select markets. ABS will keep trading locked until every readiness check passes.',
+                style: const TextStyle(color: AbsColors.muted, fontSize: 11.5, height: 1.4),
+              ),
+              const SizedBox(height: 11),
+              Wrap(
+                spacing: 7,
+                runSpacing: 7,
+                children: [
+                  StatusChip(planName.toUpperCase(), good: true),
+                  StatusChip(env == 'LIVE' ? 'LIVE' : 'TESTNET', warning: env == 'LIVE'),
+                  StatusChip(feedHealthy ? 'DATA READY' : 'DATA CHECK', good: feedHealthy),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const TradingSetupScreen()),
+                  ),
+                  icon: Icon(ready ? Icons.tune_rounded : Icons.arrow_forward_rounded, size: 18),
+                  label: Text(ready ? 'Review trading setup' : 'Continue trading setup'),
+                ),
+              ),
             ],
           ),
         ),
@@ -169,7 +229,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 const Icon(Icons.system_update_alt_rounded, color: AbsColors.gold),
                 const SizedBox(width: 10),
-                Expanded(child: Text('ABS Pulse ${session.recommendedMobileVersion} is recommended by the server.', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12))),
+                Expanded(child: Text('Pulse ${session.recommendedMobileVersion} is recommended by the server.', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12))),
               ],
             ),
           ),
@@ -255,6 +315,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
         subtitle: 'Monitor P&L, protection and close state',
         onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PositionsScreen())),
         accent: AbsColors.gold,
+      ),
+      const SizedBox(height: 8),
+      QuickActionCard(
+        icon: Icons.newspaper_rounded,
+        title: 'Pulse Intelligence',
+        subtitle: 'News, live headlines and economic calendar',
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NewsScreen())),
+      ),
+      const SizedBox(height: 8),
+      QuickActionCard(
+        icon: Icons.help_outline_rounded,
+        title: 'Help Center',
+        subtitle: 'Plain-language guides for setup, signals and risk',
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const HelpCenterScreen())),
+        accent: AbsColors.purple,
       ),
       const SizedBox(height: 20),
       AbsSectionTitle('Best opportunities', subtitle: activeSignals.isEmpty ? 'No active setups need your attention.' : 'Prioritized signals ready for review.'),
@@ -437,7 +512,7 @@ class _LoggedMarketPulseStrip extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              Container(width: 48, height: 48, alignment: Alignment.center, decoration: BoxDecoration(color: AbsColors.purple.withValues(alpha: .12), shape: BoxShape.circle, border: Border.all(color: AbsColors.purple.withValues(alpha: .35))), child: Text(score > 0 ? '$score' : '—', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
+              Container(width: 48, height: 48, alignment: Alignment.center, decoration: BoxDecoration(color: AbsColors.purple.withOpacity(.12), shape: BoxShape.circle, border: Border.all(color: AbsColors.purple.withOpacity(.35))), child: Text(score > 0 ? '$score' : '—', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
               const SizedBox(width: 12),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('${JsonTools.text(global['fear_greed_label'], 'Market')} · BTC Dom ${number(global['btc_dominance'], digits: 1)}%', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13)), const SizedBox(height: 4), Text('24H Volume ${_compactDashboardUsd(global['total_volume'])} · Open Interest ${_compactDashboardUsd(global['open_interest_usd'])}', style: const TextStyle(color: AbsColors.muted, fontSize: 9.5))])),
             ],
@@ -464,7 +539,7 @@ class _MiniMarket extends StatelessWidget {
     final change = JsonTools.number(row['change_percent']);
     return Container(
       padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(color: AbsColors.panel2.withValues(alpha: .72), borderRadius: BorderRadius.circular(13), border: Border.all(color: AbsColors.lineSoft)),
+      decoration: BoxDecoration(color: AbsColors.panel2.withOpacity(.72), borderRadius: BorderRadius.circular(13), border: Border.all(color: AbsColors.lineSoft)),
       child: Row(children: [Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(JsonTools.text(row['pair'], JsonTools.text(row['symbol'])), style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w900)), const SizedBox(height: 4), Text(money(row['price']), style: const TextStyle(fontSize: 10, color: AbsColors.muted))])), Text(percent(change), style: TextStyle(color: pnlColor(change), fontSize: 9.5, fontWeight: FontWeight.w900))]),
     );
   }
@@ -537,18 +612,66 @@ class _BasicAccountDashboardState extends State<_BasicAccountDashboard> {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
-        PremiumHeroCard(
-          eyebrow: 'ABS account active',
-          title: 'Move from market watching to a structured trading process',
-          message: 'Pulse brings market intelligence, signal review, Binance Futures setup, execution safeguards, open positions and performance tracking into one professional experience.',
-          trailing: const Icon(Icons.workspace_premium_rounded, color: AbsColors.gold, size: 36),
-          footer: SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PlansScreen())),
-              icon: const Icon(Icons.bolt_rounded),
-              label: const Text('Compare Pulse plans'),
-            ),
+        AbsCard(
+          accent: SessionScope.of(context).emailVerified ? AbsColors.cyan : AbsColors.gold,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    SessionScope.of(context).emailVerified
+                        ? Icons.dashboard_customize_outlined
+                        : Icons.mark_email_unread_outlined,
+                    color: SessionScope.of(context).emailVerified ? AbsColors.cyanSoft : AbsColors.gold,
+                  ),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
+                      SessionScope.of(context).emailVerified
+                          ? 'Your ABS account is ready'
+                          : 'Basic account access is active',
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                    ),
+                  ),
+                  StatusChip(
+                    SessionScope.of(context).emailVerified ? 'ACTIVATED' : 'VERIFY EMAIL',
+                    good: SessionScope.of(context).emailVerified,
+                    warning: !SessionScope.of(context).emailVerified,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 9),
+              Text(
+                SessionScope.of(context).emailVerified
+                    ? 'Follow markets, use Pulse Intelligence and upgrade to Pulse when you want the complete trading workflow.'
+                    : 'You can use market intelligence, Free Signal, research and learning now. Activate your email to unlock membership and trading features.',
+                style: const TextStyle(color: AbsColors.muted, fontSize: 11.5, height: 1.4),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => SessionScope.of(context).emailVerified
+                          ? const PlansScreen()
+                          : const ProfileScreen(),
+                    ),
+                  ),
+                  icon: Icon(
+                    SessionScope.of(context).emailVerified
+                        ? Icons.bolt_rounded
+                        : Icons.mark_email_read_outlined,
+                  ),
+                  label: Text(
+                    SessionScope.of(context).emailVerified
+                        ? 'Explore Pulse membership'
+                        : 'Activate account',
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 20),

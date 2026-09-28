@@ -2,12 +2,13 @@
 @section('title','Free Pulse Signal — Alpha Block Solutions')
 @push('head')
 <meta property="og:title" content="ABS Pulse · Free Signal">
-<meta property="og:description" content="Watch one rewarded ad and reveal the best available ABS Pulse market setup — a qualified signal when available, otherwise an Entry Watch.">
+<meta property="og:description" content="Watch one rewarded ad and reveal a current qualified ABS Pulse setup when available; otherwise see the BTC 4-Hour Outlook.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="{{ route('pulse.free-signal') }}">
 <meta property="og:image" content="{{ asset('assets/brand/abs-logo-512.png') }}">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="{{ asset('assets/css/pulse-public-signal-v1515.css') }}?v={{ @filemtime(public_path('assets/css/pulse-public-signal-v1515.css')) ?: '15.1.5' }}">
+<link rel="stylesheet" href="{{ asset('assets/css/pulse-public-signal-v1520.css') }}?v={{ @filemtime(public_path('assets/css/pulse-public-signal-v1520.css')) ?: '15.2.0' }}">
+@if(!empty($adCms['head'])){!! $adCms['head'] !!}@endif
 @endpush
 @section('content')
 <section class="free-signal-page" data-free-signal-app
@@ -24,6 +25,10 @@
         <article><span class="benefit-icon">∞</span><div><b>Keep it visible</b><small>Your revealed signal stays on screen until you refresh or leave this page.</small></div></article>
         <article><span class="benefit-icon">◷</span><div><b>{{ (int)($status['cooldown_minutes'] ?? 30) }}-minute reset</b><small>Return later for another free signal.</small></div></article>
     </div>
+
+    @if(!empty($adCms['top']))
+    <section class="container abs-managed-ad" aria-label="Advertisement"><span>SPONSORED</span><div>{!! $adCms['top'] !!}</div></section>
+    @endif
 
     <div class="container free-signal-workspace">
         <aside class="free-signal-ad-rail">
@@ -87,7 +92,7 @@
                 <div class="signal-teaser-lock">
                     <div class="lock-ring"><span>⌁</span></div>
                     <h2>A Pulse market setup is waiting.</h2>
-                    <p>Watch the rewarded ad to reveal the best available setup. ABS shows a qualified signal when one exists; otherwise it clearly labels the highest-scoring setup as Entry Watch.</p>
+                    <p>Watch the rewarded ad to reveal a current qualified Pulse setup. If no qualified signal is active, ABS shows the BTC 4-Hour Outlook instead.</p>
                     <button type="button" class="teaser-watch" data-teaser-watch>▶ Watch Ad & Reveal Signal</button>
                 </div>
             </section>
@@ -100,7 +105,7 @@
 
                 <div class="signal-market-grid">
                     <article class="signal-price-card"><small>CURRENT PRICE</small><strong data-signal-current-price>—</strong><span data-signal-change>—</span></article>
-                    <article class="signal-range-card"><small>24H RANGE</small><div><span>High</span><b data-signal-high>—</b></div><div><span>Low</span><b data-signal-low>—</b></div><div><span>Volume</span><b data-signal-volume>—</b></div></article>
+                    <article class="signal-range-card"><small data-signal-range-title>24H RANGE</small><div><span data-signal-range-high-label>High</span><b data-signal-high>—</b></div><div><span data-signal-range-low-label>Low</span><b data-signal-low>—</b></div><div><span data-signal-range-third-label>Volume</span><b data-signal-volume>—</b></div></article>
                     <article class="signal-key-card"><small>KEY LEVEL TO WATCH</small><strong data-signal-key-level>—</strong><p data-signal-key-copy>Monitor price around the planned Pulse level and the risk controls below.</p></article>
                 </div>
 
@@ -123,7 +128,8 @@
 
                 <div class="signal-context-grid">
                     <article><span class="context-icon">⚡</span><div><small>MOMENTUM</small><strong data-signal-bias>—</strong><p data-signal-strategies>Pulse strategy engine</p></div></article>
-                    <article><span class="context-icon">◇</span><div><small>SETUP SUMMARY</small><p data-signal-summary>—</p></div></article>
+                    <article data-btc-strategy-evidence hidden><span class="context-icon">15</span><div><small>15-STRATEGY BALANCE</small><strong data-btc-strategy-balance>—</strong><p data-btc-strategy-count>All configured strategies considered across 15M + 4H.</p></div></article>
+                    <article class="signal-summary-context"><span class="context-icon">◇</span><div><small>SETUP SUMMARY</small><p data-signal-summary>—</p></div></article>
                 </div>
 
                 <section class="signal-share-card">
@@ -144,6 +150,10 @@
         </main>
     </div>
 
+    @if(!empty($adCms['inline']))
+    <section class="container abs-managed-ad" aria-label="Advertisement"><span>SPONSORED</span><div>{!! $adCms['inline'] !!}</div></section>
+    @endif
+
     <section class="container free-signal-membership">
         <div><span>WANT CONTINUOUS ACCESS?</span><h2>Move from one free signal to full ABS Pulse access.</h2><p>Choose a Pulse package, transfer USDT, submit the transaction reference, and Admin verification activates your access.</p></div>
         <div>
@@ -152,11 +162,15 @@
         </div>
     </section>
 
+    @if(!empty($adCms['footer']))
+    <section class="container abs-managed-ad" aria-label="Advertisement"><span>SPONSORED</span><div>{!! $adCms['footer'] !!}</div></section>
+    @endif
+
     <section class="container free-signal-risk-note">
         <b>Market & Risk Notice:</b> Alpha Block Solutions provides market intelligence for informational and educational purposes only. Nothing on ABS is financial, investment, legal or tax advice. Digital assets and derivatives are high risk. <a href="{{ route('legal.risk') }}">Read the full Risk Disclosure.</a>
     </section>
 </section>
 @endsection
 @push('scripts')
-<script src="{{ asset('assets/js/pulse-public-signal-v1515.js') }}?v={{ @filemtime(public_path('assets/js/pulse-public-signal-v1515.js')) ?: '15.1.5' }}" defer></script>
+<script src="{{ asset('assets/js/pulse-public-signal-v1520.js') }}?v={{ @filemtime(public_path('assets/js/pulse-public-signal-v1520.js')) ?: '15.2.0' }}" defer></script>
 @endpush

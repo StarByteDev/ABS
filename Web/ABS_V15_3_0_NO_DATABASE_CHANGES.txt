@@ -1,0 +1,13 @@
+ABS V15.3.0 — Pulse Strategy Lab & Validation Engine
+
+No new database schema migration is required for this release.
+
+New Strategy Lab runtime values are stored in the existing pulse_system_settings table:
+- strategy_research_enabled
+- pulse_background_mode
+- pulse_background_interval_seconds
+- pulse_strategy_cycle_last_* runtime state
+
+The existing seeder/repair path creates missing setting rows non-destructively. Existing production values are preserved.
+
+Default detailed pulse_signal_validations retention is increased to 90 days through application configuration; this does not alter table structure.

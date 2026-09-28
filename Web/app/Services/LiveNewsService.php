@@ -109,6 +109,28 @@ class LiveNewsService
         }
     }
 
+    public function findById(string $id): ?array
+    {
+        $id = strtolower(trim($id));
+        if (! preg_match('/^[a-f0-9]{64}$/', $id)) {
+            return null;
+        }
+
+        foreach ($this->cached(40) as $item) {
+            if (hash_equals((string) ($item['id'] ?? ''), $id)) {
+                return $item;
+            }
+        }
+
+        foreach ($this->latest(40) as $item) {
+            if (hash_equals((string) ($item['id'] ?? ''), $id)) {
+                return $item;
+            }
+        }
+
+        return null;
+    }
+
     private function parse(string $xml, string $sourceName, string $sourceUrl): array
     {
         if (function_exists('simplexml_load_string')) {
@@ -219,10 +241,14 @@ class LiveNewsService
             $publishedAt = null;
         }
 
+        $description = $this->cleanText((string) ($item['description'] ?? ''));
+
         return [
             'id' => hash('sha256', $sourceName.'|'.$url),
             'title' => Str::limit($title, 180, '…'),
-            'excerpt' => Str::limit($this->cleanText((string) ($item['description'] ?? '')), 220, '…'),
+            'excerpt' => Str::limit($description, 220, '…'),
+            'summary' => Str::limit($description, 1200, '…'),
+            'detail' => Str::limit($description, 1600, '…'),
             'category' => Str::limit($this->cleanText((string) ($item['category'] ?? 'Industry News')), 60, ''),
             'author_name' => Str::limit($this->cleanText((string) ($item['author'] ?? '')), 80, ''),
             'source_name' => $sourceName,

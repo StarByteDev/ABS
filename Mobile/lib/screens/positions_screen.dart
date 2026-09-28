@@ -100,7 +100,7 @@ class _PositionsScreenState extends State<PositionsScreen> {
             width: 56,
             height: 56,
             alignment: Alignment.center,
-            decoration: BoxDecoration(color: pnlColor(totalUnrealized).withValues(alpha: .09), borderRadius: BorderRadius.circular(18)),
+            decoration: BoxDecoration(color: pnlColor(totalUnrealized).withOpacity(.09), borderRadius: BorderRadius.circular(18)),
             child: Icon(Icons.candlestick_chart_rounded, color: pnlColor(totalUnrealized), size: 28),
           ),
           footer: Wrap(

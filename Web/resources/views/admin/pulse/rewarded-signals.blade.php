@@ -10,7 +10,7 @@
     <article class="admin-kpi"><span>Unlocks Today</span><b>{{ number_format($stats['today']) }}</b><small>rewarded reveals</small></article>
     <article class="admin-kpi"><span>Unlocks · 30 Days</span><b>{{ number_format($stats['last30']) }}</b><small>successful grants</small></article>
     <article class="admin-kpi"><span>Unique Browsers · 30 Days</span><b>{{ number_format($stats['unique30']) }}</b><small>privacy-preserving IDs</small></article>
-    <article class="admin-kpi"><span>Qualified Signals · 30 Days</span><b>{{ number_format($stats['signals30']) }}</b><small>Entry Watch reveals are excluded</small></article>
+    <article class="admin-kpi"><span>Qualified Signals · 30 Days</span><b>{{ number_format($stats['signals30']) }}</b><small>BTC Outlook fallback reveals are excluded</small></article>
 </div>
 
 <section class="enterprise-surface rewarded-admin-shell">
@@ -18,7 +18,7 @@
         <div>
             <span class="rewarded-kicker">PUBLIC ACQUISITION · GOOGLE REWARDED WEB</span>
             <h2>Rewarded Signal Experience</h2>
-            <p>One optional rewarded ad reveals the best available Pulse market intelligence. ABS prioritizes a qualified public signal; when none qualifies, it can reveal the highest-scoring Entry Watch without creating or labelling it as a signal. The reveal stays visible until refresh/navigation, while the browser cooldown controls the next free unlock.</p>
+            <p>One optional rewarded ad reveals Pulse market intelligence. ABS first selects a random active qualified setup from the same Professional signal pool, then the system pool, and can run the same market-wide engine when needed. Only when no qualified setup exists does it reveal a clearly-labelled BTC Market Outlook from the 15-strategy engine. The reveal stays visible until refresh/navigation, while the browser cooldown controls the next free unlock.</p>
         </div>
         <span class="rewarded-status {{ $settings['enabled'] ? 'is-live' : 'is-paused' }}">{{ $settings['enabled'] ? 'LIVE' : 'PAUSED' }}</span>
     </div>
@@ -84,7 +84,9 @@
     <div class="enterprise-section-head"><div><h2>Recent rewarded reveals</h2><p>Anonymous browser hashes are stored instead of raw visitor identifiers. This register supports cooldown enforcement and operational auditing.</p></div></div>
     <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Time</th><th>Type</th><th>Market</th><th>Direction</th><th>Timeframe</th><th>Provider</th><th>Visibility</th><th>Next Available</th><th>Status</th></tr></thead><tbody>
     @forelse($unlocks as $unlock)
-        <tr><td>{{ $unlock->claimed_at?->format('d M Y H:i') }}</td><td><span class="status-pill {{ data_get($unlock->signal_snapshot,'presentation') === 'market_watch' ? 'pending' : 'active' }}">{{ data_get($unlock->signal_snapshot,'presentation') === 'market_watch' ? 'ENTRY WATCH' : 'SIGNAL' }}</span></td><td><b>{{ data_get($unlock->signal_snapshot,'symbol','—') }}</b></td><td>{{ data_get($unlock->signal_snapshot,'direction','—') }}</td><td>{{ data_get($unlock->signal_snapshot,'timeframe','—') }}</td><td>{{ $unlock->provider }}</td><td>Until page refresh</td><td>{{ $unlock->next_available_at?->format('d M H:i') }}</td><td><span class="status-pill active">{{ strtoupper($unlock->status) }}</span></td></tr>
+        @php($presentation = data_get($unlock->signal_snapshot,'presentation'))
+        @php($revealLabel = $presentation === 'btc_outlook' ? 'BTC OUTLOOK' : ($presentation === 'market_watch' ? 'LEGACY WATCH' : 'SIGNAL'))
+        <tr><td>{{ $unlock->claimed_at?->format('d M Y H:i') }}</td><td><span class="status-pill {{ $presentation === 'qualified_signal' ? 'active' : 'pending' }}">{{ $revealLabel }}</span></td><td><b>{{ data_get($unlock->signal_snapshot,'symbol','—') }}</b></td><td>{{ data_get($unlock->signal_snapshot,'direction','—') }}</td><td>{{ data_get($unlock->signal_snapshot,'timeframe','—') }}</td><td>{{ $unlock->provider }}</td><td>Until page refresh</td><td>{{ $unlock->next_available_at?->format('d M H:i') }}</td><td><span class="status-pill active">{{ strtoupper($unlock->status) }}</span></td></tr>
     @empty
         <tr><td colspan="9" class="admin-empty">No rewarded market-intelligence reveal has been unlocked yet.</td></tr>
     @endforelse

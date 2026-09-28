@@ -1,0 +1,7 @@
+ABS V15.6.2 requires no new database migration.
+
+This release changes the application release/rollback workflow only.
+- Application rollback restores code files only.
+- The live production database is not replaced or rolled back by patch recovery.
+- Existing users, memberships, payments, trades, signals, content and audit records remain in the live database.
+- Future patches are checked for destructive pending migrations before migration execution.

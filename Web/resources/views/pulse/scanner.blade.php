@@ -17,6 +17,18 @@
         </div>
     </header>
     <div class="pp-async-status" data-scan-action-message hidden></div>
+    <section class="pp-scan-progress-v1560" data-scan-progress data-market-count="{{ (int) ($page['package_pairs_available'] ?? 0) }}" hidden aria-live="polite">
+        <div class="pp-scan-progress-orbit-v1560" aria-hidden="true"><i></i><i></i><span></span></div>
+        <div class="pp-scan-progress-copy-v1560">
+            <small>ABS PULSE SCANNER</small>
+            <strong data-scan-progress-title>Finding Best Signal</strong>
+            <span data-scan-progress-copy>Preparing the market universe and strategy engine.</span>
+            <div class="pp-scan-progress-track-v1560"><i data-scan-progress-bar></i></div>
+            <div class="pp-scan-progress-steps-v1560" data-scan-progress-steps>
+                <span>Market data</span><span>Strategy evaluation</span><span>Qualification</span><span>Best Signal</span>
+            </div>
+        </div>
+    </section>
 
     @if($errors->has('scanner'))<div class="pulse-notice danger">{{ $errors->first('scanner') }}</div>@endif
     @if(session('success'))<div class="pulse-notice success">{{ session('success') }}</div>@endif

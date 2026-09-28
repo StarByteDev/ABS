@@ -73,6 +73,66 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const scanRunForm = document.querySelector('[data-run-market-scan]');
+    const scanProgress = document.querySelector('[data-scan-progress]');
+    const scanProgressTitle = scanProgress?.querySelector('[data-scan-progress-title]');
+    const scanProgressCopy = scanProgress?.querySelector('[data-scan-progress-copy]');
+    const scanProgressBar = scanProgress?.querySelector('[data-scan-progress-bar]');
+    const scanProgressSteps = scanProgress ? [...scanProgress.querySelectorAll('[data-scan-progress-steps] span')] : [];
+    let scanProgressTimer = null;
+
+    const stopScanProgressTimer = () => {
+        if (scanProgressTimer) window.clearInterval(scanProgressTimer);
+        scanProgressTimer = null;
+    };
+
+    const paintScanProgress = (index, title, copy) => {
+        if (!scanProgress) return;
+        if (scanProgressTitle) scanProgressTitle.textContent = title;
+        if (scanProgressCopy) scanProgressCopy.textContent = copy;
+        if (scanProgressBar) scanProgressBar.style.width = `${Math.min(92, 18 + (index * 22))}%`;
+        scanProgressSteps.forEach((step, stepIndex) => {
+            step.classList.toggle('done', stepIndex < index);
+            step.classList.toggle('active', stepIndex === index);
+        });
+    };
+
+    const startScanProgress = () => {
+        if (!scanProgress) return;
+        stopScanProgressTimer();
+        scanProgress.hidden = false;
+        scanProgress.classList.remove('complete', 'error');
+        const marketCount = Number(scanProgress.dataset.marketCount || 0);
+        const universe = marketCount > 0 ? `${marketCount.toLocaleString()} package markets` : 'your package markets';
+        const stages = [
+            ['Finding Best Signal', `Loading the latest market data for ${universe}.`],
+            ['Evaluating strategies', 'Checking 15M and 4H conditions across the ABS Pulse strategy engine.'],
+            ['Checking qualification', 'Comparing scores, risk structure and qualifying conditions.'],
+            ['Ranking qualified setups', 'Selecting the strongest qualifying setup for your package.'],
+        ];
+        let index = 0;
+        paintScanProgress(index, stages[index][0], stages[index][1]);
+        scanProgressTimer = window.setInterval(() => {
+            index = Math.min(stages.length - 1, index + 1);
+            paintScanProgress(index, stages[index][0], stages[index][1]);
+            if (index === stages.length - 1) stopScanProgressTimer();
+        }, 1600);
+    };
+
+    const finishScanProgress = (ok, message) => {
+        if (!scanProgress) return;
+        stopScanProgressTimer();
+        scanProgress.hidden = false;
+        scanProgress.classList.toggle('complete', ok);
+        scanProgress.classList.toggle('error', !ok);
+        if (scanProgressTitle) scanProgressTitle.textContent = ok ? 'Best Signal scan complete' : 'Best Signal scan interrupted';
+        if (scanProgressCopy) scanProgressCopy.textContent = message || (ok ? 'The latest scan results are ready below.' : 'The scan could not be completed.');
+        if (scanProgressBar) scanProgressBar.style.width = ok ? '100%' : '34%';
+        scanProgressSteps.forEach((step) => {
+            step.classList.toggle('done', ok);
+            step.classList.remove('active');
+        });
+        if (ok) window.setTimeout(() => { if (scanProgress.classList.contains('complete')) scanProgress.hidden = true; }, 6000);
+    };
 
     // V14.8.15: keep scanner action stages aligned with a fresh Binance ticker
     // snapshot without consuming another scan. This refreshes the rendered
@@ -119,7 +179,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (runTimeframe && selectedTimeframe) runTimeframe.value = selectedTimeframe.value || 'all';
 
         if (button) button.disabled = true;
-        if (label) label.textContent = 'Scanning Markets…';
+        if (label) label.textContent = 'Finding Best Signal…';
+        startScanProgress();
         if (status) { status.hidden = false; status.className = 'pp-async-status working'; status.textContent = 'Pulse is scanning your selected markets. You can stay on this page.'; }
 
         try {
@@ -149,8 +210,10 @@ document.addEventListener('DOMContentLoaded', () => {
             bindSavedScanControls();
             document.querySelectorAll('[data-scanner-last-scan]').forEach(node => { node.textContent = refreshed.last_scan || 'just now'; });
             if (status) { status.className = 'pp-async-status success'; status.textContent = payload.message || 'Market scan completed and results updated.'; }
+            finishScanProgress(true, payload.message || 'The latest Best Signal result is ready below.');
         } catch (error) {
             if (status) { status.hidden = false; status.className = 'pp-async-status error'; status.textContent = error.message || 'The market scan could not be completed.'; }
+            finishScanProgress(false, error.message || 'The market scan could not be completed.');
         } finally {
             if (button) button.disabled = false;
             if (label) label.textContent = originalLabel;

@@ -16,14 +16,39 @@ class AppController extends Controller
             return [$item->key => $this->castValue($item->value, $item->type)];
         });
 
+        $isPrivateInvestor = (bool) $request->user()?->isPrivateInvestor();
+        $mobileModules = [
+            'authentication', 'account', 'dashboard', 'market', 'watchlist', 'news', 'research', 'learning',
+            'economic_calendar', 'pulse_packages', 'pulse_free_signal', 'pulse_scanner', 'pulse_signals',
+            'binance_connections', 'execution_readiness', 'positions', 'orders', 'trades', 'reports',
+            'signal_sharing', 'pulse_signal_insights', 'strategy_profitability', 'what_if_simulation', 'market_feed_health', 'alerts', 'notifications', 'devices', 'pulse_support', 'contact', 'newsletter',
+        ];
+        if ($isPrivateInvestor) {
+            $mobileModules[] = 'private_investor_portfolio';
+            $mobileModules[] = 'private_member_portal';
+        }
+        $links = [
+            'privacy' => route('legal.privacy'),
+            'terms' => route('legal.terms'),
+            'risk_disclosure' => route('legal.risk'),
+            'market_disclaimer' => route('legal.disclaimer'),
+            'free_signal_web' => route('pulse.free-signal'),
+            'free_signal_api_status' => url('/api/v1/pulse/free-signal/status'),
+            'support_web' => auth()->check() ? route('pulse.support.index') : route('login'),
+            'support_api' => url('/api/v1/support'),
+        ];
+        if ($isPrivateInvestor) $links['private_investor_api'] = url('/api/v1/private/account');
+
         return response()->json(['data' => [
             'app' => [
                 'name' => config('app.name', 'Alpha Block Solutions'),
                 'environment' => config('app.env'),
                 'api_version' => 'v1',
-                'build' => '15.1.6',
-                'release' => 'Live Deployment Intelligence + Mobile API + Strategy Profitability Simulation + Direct USDT + Rewarded Free Signal + ABS News',
+                'build' => '15.7.4',
+                'release' => 'Private Investor Investment Terms & Automatic Monthly Progress',
                 'mobile_api_ready' => true,
+                'presentation_schema_version' => 3,
+                'free_signal_fallback' => 'btc_4h_outlook',
                 'market_data_source' => 'ABS central database (Binance Futures upstream)',
                 'market_refresh_seconds' => (int) config('pulse.market_data.target_price_refresh_seconds', 60),
                 'minimum_mobile_version' => $settings->get('mobile_minimum_version'),
@@ -32,23 +57,11 @@ class AppController extends Controller
                 'maintenance_message' => $settings->get('mobile_maintenance_message'),
                 'support_email' => config('brand.support_email'),
                 'market_risk_notice' => 'ABS market intelligence, economic-event context and signals are informational and educational only, not financial advice. Digital assets involve substantial risk; data and forecasts may be delayed or revised and outcomes are never guaranteed.',
-                'mobile_modules' => [
-                    'authentication', 'account', 'dashboard', 'market', 'watchlist', 'news', 'research', 'learning',
-                    'economic_calendar', 'pulse_packages', 'pulse_free_signal', 'pulse_scanner', 'pulse_signals',
-                    'binance_connections', 'execution_readiness', 'positions', 'orders', 'trades', 'reports',
-                    'signal_sharing', 'ai_signal_explanations', 'strategy_profitability', 'what_if_simulation', 'market_feed_health', 'alerts', 'notifications', 'devices', 'private_member_portal', 'contact', 'newsletter',
-                ],
+                'mobile_modules' => $mobileModules,
             ],
             'settings' => $settings,
             'pulse_plans' => PulsePlan::query()->publiclyAvailable()->orderBy('sort_order')->get()->map(fn (PulsePlan $plan) => $membership->mobilePlanPayload($plan, null)),
-            'links' => [
-                'privacy' => route('legal.privacy'),
-                'terms' => route('legal.terms'),
-                'risk_disclosure' => route('legal.risk'),
-                'market_disclaimer' => route('legal.disclaimer'),
-                'free_signal_web' => route('pulse.free-signal'),
-                'free_signal_api_status' => url('/api/v1/pulse/free-signal/status'),
-            ],
+            'links' => $links,
         ]]);
     }
 

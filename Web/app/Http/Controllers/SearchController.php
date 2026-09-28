@@ -21,7 +21,7 @@ class SearchController extends Controller
                     ->get()
                     ->map(fn ($item) => ['type' => 'Market News', 'title' => $item->title, 'excerpt' => $item->excerpt, 'url' => route('news.show', $item->slug)]))
                 ->concat(Product::where('status', 'live')
-                    ->whereIn('slug', ['pulse-trading-intelligence', 'private-member-portal'])
+                    ->where('slug', 'pulse-trading-intelligence')
                     ->where(fn ($query) => $query->where('name', 'like', "%$q%")->orWhere('description', 'like', "%$q%"))
                     ->get()
                     ->map(fn ($item) => ['type' => 'ABS Service', 'title' => $item->name, 'excerpt' => $item->tagline, 'url' => route('products').'#'.$item->slug]))

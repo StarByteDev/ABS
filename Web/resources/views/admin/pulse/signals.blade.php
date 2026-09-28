@@ -57,7 +57,7 @@
     'ariaLabel'=>'Signal outcome distribution for selected filters','centerLabel'=>'SIGNALS',
     'labels'=>['Target reached','Risk limit reached','Ambiguous','Expired before entry','Expired after entry','Pending'],
     'values'=>[$summary['wins'],$summary['losses'],$summary['ambiguous'],$summary['expired_no_entry'],$summary['expired_after_entry'],$summary['pending']],
-    'colors'=>['#179b6b','#d54d5b','#d68f24','#8292a8','#7457d9','#b9c4d0'],
+    'colors'=>['#179b6b','#d54d5b','#d68f24','#8292a8','#69d8ef','#b9c4d0'],
 ], JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT) !!}</script>
 
 <section class="admin-chart-grid">

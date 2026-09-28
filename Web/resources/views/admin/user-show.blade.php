@@ -10,7 +10,7 @@ $restrictions=is_array($access?->permissions)?$access->permissions:[];
 @endphp
 <section class="enterprise-user-hero">
     <div class="enterprise-avatar large">{{ strtoupper(substr($user->name,0,1)) }}</div>
-    <div class="grow"><small>USER #{{ $user->id }}</small><h2>{{ $user->name }}</h2><p>{{ $user->email }}</p><div class="admin-status-line"><span class="admin-status {{ $user->status==='active'?'good':'warn' }}">Account {{ ucfirst($user->status) }}</span><span class="admin-status {{ $access?->isActive()?'good':($expired?'danger':'muted') }}">Pulse {{ $access?->status ? ucfirst($access->status) : 'Not assigned' }}</span>@if($user->isPrivateMember())<span class="admin-status good">Private member</span>@endif</div></div>
+    <div class="grow"><small>USER #{{ $user->id }}</small><h2>{{ $user->name }}</h2><p>{{ $user->email }}</p><div class="admin-status-line"><span class="admin-status {{ $user->status==='active'?'good':'warn' }}">Account {{ ucfirst($user->status) }}</span><span class="admin-status {{ $access?->isActive()?'good':($expired?'danger':'muted') }}">Pulse {{ $access?->status ? ucfirst($access->status) : 'Not assigned' }}</span>@if($user->isPrivateMember())<span class="admin-status good">Private Investor</span>@endif</div></div>
     <div class="admin-user-meta"><span>Registered <b>{{ $user->created_at?->format('d M Y') }}</b></span><span>Last login <b>{{ $user->last_login_at?->diffForHumans() ?? 'Never' }}</b></span></div>
 </section>
 
@@ -53,14 +53,14 @@ $restrictions=is_array($access?->permissions)?$access->permissions:[];
 
 <section class="enterprise-section-grid two-one user-admin-grid">
 <article class="enterprise-surface">
-    <div class="enterprise-section-head"><div><h2>Identity, role & account status</h2><p>Manage the user's sign-in identity and platform-level authorization. Private Member access is activated when that role is Active.</p></div></div>
+    <div class="enterprise-section-head"><div><h2>Identity, role & account status</h2><p>Manage the user's sign-in identity and platform-level authorization. Private Investor access is activated when that role is Active.</p></div></div>
     @if($isLastActiveAdmin)<div class="enterprise-protection-note"><b>Protected administrator</b><span>This is the last active administrator. The system will not allow this account to be demoted or suspended until another active administrator exists.</span></div>@endif
     <form method="POST" action="{{ route('admin.users.update',$user) }}" class="enterprise-form-grid">@csrf @method('PATCH')
         <label>Full name<input name="name" value="{{ old('name',$user->name) }}" maxlength="100" required></label>
         <label>Email address<input type="email" name="email" value="{{ old('email',$user->email) }}" maxlength="255" required></label>
         <label>Country<input name="country" value="{{ old('country',$user->country) }}" maxlength="80"></label>
         <label>Phone or WhatsApp<div class="enterprise-phone-fields"><input name="country_code" value="{{ old('country_code',$user->country_code) }}" maxlength="8" placeholder="+971"><input name="phone" value="{{ old('phone',$user->phone) }}" maxlength="24" placeholder="Phone number"></div></label>
-        <label>Role<select name="role"><option value="user" @selected(old('role',$user->role)==='user')>Standard user</option><option value="private_member" @selected(old('role',$user->role)==='private_member')>Private Member</option><option value="admin" @selected(old('role',$user->role)==='admin')>Administrator</option></select></label>
+        <label>Role<select name="role"><option value="user" @selected(old('role',$user->role)==='user')>Standard user</option><option value="private_investor" @selected(in_array(old('role',$user->role),['private_member','private_investor'],true))>Private Investor</option><option value="admin" @selected(old('role',$user->role)==='admin')>Administrator</option></select></label>
         <label>Account status<select name="status"><option value="active" @selected(old('status',$user->status)==='active')>Active</option><option value="pending" @selected(old('status',$user->status)==='pending')>Pending</option><option value="suspended" @selected(old('status',$user->status)==='suspended')>Suspended</option></select></label>
         <label class="full enterprise-check-card compact-check"><input type="checkbox" name="email_verified" value="1" @checked(old('email_verified',$user->email_verified_at ? '1' : null))><span><b>Email verified</b><small>Verification state is managed by Admin for manually created or validated accounts.</small></span></label>
         <div class="full admin-page-actions"><button class="button button-primary">Save Account</button></div>
@@ -73,11 +73,11 @@ $restrictions=is_array($access?->permissions)?$access->permissions:[];
         <div><span>Email verification</span><b>{{ $user->email_verified_at ? 'Verified' : 'Not verified' }}</b></div>
         <div><span>Phone or WhatsApp</span><b>{{ trim(($user->country_code ?? '').' '.($user->phone ?? '')) ?: 'Not provided' }}</b></div>
         <div><span>Country</span><b>{{ $user->country ?: 'Not provided' }}</b></div>
-        <div><span>Private Member Portal</span><b>{{ $user->isPrivateMember() ? 'Active' : ($user->role==='private_member' ? 'Inactive — account not active' : 'Not assigned') }}</b></div>
+        <div><span>Private Investor Portfolio</span><b>{{ $user->isPrivateMember() ? 'Active' : (in_array($user->role,['private_member','private_investor'],true) ? 'Inactive — account not active' : 'Not assigned') }}</b></div>
         <div><span>Private reporting account</span><b>{{ $user->portfolioAccount ? 'Configured' : 'Not configured' }}</b></div>
         <div><span>Last sign in</span><b>{{ $user->last_login_at?->format('d M Y H:i') ?? 'Never' }}</b></div>
     </div>
-    @if($user->role==='private_member')<div class="admin-page-actions user-service-actions"><a class="button button-ghost" href="{{ route('admin.portfolios',['user'=>$user->id]) }}">{{ $user->portfolioAccount ? 'Manage Private Reporting' : 'Set Up Private Reporting' }}</a></div>@endif
+    @if(in_array($user->role,['private_member','private_investor'],true))<div class="admin-page-actions user-service-actions">@if($user->portfolioAccount)<a class="button button-ghost" href="{{ route('admin.private-investors.show',$user->portfolioAccount) }}">Manage Investor Portfolio</a>@else<a class="button button-ghost" href="{{ route('admin.private-investors.investors') }}">Set Up Investor Portfolio</a>@endif</div>@endif
     <div class="enterprise-password-reset">
         <h3>Set a new password</h3><p>The password is never sent by email. Other database sessions and mobile API tokens are revoked after an Admin reset.</p>
         <form method="POST" action="{{ route('admin.users.password',$user) }}" class="enterprise-form-grid">@csrf

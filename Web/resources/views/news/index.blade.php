@@ -7,8 +7,8 @@
 <section class="container news-hero-v1512">
     <span class="news-kicker-v1512">ABS NEWS · MARKET & MACRO INTELLIGENCE</span>
     <h1>Know what can move the market.<br><span>Understand why it matters.</span></h1>
-    <p>Track major economic releases and verified crypto-industry headlines in one place, with simple explanations instead of economic jargon.</p>
-    <div class="news-hero-pills"><span>{{ $macroTimezone }} time</span><span>Previous · Forecast · Actual</span><span>Crypto impact explained</span></div>
+    <p>Track major economic releases, digital-asset headlines and market context in one focused intelligence view.</p>
+    <div class="news-hero-pills"><span>{{ $macroTimezone }} time</span><span>Previous · Forecast · Actual</span><span>Pulse market context</span></div>
 </section>
 
 <section class="container macro-v1512" id="economic-calendar">
@@ -21,8 +21,13 @@
         <a class="{{ $macroMode==='today' ? 'active' : '' }}" href="{{ route('news.index',['calendar'=>'today']) }}"><span>Today</span><b>{{ number_format($macroCounts['today']) }}</b></a>
         <a class="{{ $macroMode==='upcoming' ? 'active' : '' }}" href="{{ route('news.index',['calendar'=>'upcoming']) }}"><span>Upcoming</span><b>{{ number_format($macroCounts['upcoming']) }}</b></a>
         <a class="{{ $macroMode==='history' ? 'active' : '' }}" href="{{ route('news.index',['calendar'=>'history']) }}"><span>Previous Releases</span><b>{{ number_format($macroCounts['history']) }}</b></a>
-        <a class="{{ $macroMode==='all' ? 'active' : '' }}" href="{{ route('news.index',['calendar'=>'all']) }}"><span>All</span><b>↕</b></a>
+        <a class="{{ $macroMode==='all' ? 'active' : '' }}" href="{{ route('news.index',['calendar'=>'all']) }}"><span>All</span><b>{{ number_format($macroCounts['all'] ?? 0) }}</b></a>
     </nav>
+
+    <div class="macro-status-v1561">
+        <span class="{{ ($calendarLastSyncStatus ?? null) === 'success' ? 'good' : 'pending' }}">{{ ($calendarLastSyncStatus ?? null) === 'success' ? 'Calendar active' : 'Calendar refresh pending' }}</span>
+        <small>@if(!empty($calendarLastSyncAt)) Updated {{ \Illuminate\Support\Carbon::parse($calendarLastSyncAt)->diffForHumans() }} @else Waiting for first successful refresh @endif</small>
+    </div>
 
     <div class="macro-v1512-list">
         @forelse($macroEvents as $event)
@@ -46,10 +51,8 @@
                         <p><b>Possible crypto effect:</b> {{ $event->crypto_impact_summary }}</p>
                     @endif
                     <div>
-                        @if($event->source_url)
-                            <a href="{{ $event->source_url }}" target="_blank" rel="noopener noreferrer">Source ↗</a>
-                        @elseif($event->source)
-                            <span>{{ $event->source }}</span>
+                        @if($event->source)
+                            <span>Source: {{ $event->source }}</span>
                         @endif
                     </div>
                 </div>
@@ -57,7 +60,7 @@
         @empty
             <div class="macro-v1512-empty">
                 <span>◷</span><h3>{{ $macroMode==='history' ? 'No previous releases are stored yet.' : 'No events are available in this period yet.' }}</h3>
-                <p>{{ $calendarConfigured ? 'The calendar is connected. Try another period or refresh again after the next provider sync.' : 'The economic calendar will appear here as soon as the ABS data source is connected and synchronized.' }}</p>
+                <p>{{ $calendarConfigured ? 'Calendar data is refreshing. Try another period or check again shortly.' : 'Economic calendar data is temporarily unavailable.' }}</p>
             </div>
         @endforelse
     </div>
@@ -66,16 +69,16 @@
 </section>
 
 <section class="container live-news-section news-live-v1512">
-    <div class="section-heading-row"><div><span class="news-kicker-v1512">LIVE HEADLINES</span><h2>Verified Industry Headlines</h2><p>Open the original publisher directly for the full story.</p></div><button class="button button-ghost button-small" type="button" data-refresh-live-news>Refresh Headlines</button></div>
+    <div class="section-heading-row"><div><span class="news-kicker-v1512">MARKET HEADLINES</span><h2>Digital Asset News</h2><p>Current market developments with focused Pulse context, risk read and assets in focus.</p></div><button class="button button-ghost button-small" type="button" data-refresh-live-news>Refresh Headlines</button></div>
     <div class="live-headline-grid" data-live-news-list data-live-news-mode="page" data-live-news-limit="12">
         @forelse($liveHeadlines as $headline)
-            <a class="panel live-headline-card" data-live-news-item data-external="1" href="{{ $headline['url'] }}" target="_blank" rel="noopener noreferrer">
+            <a class="panel live-headline-card" data-live-news-item data-external="1" href="{{ $headline['abs_url'] ?? route('news.live.show',['id'=>$headline['id']]) }}">
                 <div class="headline-source"><span>{{ $headline['source_name'] }}</span><time>{{ $headline['published_at'] ? $headline['published_at']->diffForHumans() : 'Time unavailable' }}</time></div>
                 <h2>{{ $headline['title'] }}</h2>
                 @if($headline['excerpt'])
                     <p>{{ $headline['excerpt'] }}</p>
                 @endif
-                <span class="source-link">Open original article ↗</span>
+                <span class="source-link">Open Market Brief →</span>
             </a>
         @empty
             <div class="panel empty-state full-span" data-live-news-empty><h2>Live headlines are refreshing.</h2><p>Please check again shortly.</p></div>
