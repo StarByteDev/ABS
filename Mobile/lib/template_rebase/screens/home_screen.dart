@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/ads/ad_policy.dart';
+import '../../core/ads/banner_ad_slot.dart';
 import '../data/mock_data.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
@@ -76,39 +78,52 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 28),
                 const Center(child: CircularProgressIndicator()),
                 const SizedBox(height: 12),
-                const Center(child: Text('Loading Pulse market intelligence…', style: AppText.muted)),
-              ] else if (app.homeError != null && MockData.coins.first.price <= 0) ...[
+                const Center(
+                    child: Text('Loading Pulse market intelligence…',
+                        style: AppText.muted)),
+              ] else if (app.homeError != null &&
+                  MockData.coins.first.price <= 0) ...[
                 const SizedBox(height: 18),
                 _errorCard(app),
               ] else ...[
-              const SizedBox(height: 16),
-              _btcHero(app),
-              const SectionTitle('Market pulse'),
-              _pulseCard(),
-              const SizedBox(height: 12),
-              _sentimentCard(),
-              const SectionTitle('Futures'),
-              _futuresGrid(),
-              const SizedBox(height: 12),
-              _liquidationsCard(),
-              SectionTitle('Majors', action: 'Watchlist', onAction: () => widget.onTab(1)),
-              _majorsStrip(),
-              const SectionTitle('Market overview'),
-              _overviewGrid(),
-              if (MockData.sectors.isNotEmpty) ...[
-                const SectionTitle('Sectors today'),
-                _sectorsGrid(),
-              ],
-              const SectionTitle('Movers in the last 24h'),
-              _moversCard(),
-              if (!app.hasPulse) ...[const SizedBox(height: 22), _pulsePromo()],
-              SectionTitle('Latest headlines', action: 'All news', onAction: () => widget.onTab(3)),
-              for (final n in MockData.news.take(3))
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: NewsTile(
-                      item: n, onTap: () => push(context, NewsDetailScreen(item: n))),
-                ),
+                const SizedBox(height: 16),
+                _btcHero(app),
+                const SectionTitle('Market pulse'),
+                _pulseCard(),
+                const SizedBox(height: 12),
+                _sentimentCard(),
+                const SectionTitle('Futures'),
+                _futuresGrid(),
+                const SizedBox(height: 12),
+                _liquidationsCard(),
+                SectionTitle('Majors',
+                    action: 'Watchlist', onAction: () => widget.onTab(1)),
+                _majorsStrip(),
+                const InlineBannerAdSlot(placement: BannerPlacement.home),
+                const SectionTitle('Market overview'),
+                _overviewGrid(),
+                if (MockData.sectors.isNotEmpty) ...[
+                  const SectionTitle('Sectors today'),
+                  _sectorsGrid(),
+                ],
+                const SectionTitle('Movers in the last 24h'),
+                _moversCard(),
+                if (!app.hasPulse) ...[
+                  const SizedBox(height: 22),
+                  _pulsePromo()
+                ],
+                SectionTitle('Latest headlines',
+                    action: 'All news', onAction: () => widget.onTab(3)),
+                for (final n in MockData.news.take(3))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: NewsTile(
+                        item: n,
+                        onTap: () => pushContentDetail(
+                            context,
+                            NewsDetailScreen(item: n),
+                            InterstitialMoment.newsDetailClosed)),
+                  ),
               ],
               const RiskNotice(),
             ],
@@ -124,15 +139,19 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.all(13),
         child: const Row(
           children: [
-            Icon(Icons.mark_email_unread_outlined, color: AppColors.amber, size: 21),
+            Icon(Icons.mark_email_unread_outlined,
+                color: AppColors.amber, size: 21),
             SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Activate your ABS account', style: TextStyle(fontWeight: FontWeight.w700)),
+                  Text('Activate your ABS account',
+                      style: TextStyle(fontWeight: FontWeight.w700)),
                   SizedBox(height: 2),
-                  Text('Basic access is available now. Activate from Account to unlock Pulse trading features.', style: AppText.muted),
+                  Text(
+                      'Basic access is available now. Activate from Account to unlock Pulse trading features.',
+                      style: AppText.muted),
                 ],
               ),
             ),
@@ -144,11 +163,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _errorCard(AppState app) => AbsCard(
         child: Column(
           children: [
-            const Icon(Icons.cloud_off_outlined, color: AppColors.amber, size: 30),
+            const Icon(Icons.cloud_off_outlined,
+                color: AppColors.amber, size: 30),
             const SizedBox(height: 8),
-            Text(app.homeError ?? 'Market intelligence is unavailable.', textAlign: TextAlign.center),
+            Text(app.homeError ?? 'Market intelligence is unavailable.',
+                textAlign: TextAlign.center),
             const SizedBox(height: 10),
-            OutlinedButton(onPressed: app.refreshHome, child: const Text('Try again')),
+            OutlinedButton(
+                onPressed: app.refreshHome, child: const Text('Try again')),
           ],
         ),
       );
@@ -164,7 +186,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(_greeting, style: AppText.muted),
                 Text(app.userName,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                    style: const TextStyle(
+                        fontSize: 17, fontWeight: FontWeight.w700)),
               ],
             ),
           ),
@@ -176,7 +199,9 @@ class _HomeScreenState extends State<HomeScreen> {
             const Pill('FREE', color: AppColors.gold),
           IconButton(
             tooltip: 'Price alerts',
-            onPressed: app.emailVerified ? () => push(context, const AlertsScreen()) : null,
+            onPressed: app.emailVerified
+                ? () => push(context, const AlertsScreen())
+                : null,
             icon: const Icon(Icons.notifications_none_rounded),
           ),
         ],
@@ -186,7 +211,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final btc = MockData.coins.first;
     final series = MockData.btcSeries(_tf);
     final shown = _hover == null ? series.last : series[_hover!];
-    final change = series.first > 0 ? (shown - series.first) / series.first * 100 : btc.change;
+    final change = series.first > 0
+        ? (shown - series.first) / series.first * 100
+        : btc.change;
     final color = change >= 0 ? AppColors.up : AppColors.down;
     final watched = app.watchlist.contains(btc.symbol);
     return AbsCard(
@@ -202,27 +229,34 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('BTC/USDT', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                    Text('BTC/USDT',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 15)),
                     Text('ABS central market feed', style: AppText.muted),
                   ],
                 ),
               ),
               IconButton(
                 tooltip: watched ? 'Remove from watchlist' : 'Add to watchlist',
-                onPressed: app.emailVerified ? () => app.toggleWatch(btc.symbol) : null,
-                icon: Icon(watched ? Icons.star_rounded : Icons.star_outline_rounded,
+                onPressed: app.emailVerified
+                    ? () => app.toggleWatch(btc.symbol)
+                    : null,
+                icon: Icon(
+                    watched ? Icons.star_rounded : Icons.star_outline_rounded,
                     color: watched ? AppColors.gold : AppColors.muted),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(fmtNum(shown),
-              style: AppText.figure.copyWith(fontSize: 34, letterSpacing: -0.8)),
+              style:
+                  AppText.figure.copyWith(fontSize: 34, letterSpacing: -0.8)),
           const SizedBox(height: 6),
           Row(children: [
             ChangeBadge(change),
             const SizedBox(width: 8),
-            Text(_hover == null ? 'over $_tfLabel' : 'from start of range', style: AppText.muted),
+            Text(_hover == null ? 'over $_tfLabel' : 'from start of range',
+                style: AppText.muted),
           ]),
           const SizedBox(height: 14),
           SizedBox(
@@ -235,7 +269,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 4),
           Text('Touch and drag the chart to inspect prices',
-              style: AppText.muted.copyWith(fontSize: 11, color: AppColors.faint)),
+              style:
+                  AppText.muted.copyWith(fontSize: 11, color: AppColors.faint)),
           const SizedBox(height: 12),
           SegmentToggle(
             options: MockData.timeframes,
@@ -251,9 +286,13 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const Divider(height: 28),
           Row(children: [
-            Expanded(child: MiniStat(label: '24h high', value: fmtNum(btc.high))),
+            Expanded(
+                child: MiniStat(label: '24h high', value: fmtNum(btc.high))),
             Expanded(child: MiniStat(label: '24h low', value: fmtNum(btc.low))),
-            Expanded(child: MiniStat(label: '24h volume', value: '${fmtCompact(btc.volume)} USDT')),
+            Expanded(
+                child: MiniStat(
+                    label: '24h volume',
+                    value: '${fmtCompact(btc.volume)} USDT')),
           ]),
         ],
       ),
@@ -265,7 +304,10 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Row(
               children: [
-                SizedBox(width: 128, height: 76, child: PulseGauge(score: MockData.pulseScore)),
+                SizedBox(
+                    width: 128,
+                    height: 76,
+                    child: PulseGauge(score: MockData.pulseScore)),
                 SizedBox(width: 18),
                 Expanded(
                   child: Column(
@@ -275,9 +317,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       SizedBox(height: 2),
                       Text(MockData.pulseLabel,
                           style: TextStyle(
-                              fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.amber)),
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.amber)),
                       SizedBox(height: 2),
-                      Text('Score ${MockData.pulseScore} of 100', style: AppText.muted),
+                      Text('Score ${MockData.pulseScore} of 100',
+                          style: AppText.muted),
                     ],
                   ),
                 ),
@@ -304,8 +349,11 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [
-              Expanded(child: Text('Market sentiment', style: AppText.h2.copyWith(fontSize: 15))),
-              Text('${MockData.sentimentScore}', style: AppText.figure.copyWith(fontSize: 20)),
+              Expanded(
+                  child: Text('Market sentiment',
+                      style: AppText.h2.copyWith(fontSize: 15))),
+              Text('${MockData.sentimentScore}',
+                  style: AppText.figure.copyWith(fontSize: 20)),
               const Text(' / 100', style: AppText.muted),
             ]),
             const SizedBox(height: 12),
@@ -319,9 +367,14 @@ class _HomeScreenState extends State<HomeScreen> {
               spacing: 16,
               runSpacing: 6,
               children: [
-                LegendDot(color: AppColors.up, label: 'Bullish ${MockData.bullish}%'),
-                LegendDot(color: AppColors.muted, label: 'Neutral ${MockData.neutral}%'),
-                LegendDot(color: AppColors.down, label: 'Bearish ${MockData.bearish}%'),
+                LegendDot(
+                    color: AppColors.up, label: 'Bullish ${MockData.bullish}%'),
+                LegendDot(
+                    color: AppColors.muted,
+                    label: 'Neutral ${MockData.neutral}%'),
+                LegendDot(
+                    color: AppColors.down,
+                    label: 'Bearish ${MockData.bearish}%'),
               ],
             ),
           ],
@@ -346,17 +399,23 @@ class _HomeScreenState extends State<HomeScreen> {
             note: 'BTC USD-M'),
         StatTile(
             label: 'Funding rate',
-            value: MockData.fundingRate.isFinite ? '${MockData.fundingRate.toStringAsFixed(3)}%' : '—',
+            value: MockData.fundingRate.isFinite
+                ? '${MockData.fundingRate.toStringAsFixed(3)}%'
+                : '—',
             note: 'Negative',
             noteColor: AppColors.down),
         StatTile(
             label: 'Long / short ratio',
-            value: MockData.longShort.isFinite ? MockData.longShort.toStringAsFixed(2) : '—',
+            value: MockData.longShort.isFinite
+                ? MockData.longShort.toStringAsFixed(2)
+                : '—',
             note: 'Long-heavy',
             noteColor: AppColors.up),
         StatTile(
             label: 'Perp basis',
-            value: MockData.basis.isFinite ? '${MockData.basis.toStringAsFixed(3)}%' : '—',
+            value: MockData.basis.isFinite
+                ? '${MockData.basis.toStringAsFixed(3)}%'
+                : '—',
             note: 'Below index',
             noteColor: AppColors.down),
       ]);
@@ -370,7 +429,8 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Liquidations in the last 24h', style: AppText.h2.copyWith(fontSize: 15)),
+          Text('Liquidations in the last 24h',
+              style: AppText.h2.copyWith(fontSize: 15)),
           const SizedBox(height: 12),
           SplitBar(height: 10, parts: [
             (longs, AppColors.down),
@@ -417,12 +477,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     Row(children: [
                       CoinAvatar(symbol: c.symbol, color: c.color, size: 26),
                       const SizedBox(width: 8),
-                      Text(c.symbol, style: const TextStyle(fontWeight: FontWeight.w700)),
+                      Text(c.symbol,
+                          style: const TextStyle(fontWeight: FontWeight.w700)),
                       const Spacer(),
                       ChangeText(c.change, size: 11.5),
                     ]),
                     const Spacer(),
-                    Text(fmtPrice(c.price), style: AppText.figure.copyWith(fontSize: 16)),
+                    Text(fmtPrice(c.price),
+                        style: AppText.figure.copyWith(fontSize: 16)),
                     const SizedBox(height: 6),
                     SizedBox(
                       height: 30,
@@ -445,7 +507,9 @@ class _HomeScreenState extends State<HomeScreen> {
       tiles.add(StatTile(
         label: 'Total market cap',
         value: fmtCompact(MockData.totalMcap, prefix: '\$'),
-        note: MockData.mcapChange.isFinite ? fmtPct(MockData.mcapChange) : 'Global crypto market',
+        note: MockData.mcapChange.isFinite
+            ? fmtPct(MockData.mcapChange)
+            : 'Global crypto market',
         noteColor: MockData.mcapChange.isFinite
             ? (MockData.mcapChange >= 0 ? AppColors.up : AppColors.down)
             : AppColors.muted,
@@ -558,7 +622,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
+                      style: const TextStyle(
+                          fontSize: 11.5, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 4),
                   FittedBox(child: ChangeText(s.change, size: 11.5)),
                 ],
@@ -584,7 +649,8 @@ class _HomeScreenState extends State<HomeScreen> {
               dense: true,
               contentPadding: const EdgeInsets.symmetric(horizontal: 6),
               leading: CoinAvatar(symbol: m.symbol, size: 32),
-              title: Text(m.symbol, style: const TextStyle(fontWeight: FontWeight.w700)),
+              title: Text(m.symbol,
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
               subtitle: Text(m.name, style: AppText.muted),
               trailing: ChangeBadge(m.change),
             ),

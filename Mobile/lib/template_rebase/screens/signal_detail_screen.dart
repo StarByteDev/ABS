@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/ads/ad_policy.dart';
+import '../../core/ads/banner_ad_slot.dart';
 import '../data/mock_data.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
@@ -19,7 +21,8 @@ class SignalDetailScreen extends StatelessWidget {
     final isLong = s.side == Side.long;
     final sideColor = isLong ? AppColors.up : AppColors.down;
     final levels = <(String, double, Color)>[
-      for (int i = 0; i < s.targets.length; i++) ('Target ${i + 1}', s.targets[i], AppColors.up),
+      for (int i = 0; i < s.targets.length; i++)
+        ('Target ${i + 1}', s.targets[i], AppColors.up),
       ('Entry', s.entry, AppColors.accent),
       ('Stop', s.stop, AppColors.down),
     ]..sort((a, b) => b.$2.compareTo(a.$2));
@@ -33,28 +36,35 @@ class SignalDetailScreen extends StatelessWidget {
         children: [
           AbsCard(
             child: Row(children: [
-              ConfidenceRing(value: s.confidence, size: 84, stroke: 7, caption: 'confidence'),
+              ConfidenceRing(
+                  value: s.confidence,
+                  size: 84,
+                  stroke: 7,
+                  caption: 'confidence'),
               const SizedBox(width: 18),
               Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    crossAxisAlignment: WrapCrossAlignment.center,
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Pill(isLong ? 'Long' : 'Short', color: sideColor),
-                      Pill(s.timeframe, color: AppColors.muted),
-                      StatusLabel(signal: s),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(isLong ? 'Long setup' : 'Short setup',
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 4),
-                  Text(
-                      'Posted ${timeAgo(s.minutesAgo)}. ${s.agree} of 15 strategies agree on the 15M chart.',
-                      style: AppText.muted.copyWith(height: 1.4)),
-                ]),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Pill(isLong ? 'Long' : 'Short', color: sideColor),
+                          Pill(s.timeframe, color: AppColors.muted),
+                          StatusLabel(signal: s),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Text(isLong ? 'Long setup' : 'Short setup',
+                          style: const TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 4),
+                      Text(
+                          'Posted ${timeAgo(s.minutesAgo)}. ${s.agree} of 15 strategies agree on the 15M chart.',
+                          style: AppText.muted.copyWith(height: 1.4)),
+                    ]),
               ),
             ]),
           ),
@@ -68,18 +78,23 @@ class SignalDetailScreen extends StatelessWidget {
                     Container(
                         width: 10,
                         height: 10,
-                        decoration: BoxDecoration(color: l.$3, shape: BoxShape.circle)),
+                        decoration:
+                            BoxDecoration(color: l.$3, shape: BoxShape.circle)),
                     const SizedBox(width: 12),
                     Expanded(
                         child: Text(l.$1,
                             style: TextStyle(
-                                fontWeight:
-                                    l.$1 == 'Entry' ? FontWeight.w700 : FontWeight.w500))),
-                    Text(fmtPrice(l.$2), style: AppText.figure.copyWith(fontSize: 14.5)),
+                                fontWeight: l.$1 == 'Entry'
+                                    ? FontWeight.w700
+                                    : FontWeight.w500))),
+                    Text(fmtPrice(l.$2),
+                        style: AppText.figure.copyWith(fontSize: 14.5)),
                     SizedBox(
                       width: 72,
                       child: Text(
-                        l.$1 == 'Entry' ? '' : fmtPct((l.$2 - s.entry) / s.entry * 100),
+                        l.$1 == 'Entry'
+                            ? ''
+                            : fmtPct((l.$2 - s.entry) / s.entry * 100),
                         textAlign: TextAlign.right,
                         style: AppText.muted,
                       ),
@@ -88,7 +103,9 @@ class SignalDetailScreen extends StatelessWidget {
                 ),
               const Divider(height: 20),
               Row(children: [
-                const Expanded(child: Text('Risk to reward at target 1', style: AppText.muted)),
+                const Expanded(
+                    child: Text('Risk to reward at target 1',
+                        style: AppText.muted)),
                 Text('1 : ${s.riskReward.toStringAsFixed(2)}',
                     style: AppText.figure.copyWith(fontSize: 14.5)),
               ]),
@@ -100,8 +117,12 @@ class SignalDetailScreen extends StatelessWidget {
             child: Column(children: [
               const Row(children: [
                 Expanded(child: Text('Strategy', style: AppText.label)),
-                SizedBox(width: 48, child: Center(child: Text('15M', style: AppText.label))),
-                SizedBox(width: 48, child: Center(child: Text('4H', style: AppText.label))),
+                SizedBox(
+                    width: 48,
+                    child: Center(child: Text('15M', style: AppText.label))),
+                SizedBox(
+                    width: 48,
+                    child: Center(child: Text('4H', style: AppText.label))),
               ]),
               const Divider(height: 18),
               for (int i = 0; i < MockData.strategies.length; i++)
@@ -117,22 +138,38 @@ class SignalDetailScreen extends StatelessWidget {
                 ),
               const SizedBox(height: 6),
               const Wrap(spacing: 14, runSpacing: 6, children: [
-                _Key(icon: Icons.check_circle_rounded, color: AppColors.up, label: 'Agrees'),
-                _Key(icon: Icons.remove_circle_outline_rounded, color: AppColors.faint, label: 'Neutral'),
-                _Key(icon: Icons.cancel_rounded, color: AppColors.down, label: 'Disagrees'),
+                _Key(
+                    icon: Icons.check_circle_rounded,
+                    color: AppColors.up,
+                    label: 'Agrees'),
+                _Key(
+                    icon: Icons.remove_circle_outline_rounded,
+                    color: AppColors.faint,
+                    label: 'Neutral'),
+                _Key(
+                    icon: Icons.cancel_rounded,
+                    color: AppColors.down,
+                    label: 'Disagrees'),
               ]),
               const SizedBox(height: 6),
             ]),
           ),
+          const InlineBannerAdSlot(
+            placement: BannerPlacement.signalDetail,
+            margin: EdgeInsets.only(top: 22),
+          ),
           const SectionTitle('Analyst note'),
-          AbsCard(child: Text(s.note, style: const TextStyle(height: 1.55, fontSize: 14.5))),
+          AbsCard(
+              child: Text(s.note,
+                  style: const TextStyle(height: 1.55, fontSize: 14.5))),
           const SizedBox(height: 20),
           PrimaryButton(
             label: 'Open price alerts',
             icon: Icons.add_alert_outlined,
             onPressed: AppScope.read(context).emailVerified
                 ? () => push(context, const AlertsScreen())
-                : () => snack(context, 'Activate your account to create trading alerts.'),
+                : () => snack(
+                    context, 'Activate your account to create trading alerts.'),
           ),
           const RiskNotice(),
         ],
@@ -148,7 +185,8 @@ class _Key extends StatelessWidget {
   final String label;
 
   @override
-  Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [
+  Widget build(BuildContext context) =>
+      Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(icon, size: 14, color: color),
         const SizedBox(width: 4),
         Text(label, style: AppText.muted.copyWith(fontSize: 11.5)),

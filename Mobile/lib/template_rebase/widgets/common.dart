@@ -2,11 +2,26 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../../core/ads/ad_policy.dart';
+import '../../core/ads/ad_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
 
 Future<T?> push<T>(BuildContext context, Widget page) =>
     Navigator.of(context).push<T>(MaterialPageRoute(builder: (_) => page));
+
+/// Opens a content-detail page (news article, signal detail). When the user
+/// comes back, the central ad policy may show a capped interstitial; if none
+/// is ready or allowed, navigation simply continues.
+Future<T?> pushContentDetail<T>(
+  BuildContext context,
+  Widget page,
+  InterstitialMoment moment,
+) async {
+  final result = await push<T>(context, page);
+  AdService.instance.onContentDetailClosed(moment);
+  return result;
+}
 
 Route<T> fadeRoute<T>(Widget page) => PageRouteBuilder<T>(
       transitionDuration: const Duration(milliseconds: 380),
@@ -89,7 +104,8 @@ class SectionTitle extends StatelessWidget {
 }
 
 class PrimaryButton extends StatelessWidget {
-  const PrimaryButton({super.key, required this.label, this.onPressed, this.icon});
+  const PrimaryButton(
+      {super.key, required this.label, this.onPressed, this.icon});
   final String label;
   final VoidCallback? onPressed;
   final IconData? icon;
@@ -140,7 +156,9 @@ class SegmentToggle extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 9),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: i == index ? fade(AppColors.accent, .18) : Colors.transparent,
+                    color: i == index
+                        ? fade(AppColors.accent, .18)
+                        : Colors.transparent,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
@@ -209,20 +227,26 @@ class Pill extends StatelessWidget {
 }
 
 class CoinAvatar extends StatelessWidget {
-  const CoinAvatar({super.key, required this.symbol, this.size = 36, this.color});
+  const CoinAvatar(
+      {super.key, required this.symbol, this.size = 36, this.color});
   final String symbol;
   final double size;
   final Color? color;
 
   static const _palette = [
-    Color(0xFF4DA3FF), Color(0xFFB08CFF), Color(0xFF2FD4E0),
-    Color(0xFFFFB347), Color(0xFF26D07C), Color(0xFFFF7A9A),
+    Color(0xFF4DA3FF),
+    Color(0xFFB08CFF),
+    Color(0xFF2FD4E0),
+    Color(0xFFFFB347),
+    Color(0xFF26D07C),
+    Color(0xFFFF7A9A),
   ];
 
   @override
   Widget build(BuildContext context) {
     final c = color ??
-        _palette[symbol.codeUnits.fold<int>(0, (a, b) => a + b) % _palette.length];
+        _palette[
+            symbol.codeUnits.fold<int>(0, (a, b) => a + b) % _palette.length];
     return Container(
       width: size,
       height: size,
@@ -234,14 +258,16 @@ class CoinAvatar extends StatelessWidget {
       ),
       child: Text(
         symbol.isEmpty ? '?' : symbol[0],
-        style: TextStyle(color: c, fontWeight: FontWeight.w800, fontSize: size * 0.42),
+        style: TextStyle(
+            color: c, fontWeight: FontWeight.w800, fontSize: size * 0.42),
       ),
     );
   }
 }
 
 class MiniStat extends StatelessWidget {
-  const MiniStat({super.key, required this.label, required this.value, this.valueColor});
+  const MiniStat(
+      {super.key, required this.label, required this.value, this.valueColor});
   final String label;
   final String value;
   final Color? valueColor;
@@ -279,7 +305,10 @@ class StatTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: AppText.muted, maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text(label,
+                style: AppText.muted,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
@@ -290,7 +319,9 @@ class StatTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                      color: noteColor, fontSize: 12, fontWeight: FontWeight.w600)),
+                      color: noteColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600)),
           ],
         ),
       );
@@ -337,7 +368,8 @@ class PointsChip extends StatelessWidget {
               const Icon(Icons.stars_rounded, color: AppColors.gold, size: 16),
               const SizedBox(width: 5),
               Text('$points',
-                  style: AppText.figure.copyWith(color: AppColors.gold, fontSize: 13)),
+                  style: AppText.figure
+                      .copyWith(color: AppColors.gold, fontSize: 13)),
             ],
           ),
         ),
@@ -384,7 +416,11 @@ class LockedOverlay extends StatelessWidget {
 }
 
 class EmptyState extends StatelessWidget {
-  const EmptyState({super.key, required this.icon, required this.title, required this.message});
+  const EmptyState(
+      {super.key,
+      required this.icon,
+      required this.title,
+      required this.message});
   final IconData icon;
   final String title;
   final String message;

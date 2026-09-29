@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Services\Push\PushNotificationService;
 use App\Http\Controllers\Controller;
 use App\Models\PulsePlan;
 use App\Models\PulseSystemSetting;
@@ -72,6 +73,11 @@ class AuthController extends Controller
         if ($user->status === 'pending' && ! $user->hasVerifiedEmail()) return response()->json(['message' => 'Activate your ABS account using the secure link sent to your email.', 'activation_required' => true], 403);
         if ($user->status !== 'active') return response()->json(['message' => 'This account is not currently active.'], 403);
         $user->update(['last_login_at' => now()]);
+        // Notifies the account's already-registered devices (a signing-in phone
+        // attaches its own push token only after this login).
+        PushNotificationService::safely(fn (PushNotificationService $push) => $push->queueSecurity(
+            $user, 'New sign-in to your ABS account', 'Signed in on '.($data['device_name'] ?? 'a mobile device').'. Not you? Change your password now.', 'login',
+        ));
         return response()->json(['data' => ['user' => $user, 'token' => $user->createToken($data['device_name'] ?? 'mobile')->plainTextToken]]);
     }
 

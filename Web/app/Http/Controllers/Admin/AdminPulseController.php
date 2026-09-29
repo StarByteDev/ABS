@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Services\Push\PushNotificationService;
 use App\Http\Controllers\Controller;
 use App\Models\PulseAlert;
 use App\Models\PulseAuditLog;
@@ -848,6 +849,12 @@ class AdminPulseController extends Controller
                 'data' => json_encode(['admin_broadcast' => true]), 'created_at' => now(), 'updated_at' => now(),
             ])->all();
             PulseAlert::query()->insert($rows);
+            $broadcastKey = sha1($data['type'].'|'.$data['title'].'|'.now()->timestamp);
+            PushNotificationService::safely(function (PushNotificationService $push) use ($chunk, $data, $broadcastKey): void {
+                foreach ($chunk as $userId) {
+                    $push->queueAlert((int) $userId, $data['type'], $data['title'], $data['message'], ['admin_broadcast' => 1], "broadcast:{$broadcastKey}:{$userId}");
+                }
+            });
 
             if ($request->boolean('send_email')) {
                 $emailUsers = User::query()->whereIn('id', $chunk->all())->get();

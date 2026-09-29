@@ -22,3 +22,5 @@ mobile/pubspec.lock
 *.swp
 *.swo
 *~
+# macOS AppleDouble metadata
+._*

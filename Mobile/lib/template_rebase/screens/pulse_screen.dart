@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../core/ads/ad_policy.dart';
+import '../../core/ads/banner_ad_slot.dart';
 import '../../core/api_client.dart';
 import '../../core/json_tools.dart';
 import '../data/mock_data.dart';
@@ -163,11 +165,13 @@ class _PulseScreenState extends State<PulseScreen> {
       if (signal != null) candidates.add(signal);
     }
 
-    candidates.addAll(MockData.signals.where((s) => s.status == SignalStatus.active));
+    candidates
+        .addAll(MockData.signals.where((s) => s.status == SignalStatus.active));
     if (candidates.isEmpty) return;
 
     candidates.sort((a, b) {
-      final persisted = (b.backendId != null ? 1 : 0).compareTo(a.backendId != null ? 1 : 0);
+      final persisted =
+          (b.backendId != null ? 1 : 0).compareTo(a.backendId != null ? 1 : 0);
       if (persisted != 0) return persisted;
       return b.confidence.compareTo(a.confidence);
     });
@@ -183,7 +187,8 @@ class _PulseScreenState extends State<PulseScreen> {
         <String>{'active', 'qualified', 'ready', 'signal'}.contains(status);
     final id = JsonTools.integer(row['id'] ?? row['signal_id']);
     final tradeAction = JsonTools.map(row['trade_action']);
-    final actionSignalId = JsonTools.integer(tradeAction['signal_id'] ?? tradeAction['id']);
+    final actionSignalId =
+        JsonTools.integer(tradeAction['signal_id'] ?? tradeAction['id']);
 
     // Scanner overview may include evaluated but unqualified rows. Only surface
     // a result as the Best Signal when the backend marks it qualified or gives
@@ -212,7 +217,12 @@ class _PulseScreenState extends State<PulseScreen> {
     }
 
     for (final container in <Map<String, dynamic>>[root, data]) {
-      for (final key in const <String>['best_signal', 'bestSignal', 'signal', 'setup']) {
+      for (final key in const <String>[
+        'best_signal',
+        'bestSignal',
+        'signal',
+        'setup'
+      ]) {
         takeMap(container[key]);
       }
       out.addAll(JsonTools.mapList(container['signals']));
@@ -236,7 +246,8 @@ class _PulseScreenState extends State<PulseScreen> {
       _scanStage = 0;
       _scanError = null;
     });
-    _scanStageTimer = Timer.periodic(const Duration(milliseconds: 850), (timer) {
+    _scanStageTimer =
+        Timer.periodic(const Duration(milliseconds: 850), (timer) {
       if (!mounted) return;
       if (_scanStage < _scanStages.length - 1) {
         setState(() => _scanStage++);
@@ -249,7 +260,8 @@ class _PulseScreenState extends State<PulseScreen> {
         '/pulse/scanner/run',
         body: const <String, dynamic>{'timeframe': 'all'},
       );
-      _lastScan = JsonTools.map(JsonTools.at(response, 'data', <String, dynamic>{}));
+      _lastScan =
+          JsonTools.map(JsonTools.at(response, 'data', <String, dynamic>{}));
       final direct = _scanResponseCandidates(response);
 
       // Keep the scan animation visible long enough to communicate the real
@@ -268,9 +280,11 @@ class _PulseScreenState extends State<PulseScreen> {
       setState(() => _scanCompleted = true);
       if (_effectiveBestSignal != null) {
         final best = _effectiveBestSignal!;
-        snack(context, 'Best Signal ready · ${best.pair} ${best.side == Side.long ? 'LONG' : 'SHORT'}');
+        snack(context,
+            'Best Signal ready · ${best.pair} ${best.side == Side.long ? 'LONG' : 'SHORT'}');
       } else {
-        snack(context, 'Scan complete · no setup currently meets the ABS qualification rules.');
+        snack(context,
+            'Scan complete · no setup currently meets the ABS qualification rules.');
       }
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -300,7 +314,9 @@ class _PulseScreenState extends State<PulseScreen> {
           actions: [
             IconButton(
               tooltip: 'Refresh Pulse',
-              onPressed: app.pulseLoading || _findingBest ? null : () => _refreshAll(app),
+              onPressed: app.pulseLoading || _findingBest
+                  ? null
+                  : () => _refreshAll(app),
               icon: const Icon(Icons.refresh_rounded),
             ),
             IconButton(
@@ -310,7 +326,9 @@ class _PulseScreenState extends State<PulseScreen> {
             ),
             IconButton(
               tooltip: 'Price alerts',
-              onPressed: app.emailVerified ? () => push(context, const AlertsScreen()) : null,
+              onPressed: app.emailVerified
+                  ? () => push(context, const AlertsScreen())
+                  : null,
               icon: const Icon(Icons.notifications_none_rounded),
             ),
           ],
@@ -330,6 +348,14 @@ class _PulseScreenState extends State<PulseScreen> {
 
   Widget _signalsTab(AppState app) {
     final list = _signals;
+    // In-feed: after the 3rd signal (or after a shorter list); a second slot
+    // only on long feeds, 7 cards later.
+    final adSlots = AdPolicy.feedBannerPositions(
+      list.length,
+      first: 3,
+      spacing: 7,
+      trailingWhenShort: true,
+    );
     return RefreshIndicator(
       onRefresh: () => _refreshAll(app),
       child: ListView(
@@ -347,7 +373,9 @@ class _PulseScreenState extends State<PulseScreen> {
                 const Icon(Icons.info_outline_rounded, color: AppColors.amber),
                 const SizedBox(width: 10),
                 Expanded(child: Text(app.pulseError!, style: AppText.muted)),
-                IconButton(onPressed: app.refreshPulse, icon: const Icon(Icons.refresh_rounded)),
+                IconButton(
+                    onPressed: app.refreshPulse,
+                    icon: const Icon(Icons.refresh_rounded)),
               ]),
             ),
             const SizedBox(height: 12),
@@ -359,7 +387,9 @@ class _PulseScreenState extends State<PulseScreen> {
           Row(
             children: [
               const Expanded(
-                child: Text('Qualified Signals', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                child: Text('Qualified Signals',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               ),
               Text('${_allSignals.length}', style: AppText.muted),
             ],
@@ -381,7 +411,8 @@ class _PulseScreenState extends State<PulseScreen> {
                   onSelected: (_) => setState(() => _filter = f),
                   selectedColor: fade(AppColors.accent, .2),
                   backgroundColor: AppColors.surface,
-                  side: BorderSide(color: sel ? fade(AppColors.accent, .5) : AppColors.line),
+                  side: BorderSide(
+                      color: sel ? fade(AppColors.accent, .5) : AppColors.line),
                   labelStyle: TextStyle(
                     color: sel ? AppColors.accent : AppColors.muted,
                     fontWeight: FontWeight.w600,
@@ -393,22 +424,34 @@ class _PulseScreenState extends State<PulseScreen> {
           const SizedBox(height: 14),
           if (list.isEmpty)
             EmptyState(
-              icon: app.hasPulse ? Icons.radar_rounded : Icons.lock_outline_rounded,
-              title: app.hasPulse ? 'No qualified signal in this view' : 'Pulse signals are locked',
+              icon: app.hasPulse
+                  ? Icons.radar_rounded
+                  : Icons.lock_outline_rounded,
+              title: app.hasPulse
+                  ? 'No qualified signal in this view'
+                  : 'Pulse signals are locked',
               message: app.hasPulse
                   ? 'Use Find Best Signal above. ABS will scan the package universe across 15M + 4H and reveal the strongest setup only when one qualifies.'
                   : app.limitedAccount
                       ? 'Activate your email, then choose a Pulse package to unlock the scanner and full signal list.'
                       : 'Choose a Pulse package to unlock the scanner and full signal list.',
             ),
-          for (int i = 0; i < list.length; i++)
+          for (int i = 0; i < list.length; i++) ...[
+            if (adSlots.contains(i))
+              const InlineBannerAdSlot(
+                placement: BannerPlacement.pulse,
+                margin: EdgeInsets.only(top: 6, bottom: 18),
+              ),
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: (app.hasPulse || i == 0)
                   ? SignalCard(
                       signal: list[i],
                       preview: !app.hasPulse,
-                      onTap: () => push(context, SignalDetailScreen(signal: list[i])),
+                      onTap: () => pushContentDetail(
+                          context,
+                          SignalDetailScreen(signal: list[i]),
+                          InterstitialMoment.signalDetailClosed),
                     )
                   : LockedOverlay(
                       label: 'Unlock with Pulse',
@@ -416,6 +459,9 @@ class _PulseScreenState extends State<PulseScreen> {
                       child: SignalCard(signal: list[i]),
                     ),
             ),
+          ],
+          if (adSlots.contains(list.length))
+            const InlineBannerAdSlot(placement: BannerPlacement.pulse),
           const RiskNotice(),
         ],
       ),
@@ -436,16 +482,21 @@ class _PulseScreenState extends State<PulseScreen> {
                 color: fade(AppColors.gold, .1),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Icon(Icons.radar_rounded, color: AppColors.gold, size: 27),
+              child: const Icon(Icons.radar_rounded,
+                  color: AppColors.gold, size: 27),
             ),
             const SizedBox(width: 12),
             const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Find Best Signal', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                  Text('Find Best Signal',
+                      style:
+                          TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                   SizedBox(height: 3),
-                  Text('Activate Pulse access to scan the package universe across 15M + 4H.', style: AppText.muted),
+                  Text(
+                      'Activate Pulse access to scan the package universe across 15M + 4H.',
+                      style: AppText.muted),
                 ],
               ),
             ),
@@ -469,11 +520,13 @@ class _PulseScreenState extends State<PulseScreen> {
       _marketHealth['healthy'],
       JsonTools.boolean(_marketHealth['is_healthy'], true),
     );
-    final scanUnlimited = JsonTools.boolean(JsonTools.at(_scanUsage, 'scans.unlimited'));
+    final scanUnlimited =
+        JsonTools.boolean(JsonTools.at(_scanUsage, 'scans.unlimited'));
     final scanRemaining = JsonTools.at(
       _scanUsage,
       'scans.remaining',
-      JsonTools.at(_scanUsage, 'scanner.remaining', JsonTools.at(_scanUsage, 'scanner_runs_remaining', '—')),
+      JsonTools.at(_scanUsage, 'scanner.remaining',
+          JsonTools.at(_scanUsage, 'scanner_runs_remaining', '—')),
     );
 
     return AbsCard(
@@ -491,9 +544,16 @@ class _PulseScreenState extends State<PulseScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('FIND BEST SIGNAL', style: TextStyle(color: AppColors.gold, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.1)),
+                    Text('FIND BEST SIGNAL',
+                        style: TextStyle(
+                            color: AppColors.gold,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.1)),
                     SizedBox(height: 5),
-                    Text('One strongest qualifying setup', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+                    Text('One strongest qualifying setup',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 18)),
                     SizedBox(height: 5),
                     Text(
                       'ABS evaluates your package market universe across 15M and 4H, applies the existing Pulse strategy rules, then surfaces only the strongest qualifying setup.',
@@ -509,10 +569,19 @@ class _PulseScreenState extends State<PulseScreen> {
             spacing: 7,
             runSpacing: 7,
             children: [
-              Pill(selectedPairs > 0 ? '$selectedPairs markets' : 'Package universe', color: AppColors.accent),
+              Pill(
+                  selectedPairs > 0
+                      ? '$selectedPairs markets'
+                      : 'Package universe',
+                  color: AppColors.accent),
               const Pill('15M + 4H', color: AppColors.accent),
-              Pill(healthy ? 'Market data ready' : 'Data updating', color: healthy ? AppColors.up : AppColors.amber),
-              Pill(scanUnlimited ? 'Unlimited scans' : '$scanRemaining scans left', color: AppColors.muted),
+              Pill(healthy ? 'Market data ready' : 'Data updating',
+                  color: healthy ? AppColors.up : AppColors.amber),
+              Pill(
+                  scanUnlimited
+                      ? 'Unlimited scans'
+                      : '$scanRemaining scans left',
+                  color: AppColors.muted),
             ],
           ),
           if (_findingBest) ...[
@@ -533,7 +602,8 @@ class _PulseScreenState extends State<PulseScreen> {
                   Expanded(
                     child: Text(
                       _scanStages[_scanStage],
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700, fontSize: 12.5),
                     ),
                   ),
                 ],
@@ -544,30 +614,40 @@ class _PulseScreenState extends State<PulseScreen> {
           ],
           if (_scanError != null && !_findingBest) ...[
             const SizedBox(height: 12),
-            Text(_scanError!, style: const TextStyle(color: AppColors.down, fontSize: 12.5)),
+            Text(_scanError!,
+                style: const TextStyle(color: AppColors.down, fontSize: 12.5)),
           ],
           if (!_findingBest && _effectiveBestSignal != null) ...[
             const SizedBox(height: 16),
             Row(
               children: [
-                const LegendDot(color: AppColors.up, label: 'Best Signal ready'),
+                const LegendDot(
+                    color: AppColors.up, label: 'Best Signal ready'),
                 const Spacer(),
-                Text('Score ${_effectiveBestSignal!.confidence}', style: const TextStyle(color: AppColors.accent, fontWeight: FontWeight.w800)),
+                Text('Score ${_effectiveBestSignal!.confidence}',
+                    style: const TextStyle(
+                        color: AppColors.accent, fontWeight: FontWeight.w800)),
               ],
             ),
             const SizedBox(height: 10),
             SignalCard(
               signal: _effectiveBestSignal!,
-              onTap: () => push(context, SignalDetailScreen(signal: _effectiveBestSignal!)),
+              onTap: () => pushContentDetail(
+                  context,
+                  SignalDetailScreen(signal: _effectiveBestSignal!),
+                  InterstitialMoment.signalDetailClosed),
             ),
-          ] else if (!_findingBest && _scanCompleted && _effectiveBestSignal == null) ...[
+          ] else if (!_findingBest &&
+              _scanCompleted &&
+              _effectiveBestSignal == null) ...[
             const SizedBox(height: 14),
             AbsCard(
               color: AppColors.bg,
               child: const Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.check_circle_outline_rounded, color: AppColors.muted),
+                  Icon(Icons.check_circle_outline_rounded,
+                      color: AppColors.muted),
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -582,20 +662,33 @@ class _PulseScreenState extends State<PulseScreen> {
           const SizedBox(height: 14),
           Row(
             children: [
-              Expanded(child: _ScanMetric(label: 'Market universe', value: selectedPairs > 0 ? '$selectedPairs' : '—')),
+              Expanded(
+                  child: _ScanMetric(
+                      label: 'Market universe',
+                      value: selectedPairs > 0 ? '$selectedPairs' : '—')),
               const SizedBox(width: 8),
-              Expanded(child: _ScanMetric(label: 'Qualified', value: setupCount > 0 ? '$setupCount' : (_effectiveBestSignal == null ? '0' : '1'))),
+              Expanded(
+                  child: _ScanMetric(
+                      label: 'Qualified',
+                      value: setupCount > 0
+                          ? '$setupCount'
+                          : (_effectiveBestSignal == null ? '0' : '1'))),
               const SizedBox(width: 8),
-              Expanded(child: _ScanMetric(label: 'Coverage', value: '15M + 4H')),
+              Expanded(
+                  child: _ScanMetric(label: 'Coverage', value: '15M + 4H')),
             ],
           ),
           const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: _findingBest || !healthy ? null : () => _findBestSignal(app),
+              onPressed:
+                  _findingBest || !healthy ? null : () => _findBestSignal(app),
               icon: _findingBest
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.radar_rounded),
               label: Text(
                 _findingBest
@@ -609,7 +702,8 @@ class _PulseScreenState extends State<PulseScreen> {
           const SizedBox(height: 7),
           const Text(
             'A scan does not place a trade. It only creates or reveals a qualified signal for review.',
-            style: TextStyle(color: AppColors.faint, fontSize: 10.5, height: 1.35),
+            style:
+                TextStyle(color: AppColors.faint, fontSize: 10.5, height: 1.35),
           ),
         ],
       ),
@@ -628,8 +722,10 @@ class _PulseScreenState extends State<PulseScreen> {
           const Icon(Icons.verified_rounded, color: AppColors.up),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('$planName is active', style: const TextStyle(fontWeight: FontWeight.w700)),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('$planName is active',
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 2),
               Text(
                 '${app.daysLeft} ${app.daysLeft == 1 ? 'day' : 'days'} left. Best Signal and qualified Pulse signals are available.',
@@ -647,10 +743,13 @@ class _PulseScreenState extends State<PulseScreen> {
           Icon(Icons.hourglass_top_rounded, color: AppColors.amber),
           SizedBox(width: 12),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Payment under review', style: TextStyle(fontWeight: FontWeight.w700)),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Payment under review',
+                  style: TextStyle(fontWeight: FontWeight.w700)),
               SizedBox(height: 2),
-              Text('Access starts once an admin verifies your transaction.', style: AppText.muted),
+              Text('Access starts once an admin verifies your transaction.',
+                  style: AppText.muted),
             ]),
           ),
         ]),
@@ -659,11 +758,20 @@ class _PulseScreenState extends State<PulseScreen> {
     return AbsCard(
       onTap: () => push(context, const PlansScreen()),
       child: Row(children: [
-        Icon(app.limitedAccount ? Icons.mark_email_unread_outlined : Icons.lock_outline_rounded, color: AppColors.gold),
+        Icon(
+            app.limitedAccount
+                ? Icons.mark_email_unread_outlined
+                : Icons.lock_outline_rounded,
+            color: AppColors.gold),
         const SizedBox(width: 12),
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(app.limitedAccount ? 'Activate to unlock Pulse' : 'Pulse trading tools are locked', style: const TextStyle(fontWeight: FontWeight.w700)),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(
+                app.limitedAccount
+                    ? 'Activate to unlock Pulse'
+                    : 'Pulse trading tools are locked',
+                style: const TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 2),
             Text(
               app.limitedAccount
@@ -679,8 +787,10 @@ class _PulseScreenState extends State<PulseScreen> {
   }
 
   Widget _watchlistTab(AppState app) {
-    final watched = MockData.coins.where((c) => app.watchlist.contains(c.symbol)).toList();
-    final rest = MockData.coins.where((c) => !app.watchlist.contains(c.symbol)).toList();
+    final watched =
+        MockData.coins.where((c) => app.watchlist.contains(c.symbol)).toList();
+    final rest =
+        MockData.coins.where((c) => !app.watchlist.contains(c.symbol)).toList();
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
       children: [
@@ -708,7 +818,8 @@ class _ScanningOrb extends StatefulWidget {
   State<_ScanningOrb> createState() => _ScanningOrbState();
 }
 
-class _ScanningOrbState extends State<_ScanningOrb> with SingleTickerProviderStateMixin {
+class _ScanningOrbState extends State<_ScanningOrb>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1500),
@@ -749,18 +860,25 @@ class _ScanningOrbState extends State<_ScanningOrb> with SingleTickerProviderSta
               height: 60,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: fade(widget.active ? AppColors.accent : AppColors.gold, .34)),
-                color: fade(widget.active ? AppColors.accent : AppColors.gold, .06),
+                border: Border.all(
+                    color: fade(
+                        widget.active ? AppColors.accent : AppColors.gold,
+                        .34)),
+                color: fade(
+                    widget.active ? AppColors.accent : AppColors.gold, .06),
               ),
             ),
             RotationTransition(
               turns: _controller,
               child: CustomPaint(
                 size: const Size.square(52),
-                painter: _RadarArcPainter(color: widget.active ? AppColors.accent : AppColors.gold),
+                painter: _RadarArcPainter(
+                    color: widget.active ? AppColors.accent : AppColors.gold),
               ),
             ),
-            Icon(Icons.my_location_rounded, color: widget.active ? AppColors.accent : AppColors.gold, size: 24),
+            Icon(Icons.my_location_rounded,
+                color: widget.active ? AppColors.accent : AppColors.gold,
+                size: 24),
           ],
         ),
       );
@@ -784,7 +902,8 @@ class _RadarArcPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _RadarArcPainter oldDelegate) => oldDelegate.color != color;
+  bool shouldRepaint(covariant _RadarArcPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
 
 class _ScanStageRail extends StatelessWidget {
@@ -804,14 +923,23 @@ class _ScanStageRail extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 7),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: fade(stage >= thresholds[i] ? AppColors.accent : AppColors.muted, stage >= thresholds[i] ? .13 : .05),
+                color: fade(
+                    stage >= thresholds[i] ? AppColors.accent : AppColors.muted,
+                    stage >= thresholds[i] ? .13 : .05),
                 borderRadius: BorderRadius.circular(9),
-                border: Border.all(color: fade(stage >= thresholds[i] ? AppColors.accent : AppColors.line, .45)),
+                border: Border.all(
+                    color: fade(
+                        stage >= thresholds[i]
+                            ? AppColors.accent
+                            : AppColors.line,
+                        .45)),
               ),
               child: Text(
                 labels[i],
                 style: TextStyle(
-                  color: stage >= thresholds[i] ? AppColors.accent : AppColors.muted,
+                  color: stage >= thresholds[i]
+                      ? AppColors.accent
+                      : AppColors.muted,
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                 ),
@@ -841,9 +969,16 @@ class _ScanMetric extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+            Text(value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style:
+                    const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
             const SizedBox(height: 2),
-            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.muted.copyWith(fontSize: 9.5)),
+            Text(label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppText.muted.copyWith(fontSize: 9.5)),
           ],
         ),
       );

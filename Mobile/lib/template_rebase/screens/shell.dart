@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../core/ads/ad_service.dart';
+import '../../core/notifications/notification_router.dart';
+import '../../screens/plans_screen.dart';
 import '../theme/app_theme.dart';
 import '../state/app_state.dart';
 import 'account_screen.dart';
@@ -21,8 +24,37 @@ class Shell extends StatefulWidget {
 class _ShellState extends State<Shell> {
   int _index = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    AdService.instance.setShellTab(_index);
+    NotificationRouter.instance.pending.addListener(_openPendingNotification);
+    // A notification may have launched the app before the Shell existed.
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _openPendingNotification());
+  }
+
+  @override
+  void dispose() {
+    NotificationRouter.instance.pending
+        .removeListener(_openPendingNotification);
+    super.dispose();
+  }
+
+  void _openPendingNotification() {
+    if (!mounted || NotificationRouter.instance.pending.value == null) return;
+    final destination = NotificationRouter.instance.take()!;
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    _go(destination.tab.index);
+    if (destination.openPlans) {
+      Navigator.of(context)
+          .push(MaterialPageRoute<void>(builder: (_) => const PlansScreen()));
+    }
+  }
+
   void _go(int index) {
     setState(() => _index = index);
+    AdService.instance.setShellTab(index);
     if (index == 1) {
       // Pulse may have been scanned on web or another device while this app was
       // in the background. Refresh the qualified signal list whenever the tab

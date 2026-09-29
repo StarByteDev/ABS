@@ -1,10 +1,10 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart' show MobileAds;
 
+import 'core/ads/ad_service.dart';
+import 'core/notifications/notification_service.dart';
 import 'core/session.dart';
 import 'screens/splash_screen.dart'
     show BackendCompatibilityScreen, MaintenanceScreen, UpdateRequiredScreen;
@@ -22,14 +22,18 @@ Future<void> main() async {
     systemNavigationBarColor: AppColors.surface,
     systemNavigationBarIconBrightness: Brightness.light,
   ));
-  if (Platform.isAndroid || Platform.isIOS) {
-    unawaited(MobileAds.instance.initialize().then<void>((_) {}));
-  }
+
+  // Firebase + FCM background handler must be ready before the app starts.
+  await NotificationService.instance.initializeFirebase();
 
   final session = AppSession();
   final uiState = AppState(session);
   runApp(AbsMobileApp(session: session, uiState: uiState));
+  // Consent + SDK start-up run in the background and never block launch.
+  AdService.instance.initialize(session);
   await session.initialize();
+  // After session restore so topics/device registration match the account.
+  unawaited(NotificationService.instance.initialize(session));
   await uiState.initialize();
 }
 
@@ -53,17 +57,21 @@ class AbsMobileApp extends StatelessWidget {
           animation: session,
           builder: (context, _) {
             return MaterialApp(
+              navigatorKey: AdService.instance.navigatorKey,
               debugShowCheckedModeBanner: false,
               title: 'Pulse',
               theme: AppTheme.dark(),
               home: session.initializing
                   ? const TemplateSplashScreen()
                   : session.backendTooOld
-                      ? BackendCompatibilityScreen(backendBuild: session.backendBuild)
+                      ? BackendCompatibilityScreen(
+                          backendBuild: session.backendBuild)
                       : session.updateRequired
-                          ? UpdateRequiredScreen(requiredVersion: session.minimumMobileVersion)
+                          ? UpdateRequiredScreen(
+                              requiredVersion: session.minimumMobileVersion)
                           : session.maintenanceMode
-                              ? MaintenanceScreen(message: session.maintenanceMessage)
+                              ? MaintenanceScreen(
+                                  message: session.maintenanceMessage)
                               : const Shell(),
             );
           },

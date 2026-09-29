@@ -22,6 +22,8 @@ use App\Services\PulseStrategyCycleService;
 use App\Services\PulseStrategyResearchService;
 use App\Services\PulseLearningService;
 use App\Services\PulseTradeService;
+use App\Services\Push\PulsePushEventService;
+use App\Services\Push\PushNotificationService;
 use App\Support\AbsSchemaRepair;
 use App\Support\LegacyMigrationBaseline;
 use Illuminate\Support\Facades\Artisan;
@@ -811,6 +813,49 @@ if ((bool) config('pulse.scheduler.hostgator_shared', false)) {
     Schedule::command('abs:pulse-sync')->everyMinute()->withoutOverlapping(5);
     Schedule::command('abs:pulse-automation')->everyMinute()->withoutOverlapping(5);
 }
+
+// Pulse push notifications (both scheduler profiles): event producers then the
+// FCM outbox dispatch. Every producer is deduplicated and rate-limited.
+Schedule::command('abs:push-events')->everyMinute()->withoutOverlapping(5);
+
+Artisan::command('abs:push-events {--dispatch-only : Only send already-queued pushes}', function (PulsePushEventService $events, PushNotificationService $push): int {
+    if (! $this->option('dispatch-only')) {
+        foreach ($events->runAll() as $producer => $queued) {
+            if ($queued > 0) $this->line("Queued {$queued} {$producer} push(es).");
+        }
+    }
+    $result = $push->dispatch();
+    $this->info("Push dispatch: {$result['sent']} sent; {$result['skipped']} skipped; {$result['failed']} failed.");
+    return Command::SUCCESS;
+})->purpose('Produce deduplicated Pulse push events (market moves, macro, news, brief, expiry) and dispatch the FCM outbox');
+
+Artisan::command('abs:push-test {--topic= : Public topic, e.g. abs_breaking_news} {--user= : User ID for a private device push} {--type=breaking_news : Notification type for routing} {--title=Pulse test notification} {--body=This is a Pulse push delivery test.}', function (PushNotificationService $push): int {
+    $type = (string) $this->option('type');
+    $key = 'test:'.now()->format('YmdHis').':'.bin2hex(random_bytes(3));
+    $topic = (string) $this->option('topic');
+    $user = (string) $this->option('user');
+    if (($topic === '') === ($user === '')) {
+        $this->error('Pass exactly one of --topic or --user.');
+        return Command::FAILURE;
+    }
+    try {
+        $queued = $topic !== ''
+            ? $push->queueTopic($topic, $type, (string) $this->option('title'), (string) $this->option('body'), [], $key)
+            : $push->queueUser((int) $user, $type, (string) $this->option('title'), (string) $this->option('body'), [], $key);
+    } catch (\InvalidArgumentException $e) {
+        $this->error($e->getMessage());
+        return Command::FAILURE;
+    }
+    if (! $queued) {
+        $this->error('Not queued: notifications disabled, push table missing, or user not found.');
+        return Command::FAILURE;
+    }
+    $result = $push->dispatch();
+    $this->info("Push test: {$result['sent']} sent; {$result['skipped']} skipped; {$result['failed']} failed.");
+    $log = \App\Models\PushNotificationLog::query()->where('dedupe_key', $key)->first();
+    if ($log?->error) $this->warn('Detail: '.$log->error);
+    return $result['sent'] > 0 ? Command::SUCCESS : Command::FAILURE;
+})->purpose('Send one Pulse push to a public topic or a user\'s devices to verify FCM delivery');
 
 Artisan::command('abs:view-audit', function (): int {
     $this->info('ABS V15.1.2 Blade view and named-route audit');

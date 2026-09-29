@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/ads/ad_policy.dart';
+import '../../core/ads/banner_ad_slot.dart';
 import '../data/mock_data.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
@@ -46,8 +48,11 @@ class _NewsScreenState extends State<NewsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Pulse Intelligence', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-                  Text('Calendar, ABS News & live market wire', style: AppText.muted),
+                  Text('Pulse Intelligence',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                  Text('Calendar, ABS News & live market wire',
+                      style: AppText.muted),
                 ],
               ),
             ),
@@ -84,16 +89,24 @@ class _NewsScreenState extends State<NewsScreen> {
                 borderColor: fade(AppColors.amber, .4),
                 child: Row(
                   children: [
-                    const Icon(Icons.info_outline_rounded, color: AppColors.amber),
+                    const Icon(Icons.info_outline_rounded,
+                        color: AppColors.amber),
                     const SizedBox(width: 10),
                     Expanded(child: Text(app.newsError!, style: AppText.muted)),
-                    IconButton(onPressed: app.refreshNews, icon: const Icon(Icons.refresh_rounded)),
+                    IconButton(
+                        onPressed: app.refreshNews,
+                        icon: const Icon(Icons.refresh_rounded)),
                   ],
                 ),
               ),
             ],
             const SizedBox(height: 14),
-            if (_view == 0) _calendarView() else if (_view == 1) _newsView() else _liveView(),
+            if (_view == 0)
+              _calendarView()
+            else if (_view == 1)
+              _newsView()
+            else
+              _liveView(),
             const RiskNotice(),
           ],
         ),
@@ -114,7 +127,9 @@ class _NewsScreenState extends State<NewsScreen> {
       if (_period == 'Previous') return at.isBefore(now);
       return !at.isBefore(now);
     }).toList();
-    if (_period == 'Previous') events.sort((a, b) => (b.at ?? DateTime(1970)).compareTo(a.at ?? DateTime(1970)));
+    if (_period == 'Previous')
+      events.sort(
+          (a, b) => (b.at ?? DateTime(1970)).compareTo(a.at ?? DateTime(1970)));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -142,7 +157,10 @@ class _NewsScreenState extends State<NewsScreen> {
                 onSelected: (_) => setState(() => _period = value),
                 selectedColor: fade(AppColors.accent, .2),
                 backgroundColor: AppColors.surface,
-                side: BorderSide(color: selected ? fade(AppColors.accent, .55) : AppColors.line),
+                side: BorderSide(
+                    color: selected
+                        ? fade(AppColors.accent, .55)
+                        : AppColors.line),
                 labelStyle: TextStyle(
                   color: selected ? AppColors.text : AppColors.muted,
                   fontWeight: FontWeight.w600,
@@ -157,7 +175,8 @@ class _NewsScreenState extends State<NewsScreen> {
           const EmptyState(
             icon: Icons.event_available_outlined,
             title: 'No events in this view',
-            message: 'Pull to refresh. ABS shows calendar data supplied by the live backend.',
+            message:
+                'Pull to refresh. ABS shows calendar data supplied by the live backend.',
           )
         else
           for (final e in events.take(80))
@@ -169,7 +188,8 @@ class _NewsScreenState extends State<NewsScreen> {
     );
   }
 
-  int _countForPeriod(String value, DateTime now, DateTime start, DateTime end) {
+  int _countForPeriod(
+      String value, DateTime now, DateTime start, DateTime end) {
     return MockData.calendar.where((e) {
       final at = e.at?.toLocal();
       if (value == 'All') return true;
@@ -182,7 +202,12 @@ class _NewsScreenState extends State<NewsScreen> {
 
   Widget _newsView() {
     final categories = MockData.newsCategories;
-    final items = _cat == 'All' ? MockData.news : MockData.news.where((n) => n.category == _cat).toList();
+    final items = _cat == 'All'
+        ? MockData.news
+        : MockData.news.where((n) => n.category == _cat).toList();
+    // After the 5th article; a second slot only on long feeds, 8 later.
+    final adSlots =
+        AdPolicy.feedBannerPositions(items.length, first: 5, spacing: 8);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -202,8 +227,12 @@ class _NewsScreenState extends State<NewsScreen> {
                 onSelected: (_) => setState(() => _cat = c),
                 selectedColor: fade(AppColors.accent, .2),
                 backgroundColor: AppColors.surface,
-                side: BorderSide(color: selected ? fade(AppColors.accent, .5) : AppColors.line),
-                labelStyle: TextStyle(color: selected ? AppColors.accent : AppColors.muted, fontWeight: FontWeight.w600),
+                side: BorderSide(
+                    color:
+                        selected ? fade(AppColors.accent, .5) : AppColors.line),
+                labelStyle: TextStyle(
+                    color: selected ? AppColors.accent : AppColors.muted,
+                    fontWeight: FontWeight.w600),
               );
             },
           ),
@@ -218,11 +247,23 @@ class _NewsScreenState extends State<NewsScreen> {
         else ...[
           _FeaturedCard(item: items.first),
           const SizedBox(height: 12),
-          for (final n in items.skip(1))
+          for (final (i, n) in items.skip(1).indexed) ...[
+            // i + 1 articles precede this tile (featured card included).
+            if (adSlots.contains(i + 1))
+              const InlineBannerAdSlot(
+                placement: BannerPlacement.news,
+                margin: EdgeInsets.only(top: 6, bottom: 16),
+              ),
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: NewsTile(item: n, onTap: () => push(context, NewsDetailScreen(item: n))),
+              child: NewsTile(
+                  item: n,
+                  onTap: () => pushContentDetail(
+                      context,
+                      NewsDetailScreen(item: n),
+                      InterstitialMoment.newsDetailClosed)),
             ),
+          ],
         ],
       ],
     );
@@ -245,13 +286,19 @@ class _NewsScreenState extends State<NewsScreen> {
           const EmptyState(
             icon: Icons.sensors_outlined,
             title: 'No live headlines available',
-            message: 'Pull to refresh. The app does not substitute demo stories.',
+            message:
+                'Pull to refresh. The app does not substitute demo stories.',
           )
         else
           for (final n in items)
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: NewsTile(item: n, onTap: () => push(context, NewsDetailScreen(item: n))),
+              child: NewsTile(
+                  item: n,
+                  onTap: () => pushContentDetail(
+                      context,
+                      NewsDetailScreen(item: n),
+                      InterstitialMoment.newsDetailClosed)),
             ),
       ],
     );
@@ -272,16 +319,25 @@ class _CalendarCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final at = event.at?.toLocal();
-    final date = at == null ? 'Date pending' : '${at.day.toString().padLeft(2, '0')} ${_month(at.month)}';
-    final time = at == null ? '—' : '${at.hour.toString().padLeft(2, '0')}:${at.minute.toString().padLeft(2, '0')}';
+    final date = at == null
+        ? 'Date pending'
+        : '${at.day.toString().padLeft(2, '0')} ${_month(at.month)}';
+    final time = at == null
+        ? '—'
+        : '${at.hour.toString().padLeft(2, '0')}:${at.minute.toString().padLeft(2, '0')}';
     final rawActual = event.actual.trim();
-    final missingActual = rawActual.isEmpty || rawActual.toLowerCase() == 'pending' || rawActual == '—';
+    final missingActual = rawActual.isEmpty ||
+        rawActual.toLowerCase() == 'pending' ||
+        rawActual == '—';
     final isPast = at != null && at.isBefore(DateTime.now());
     // Never label a historical release as Pending. If the provider has not
     // published a value yet, say so explicitly instead of displaying a blank.
-    final actualDisplay = missingActual ? (isPast ? 'Not reported' : 'Pending') : rawActual;
-    final previousDisplay = event.previous.trim().isEmpty ? 'Not provided' : event.previous.trim();
-    final forecastDisplay = event.forecast.trim().isEmpty ? 'Not provided' : event.forecast.trim();
+    final actualDisplay =
+        missingActual ? (isPast ? 'Not reported' : 'Pending') : rawActual;
+    final previousDisplay =
+        event.previous.trim().isEmpty ? 'Not provided' : event.previous.trim();
+    final forecastDisplay =
+        event.forecast.trim().isEmpty ? 'Not provided' : event.forecast.trim();
     final actualColor = missingActual
         ? (isPast ? AppColors.muted : AppColors.gold)
         : AppColors.text;
@@ -321,7 +377,11 @@ class _CalendarCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 6),
-                    Text(event.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, height: 1.25)),
+                    Text(event.title,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            height: 1.25)),
                   ],
                 ),
               ),
@@ -330,9 +390,15 @@ class _CalendarCard extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: MiniStat(label: 'Previous', value: previousDisplay)),
-              Expanded(child: MiniStat(label: 'Forecast', value: forecastDisplay)),
-              Expanded(child: MiniStat(label: 'Actual', value: actualDisplay, valueColor: actualColor)),
+              Expanded(
+                  child: MiniStat(label: 'Previous', value: previousDisplay)),
+              Expanded(
+                  child: MiniStat(label: 'Forecast', value: forecastDisplay)),
+              Expanded(
+                  child: MiniStat(
+                      label: 'Actual',
+                      value: actualDisplay,
+                      valueColor: actualColor)),
             ],
           ),
           if (event.context.isNotEmpty) ...[
@@ -344,7 +410,20 @@ class _CalendarCard extends StatelessWidget {
     );
   }
 
-  String _month(int month) => const <String>['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][month - 1];
+  String _month(int month) => const <String>[
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec'
+      ][month - 1];
 }
 
 class _FeaturedCard extends StatelessWidget {
@@ -356,14 +435,17 @@ class _FeaturedCard extends StatelessWidget {
     final (_, color) = MockData.categoryStyle(item.category);
     return AbsCard(
       padding: EdgeInsets.zero,
-      onTap: () => push(context, NewsDetailScreen(item: item)),
+      onTap: () => pushContentDetail(context, NewsDetailScreen(item: item),
+          InterstitialMoment.newsDetailClosed),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Stack(
             children: [
-              NewsThumb(category: item.category, width: double.infinity, height: 150),
-              Positioned(left: 12, top: 12, child: Pill(item.category, color: color)),
+              NewsThumb(
+                  category: item.category, width: double.infinity, height: 150),
+              Positioned(
+                  left: 12, top: 12, child: Pill(item.category, color: color)),
             ],
           ),
           Padding(
@@ -371,13 +453,22 @@ class _FeaturedCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, height: 1.3)),
+                Text(item.title,
+                    style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        height: 1.3)),
                 if (item.summary.isNotEmpty) ...[
                   const SizedBox(height: 6),
-                  Text(item.summary, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.muted, height: 1.4)),
+                  Text(item.summary,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          const TextStyle(color: AppColors.muted, height: 1.4)),
                 ],
                 const SizedBox(height: 10),
-                Text('${item.source} · ${timeAgo(item.minutesAgo)}', style: AppText.muted.copyWith(fontSize: 11.5)),
+                Text('${item.source} · ${timeAgo(item.minutesAgo)}',
+                    style: AppText.muted.copyWith(fontSize: 11.5)),
               ],
             ),
           ),
@@ -402,14 +493,20 @@ class SavedNewsScreen extends StatelessWidget {
               child: EmptyState(
                 icon: Icons.bookmark_border_rounded,
                 title: 'Nothing saved yet',
-                message: 'Tap the bookmark on an article to keep it in this app session.',
+                message:
+                    'Tap the bookmark on an article to keep it in this app session.',
               ),
             )
           : ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: saved.length,
               separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (_, i) => NewsTile(item: saved[i], onTap: () => push(context, NewsDetailScreen(item: saved[i]))),
+              itemBuilder: (_, i) => NewsTile(
+                  item: saved[i],
+                  onTap: () => pushContentDetail(
+                      context,
+                      NewsDetailScreen(item: saved[i]),
+                      InterstitialMoment.newsDetailClosed)),
             ),
     );
   }

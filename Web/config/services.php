@@ -52,6 +52,14 @@ return [
         'connect_timeout' => (int) env('MARKET_CONNECT_TIMEOUT', 3),
         'ssl_verify' => filter_var(env('MARKET_SSL_VERIFY', env('APP_ENV', 'production') !== 'local'), FILTER_VALIDATE_BOOL),
     ],
+    // Firebase Cloud Messaging (HTTP v1). FIREBASE_CREDENTIALS is the absolute
+    // path to a Firebase service-account JSON kept OUTSIDE the public web root.
+    'fcm' => [
+        'project_id' => env('FIREBASE_PROJECT_ID'),
+        'credentials' => env('FIREBASE_CREDENTIALS'),
+        'timeout' => (int) env('FIREBASE_HTTP_TIMEOUT', 10),
+    ],
+
     'news_feeds' => [
         'enabled' => filter_var(env('LIVE_NEWS_ENABLED', true), FILTER_VALIDATE_BOOL),
         'cache_seconds' => (int) env('LIVE_NEWS_CACHE_SECONDS', 300),

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Push\PushNotificationService;
 use App\Models\PulsePlan;
 use App\Models\PulseUserSetting;
 use App\Models\User;
@@ -47,6 +48,9 @@ class AuthController extends Controller
                 : 'This account is not currently active. Contact Alpha Block Solutions if you need assistance.']);
         }
         $request->user()->update(['last_login_at' => now()]);
+        PushNotificationService::safely(fn (PushNotificationService $push) => $push->queueSecurity(
+            $request->user(), 'New sign-in to your ABS account', 'Signed in on the ABS website. Not you? Change your password now.', 'login',
+        ));
 
         // Self-heal first-login Pulse Trial access for a newly activated standard user.
         // This is intentionally limited to accounts that have never had a Pulse

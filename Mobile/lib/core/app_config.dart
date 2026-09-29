@@ -16,16 +16,7 @@ class AppConfig {
   );
   static const String supportEmail = 'support@alphablocksolutions.com';
 
-  // Google test rewarded units are safe for local development. Supply the live
-  // platform-specific unit at build time with --dart-define before publishing.
-  static const String rewardedAdUnitAndroid = String.fromEnvironment(
-    'ABS_ADMOB_REWARDED_ANDROID',
-    defaultValue: 'ca-app-pub-3940256099942544/5224354917',
-  );
-  static const String rewardedAdUnitIos = String.fromEnvironment(
-    'ABS_ADMOB_REWARDED_IOS',
-    defaultValue: 'ca-app-pub-3940256099942544/1712485313',
-  );
+  // AdMob units live in core/ads/ad_config.dart.
 
   static const Duration requestTimeout = Duration(seconds: 30);
   static const Duration visiblePriceRefresh = Duration(seconds: 20);

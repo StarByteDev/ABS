@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Services\Push\PushNotificationService;
 use App\Models\ContactMessage;
 use App\Models\MonthlyStatement;
 use App\Models\PortfolioAccount;
@@ -164,6 +165,12 @@ class BrandedMailService
 
     public function passwordChanged(User $user, bool $byAdmin = false): void
     {
+        PushNotificationService::safely(fn (PushNotificationService $push) => $push->queueSecurity(
+            $user,
+            'Your ABS password was changed',
+            $byAdmin ? 'An administrator updated your password. Contact ABS support if this was unexpected.' : 'If this wasn’t you, contact ABS support immediately.',
+            $byAdmin ? 'password_changed_admin' : 'password_changed',
+        ));
         if (! $this->enabled('transactional_emails_enabled', true)) return;
         $this->send($user->email, 'Security update for your ABS account', [
             'eyebrow' => 'ACCOUNT SECURITY',

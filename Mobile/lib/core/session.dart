@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -31,6 +32,10 @@ class AppSession extends ChangeNotifier {
   Map<String, dynamic>? bootstrap;
   Map<String, dynamic>? access;
   String traderExperience = 'simple';
+
+  /// FCM token for device-targeted (private) notifications. Set by
+  /// NotificationService and sent with the existing POST /devices payload.
+  String? pushToken;
 
   bool get proMode => traderExperience == 'pro';
 
@@ -268,6 +273,7 @@ class AppSession extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    await _detachPushTokenBestEffort();
     try {
       await api.post('/auth/logout');
     } catch (_) {}
@@ -278,6 +284,7 @@ class AppSession extends ChangeNotifier {
   }
 
   Future<void> logoutAll() async {
+    await _detachPushTokenBestEffort();
     try {
       await api.post('/auth/logout-all');
     } catch (_) {}
@@ -362,10 +369,34 @@ class AppSession extends ChangeNotifier {
         'device_name': _deviceName,
         'app_version': '${AppConfig.mobileVersion}+${AppConfig.mobileBuild}',
         'os_version': Platform.operatingSystemVersion,
+        if (pushToken != null) 'push_token': pushToken,
       });
-    } catch (_) {
+      if (kDebugMode) {
+        debugPrint('[Pulse push] /devices registration OK '
+            '(push_token included: ${pushToken != null})');
+      }
+    } catch (error) {
       // Device registration is supplementary and must never block account access.
+      if (kDebugMode) {
+        debugPrint('[Pulse push] /devices registration failed: $error');
+      }
     }
+  }
+
+  /// Re-sends the device registration (e.g. after an FCM token refresh).
+  Future<void> syncDevice() => _registerDeviceBestEffort();
+
+  /// Clears this device's push token on the account before signing out so
+  /// private notifications for this account stop reaching the device.
+  Future<void> _detachPushTokenBestEffort() async {
+    if (!authenticated || pushToken == null) return;
+    try {
+      await api.post('/devices', body: {
+        'device_uuid': await _deviceUuid(),
+        'platform': _platform,
+        'push_token': null,
+      });
+    } catch (_) {}
   }
 }
 

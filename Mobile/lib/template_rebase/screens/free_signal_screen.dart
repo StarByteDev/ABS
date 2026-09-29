@@ -6,6 +6,8 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/ads/ad_config.dart';
+import '../../core/ads/ad_service.dart';
 import '../../core/api_client.dart';
 import '../../core/app_config.dart';
 import '../../core/json_tools.dart';
@@ -122,7 +124,8 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
       visitorToken = JsonTools.text(data['visitor_token'], visitorToken);
       claimToken = JsonTools.text(data['claim_token'], '');
       if (visitorToken.isNotEmpty) {
-        await SessionScope.of(context).storage
+        await SessionScope.of(context)
+            .storage
             .write(key: _visitorKey, value: visitorToken);
       }
       if (claimToken.isEmpty)
@@ -140,9 +143,7 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
 
   Future<void> _loadAndShowAd() async {
     final completer = Completer<void>();
-    final unitId = Platform.isIOS
-        ? AppConfig.rewardedAdUnitIos
-        : AppConfig.rewardedAdUnitAndroid;
+    final unitId = AdConfig.rewardedUnitId;
     RewardedAd.load(
       adUnitId: unitId,
       request: const AdRequest(),
@@ -150,23 +151,29 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
         onAdLoaded: (ad) {
           rewardedAd = ad;
           ad.fullScreenContentCallback = FullScreenContentCallback(
+            onAdShowedFullScreenContent: (_) =>
+                AdService.instance.rewardedShowing(),
             onAdDismissedFullScreenContent: (ad) {
+              AdService.instance.rewardedDismissed();
               ad.dispose();
               rewardedAd = null;
               if (mounted && !rewardEarned) {
                 setState(() {
                   busy = false;
-                  error = 'The ad was closed before the reward completed. No cooldown was applied.';
+                  error =
+                      'The ad was closed before the reward completed. No cooldown was applied.';
                 });
               }
             },
             onAdFailedToShowFullScreenContent: (ad, failure) {
+              AdService.instance.rewardedFailed();
               ad.dispose();
               rewardedAd = null;
               if (mounted) {
                 setState(() {
                   busy = false;
-                  error = 'The rewarded ad could not be displayed. Please try again.';
+                  error =
+                      'The rewarded ad could not be displayed. Please try again.';
                 });
               }
             },
@@ -183,7 +190,8 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
           if (mounted) {
             setState(() {
               busy = false;
-              error = 'No rewarded ad is available right now. Please try again shortly.';
+              error =
+                  'No rewarded ad is available right now. Please try again shortly.';
             });
           }
           if (!completer.isCompleted) completer.complete();
@@ -225,9 +233,11 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
         if (recovered.isNotEmpty) {
           signal = recovered;
           if (JsonTools.boolean(signal['member_fallback_used'])) {
-            claimNotice = 'Public free flow returned no dedicated setup, so ABS showed your strongest active package signal.';
+            claimNotice =
+                'Public free flow returned no dedicated setup, so ABS showed your strongest active package signal.';
           } else if (JsonTools.boolean(signal['btc_context_fallback_used'])) {
-            claimNotice = 'No qualified Free Signal or Entry Watch is available, so ABS is showing the latest BTC 4H market context instead.';
+            claimNotice =
+                'No qualified Free Signal or Entry Watch is available, so ABS is showing the latest BTC 4H market context instead.';
           }
         }
       }
@@ -281,7 +291,6 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
     }
   }
 
-
   Future<Map<String, dynamic>> _recoverMemberSignal() async {
     final session = SessionScope.of(context);
     if (!session.authenticated || !session.hasPulseAccess) {
@@ -297,8 +306,9 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
       );
       final signals = JsonTools.mapList(data['signals']);
       if (signals.isEmpty) return <String, dynamic>{};
-      signals.sort((a, b) => JsonTools.number(b['confidence_score'] ?? b['score'])
-          .compareTo(JsonTools.number(a['confidence_score'] ?? a['score'])));
+      signals.sort((a, b) =>
+          JsonTools.number(b['confidence_score'] ?? b['score']).compareTo(
+              JsonTools.number(a['confidence_score'] ?? a['score'])));
       var best = _normalizeSignal(signals.first, forceEntryWatch: false);
       best = await _hydrateSignalDetails(best);
       best['member_fallback_used'] = true;
@@ -332,11 +342,13 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
       final candles = JsonTools.mapList(chart['candles']);
       if (candles.isEmpty) return <String, dynamic>{};
       final last = candles.last;
-      final first = candles.length > 6 ? candles[candles.length - 7] : candles.first;
+      final first =
+          candles.length > 6 ? candles[candles.length - 7] : candles.first;
       final lastClose = JsonTools.number(last['close']);
       final firstClose = JsonTools.number(first['close']);
       if (lastClose <= 0) return <String, dynamic>{};
-      final change = firstClose > 0 ? ((lastClose - firstClose) / firstClose) * 100 : 0.0;
+      final change =
+          firstClose > 0 ? ((lastClose - firstClose) / firstClose) * 100 : 0.0;
       final bias = change > .75
           ? 'BULLISH WATCH'
           : change < -.75
@@ -355,7 +367,8 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
         'stop_loss': 0,
         'take_profit': 0,
         'change_percent_24h': change,
-        'setup_summary': 'No qualified Free Signal or Entry Watch is available. ABS is showing BTC 4H market context ($bias) without issuing trade levels.',
+        'setup_summary':
+            'No qualified Free Signal or Entry Watch is available. ABS is showing BTC 4H market context ($bias) without issuing trade levels.',
         'btc_context_fallback_used': true,
         'market_context_only': true,
         'source': JsonTools.text(chart['source'], 'ABS'),
@@ -468,7 +481,8 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
       for (final item in list) {
         if (item is Map) {
           final map = JsonTools.map(item);
-          final value = _firstValue(map, const ['price', 'value', 'target', 'level']);
+          final value =
+              _firstValue(map, const ['price', 'value', 'target', 'level']);
           if (JsonTools.number(value) > 0) cleaned.add(value);
         } else if (JsonTools.number(item) > 0) {
           cleaned.add(item);
@@ -666,7 +680,9 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
                     : 10;
     var text = n.toStringAsFixed(digits);
     if (text.contains('.')) {
-      text = text.replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '');
+      text = text
+          .replaceFirst(RegExp(r'0+$'), '')
+          .replaceFirst(RegExp(r'\.$'), '');
     }
     return '\$$text';
   }
@@ -702,7 +718,8 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
   @override
   Widget build(BuildContext context) {
     final body = loading
-        ? const Center(child: Padding(
+        ? const Center(
+            child: Padding(
             padding: EdgeInsets.all(36),
             child: CircularProgressIndicator(),
           ))
@@ -740,13 +757,19 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
 
   List<Widget> _gatewayTemplate() {
     final enabled = JsonTools.boolean(status['enabled'], true);
-    final available = JsonTools.boolean(status['available'], cooldownSeconds <= 0) && cooldownSeconds <= 0;
+    final available =
+        JsonTools.boolean(status['available'], cooldownSeconds <= 0) &&
+            cooldownSeconds <= 0;
     final statusText = !enabled
         ? 'PAUSED'
         : available
             ? 'READY'
             : 'AVAILABLE IN ${_clock(cooldownSeconds)}';
-    final statusColor = available ? AppColors.up : enabled ? AppColors.amber : AppColors.muted;
+    final statusColor = available
+        ? AppColors.up
+        : enabled
+            ? AppColors.amber
+            : AppColors.muted;
     return <Widget>[
       Container(
         padding: const EdgeInsets.all(18),
@@ -772,7 +795,8 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
                     borderRadius: BorderRadius.circular(15),
                     border: Border.all(color: fade(AppColors.gold, .35)),
                   ),
-                  child: const Icon(Icons.play_circle_fill_rounded, color: AppColors.gold, size: 30),
+                  child: const Icon(Icons.play_circle_fill_rounded,
+                      color: AppColors.gold, size: 30),
                 ),
                 const SizedBox(width: 13),
                 const Expanded(
@@ -781,7 +805,8 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
                     children: <Widget>[
                       Text('ABS PULSE · REWARDED ACCESS', style: AppText.label),
                       SizedBox(height: 4),
-                      Text('Reveal today\'s best available public setup', style: AppText.h2),
+                      Text('Reveal today\'s best available public setup',
+                          style: AppText.h2),
                     ],
                   ),
                 ),
@@ -812,7 +837,9 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
                   children: <Widget>[
                     Checkbox(
                       value: consent,
-                      onChanged: busy ? null : (value) => setState(() => consent = value ?? false),
+                      onChanged: busy
+                          ? null
+                          : (value) => setState(() => consent = value ?? false),
                       activeColor: AppColors.accent,
                     ),
                     const SizedBox(width: 2),
@@ -821,7 +848,10 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
                         padding: EdgeInsets.only(top: 11),
                         child: Text(
                           'I want to watch a rewarded ad to reveal the Free Signal. No purchase is required.',
-                          style: TextStyle(color: AppColors.muted, fontSize: 12.5, height: 1.4),
+                          style: TextStyle(
+                              color: AppColors.muted,
+                              fontSize: 12.5,
+                              height: 1.4),
                         ),
                       ),
                     ),
@@ -847,11 +877,23 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
       AbsCard(
         child: Column(
           children: const <Widget>[
-            _FlowRow(number: '1', title: 'ABS checks current setups', text: 'The live backend evaluates available Pulse opportunities.'),
+            _FlowRow(
+                number: '1',
+                title: 'ABS checks current setups',
+                text:
+                    'The live backend evaluates available Pulse opportunities.'),
             Divider(height: 22),
-            _FlowRow(number: '2', title: 'Watch one rewarded ad', text: 'Reward verification is handled through the production ad flow.'),
+            _FlowRow(
+                number: '2',
+                title: 'Watch one rewarded ad',
+                text:
+                    'Reward verification is handled through the production ad flow.'),
             Divider(height: 22),
-            _FlowRow(number: '3', title: 'Review, don\'t blindly follow', text: 'Check signal quality, levels and context before any decision.'),
+            _FlowRow(
+                number: '3',
+                title: 'Review, don\'t blindly follow',
+                text:
+                    'Check signal quality, levels and context before any decision.'),
           ],
         ),
       ),
@@ -862,12 +904,20 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
 
   List<Widget> _revealTemplate() {
     final qualified = JsonTools.boolean(signal['is_qualified_signal'], true);
-    final contextOnly = JsonTools.boolean(signal['market_context_only']) || JsonTools.boolean(signal['btc_context_fallback_used']);
+    final contextOnly = JsonTools.boolean(signal['market_context_only']) ||
+        JsonTools.boolean(signal['btc_context_fallback_used']);
     final symbol = JsonTools.text(signal['symbol'], 'BTCUSDT').toUpperCase();
-    final pair = symbol.contains('/') ? symbol : symbol.replaceFirst(RegExp(r'USDT$'), '/USDT');
-    final direction = JsonTools.text(signal['direction'], contextOnly ? 'WATCH' : '—').toUpperCase();
+    final pair = symbol.contains('/')
+        ? symbol
+        : symbol.replaceFirst(RegExp(r'USDT$'), '/USDT');
+    final direction =
+        JsonTools.text(signal['direction'], contextOnly ? 'WATCH' : '—')
+            .toUpperCase();
     final timeframe = JsonTools.text(signal['timeframe'], '—').toUpperCase();
-    final score = JsonTools.integer(signal['confidence_score'] ?? signal['score']).clamp(0, 100).toInt();
+    final score =
+        JsonTools.integer(signal['confidence_score'] ?? signal['score'])
+            .clamp(0, 100)
+            .toInt();
     final current = _validPrice(signal['current_price']);
     final entry = _validPrice(signal['entry_price']);
     final stop = _validPrice(signal['stop_loss']);
@@ -878,13 +928,17 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
     final singleTarget = _validPrice(signal['take_profit']);
     if (targets.isEmpty && singleTarget > 0) targets.add(singleTarget);
     final hasTradeLevels = entry > 0 && stop > 0 && targets.isNotEmpty;
-    final directionColor = direction.contains('LONG') || direction.contains('BULL')
-        ? AppColors.up
-        : direction.contains('SHORT') || direction.contains('BEAR')
-            ? AppColors.down
-            : AppColors.amber;
+    final directionColor =
+        direction.contains('LONG') || direction.contains('BULL')
+            ? AppColors.up
+            : direction.contains('SHORT') || direction.contains('BEAR')
+                ? AppColors.down
+                : AppColors.amber;
     final summary = JsonTools.plain(
-      signal['setup_summary'] ?? signal['reasoning'] ?? signal['summary'] ?? signal['analysis'],
+      signal['setup_summary'] ??
+          signal['reasoning'] ??
+          signal['summary'] ??
+          signal['analysis'],
       contextOnly
           ? 'Market context only. ABS has not issued Entry, Stop Loss or Take Profit levels.'
           : qualified
@@ -895,8 +949,23 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
     return <Widget>[
       Row(
         children: <Widget>[
-          Expanded(child: Text('Your Pulse reveal', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.text))),
-          Pill(contextOnly ? 'CONTEXT' : qualified ? 'QUALIFIED' : 'ENTRY WATCH', color: contextOnly ? AppColors.amber : qualified ? AppColors.up : AppColors.gold),
+          Expanded(
+              child: Text('Your Pulse reveal',
+                  style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.text))),
+          Pill(
+              contextOnly
+                  ? 'CONTEXT'
+                  : qualified
+                      ? 'QUALIFIED'
+                      : 'ENTRY WATCH',
+              color: contextOnly
+                  ? AppColors.amber
+                  : qualified
+                      ? AppColors.up
+                      : AppColors.gold),
         ],
       ),
       const SizedBox(height: 12),
@@ -910,17 +979,27 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
                 Container(
                   width: 46,
                   height: 46,
-                  decoration: BoxDecoration(color: fade(directionColor, .13), borderRadius: BorderRadius.circular(14)),
-                  child: Icon(contextOnly ? Icons.visibility_outlined : Icons.bolt_rounded, color: directionColor),
+                  decoration: BoxDecoration(
+                      color: fade(directionColor, .13),
+                      borderRadius: BorderRadius.circular(14)),
+                  child: Icon(
+                      contextOnly
+                          ? Icons.visibility_outlined
+                          : Icons.bolt_rounded,
+                      color: directionColor),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Text(pair, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+                      Text(pair,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w800, fontSize: 18)),
                       const SizedBox(height: 3),
-                      Text('$timeframe · ${contextOnly ? 'Market context' : direction}', style: AppText.muted),
+                      Text(
+                          '$timeframe · ${contextOnly ? 'Market context' : direction}',
+                          style: AppText.muted),
                     ],
                   ),
                 ),
@@ -928,7 +1007,8 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
               ],
             ),
             const SizedBox(height: 14),
-            Text(summary, style: const TextStyle(color: AppColors.muted, height: 1.48)),
+            Text(summary,
+                style: const TextStyle(color: AppColors.muted, height: 1.48)),
             if (claimNotice != null && claimNotice!.isNotEmpty) ...<Widget>[
               const SizedBox(height: 12),
               _notice(claimNotice!, AppColors.amber),
@@ -936,8 +1016,14 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
             const Divider(height: 28),
             Row(
               children: <Widget>[
-                Expanded(child: MiniStat(label: 'Market price', value: _priceText(current))),
-                Expanded(child: MiniStat(label: 'Direction', value: direction, valueColor: directionColor)),
+                Expanded(
+                    child: MiniStat(
+                        label: 'Market price', value: _priceText(current))),
+                Expanded(
+                    child: MiniStat(
+                        label: 'Direction',
+                        value: direction,
+                        valueColor: directionColor)),
                 Expanded(child: MiniStat(label: 'Timeframe', value: timeframe)),
               ],
             ),
@@ -954,9 +1040,19 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
               const SizedBox(height: 12),
               Row(
                 children: <Widget>[
-                  Expanded(child: MiniStat(label: 'Entry', value: _priceText(entry))),
-                  Expanded(child: MiniStat(label: 'Stop', value: _priceText(stop), valueColor: AppColors.down)),
-                  Expanded(child: MiniStat(label: 'Target 1', value: _priceText(targets.first), valueColor: AppColors.up)),
+                  Expanded(
+                      child:
+                          MiniStat(label: 'Entry', value: _priceText(entry))),
+                  Expanded(
+                      child: MiniStat(
+                          label: 'Stop',
+                          value: _priceText(stop),
+                          valueColor: AppColors.down)),
+                  Expanded(
+                      child: MiniStat(
+                          label: 'Target 1',
+                          value: _priceText(targets.first),
+                          valueColor: AppColors.up)),
                 ],
               ),
               if (targets.length > 1) ...<Widget>[
@@ -965,7 +1061,9 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
                   spacing: 8,
                   runSpacing: 8,
                   children: <Widget>[
-                    for (int i = 0; i < targets.length; i++) Pill('TP${i + 1} ${_priceText(targets[i])}', color: AppColors.up),
+                    for (int i = 0; i < targets.length; i++)
+                      Pill('TP${i + 1} ${_priceText(targets[i])}',
+                          color: AppColors.up),
                   ],
                 ),
               ],
@@ -992,14 +1090,24 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
       const SizedBox(height: 14),
       Row(
         children: <Widget>[
-          Expanded(child: FilledButton.icon(onPressed: contextOnly ? null : _shareSignal, icon: const Icon(Icons.ios_share_rounded), label: const Text('Share'))),
+          Expanded(
+              child: FilledButton.icon(
+                  onPressed: contextOnly ? null : _shareSignal,
+                  icon: const Icon(Icons.ios_share_rounded),
+                  label: const Text('Share'))),
           const SizedBox(width: 10),
-          Expanded(child: OutlinedButton.icon(onPressed: _loadStatus, icon: const Icon(Icons.close_rounded), label: const Text('Hide'))),
+          Expanded(
+              child: OutlinedButton.icon(
+                  onPressed: _loadStatus,
+                  icon: const Icon(Icons.close_rounded),
+                  label: const Text('Hide'))),
         ],
       ),
       const SizedBox(height: 12),
       Text(
-        cooldownSeconds > 0 ? 'Next free unlock: ${_clock(cooldownSeconds)}' : 'Refresh to check the next available Free Signal.',
+        cooldownSeconds > 0
+            ? 'Next free unlock: ${_clock(cooldownSeconds)}'
+            : 'Refresh to check the next available Free Signal.',
         textAlign: TextAlign.center,
         style: AppText.muted,
       ),
@@ -1016,7 +1124,8 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: fade(color, .22)),
         ),
-        child: Text(text, style: TextStyle(color: color, fontSize: 12, height: 1.4)),
+        child: Text(text,
+            style: TextStyle(color: color, fontSize: 12, height: 1.4)),
       );
 
   static String _clock(int seconds) {
@@ -1028,7 +1137,8 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
 }
 
 class _FlowRow extends StatelessWidget {
-  const _FlowRow({required this.number, required this.title, required this.text});
+  const _FlowRow(
+      {required this.number, required this.title, required this.text});
   final String number;
   final String title;
   final String text;
@@ -1041,15 +1151,19 @@ class _FlowRow extends StatelessWidget {
             width: 30,
             height: 30,
             alignment: Alignment.center,
-            decoration: BoxDecoration(color: fade(AppColors.accent, .14), shape: BoxShape.circle),
-            child: Text(number, style: const TextStyle(color: AppColors.accent, fontWeight: FontWeight.w800)),
+            decoration: BoxDecoration(
+                color: fade(AppColors.accent, .14), shape: BoxShape.circle),
+            child: Text(number,
+                style: const TextStyle(
+                    color: AppColors.accent, fontWeight: FontWeight.w800)),
           ),
           const SizedBox(width: 11),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text(title,
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 3),
                 Text(text, style: AppText.muted.copyWith(height: 1.4)),
               ],
@@ -1072,6 +1186,8 @@ class _Confidence extends StatelessWidget {
           shape: BoxShape.circle,
           border: Border.all(color: fade(AppColors.accent, .55), width: 3),
         ),
-        child: Text('$value', style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.accent)),
+        child: Text('$value',
+            style: const TextStyle(
+                fontWeight: FontWeight.w800, color: AppColors.accent)),
       );
 }
