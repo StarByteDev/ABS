@@ -1,0 +1,4 @@
+ABS V15.8.1 uses additive, non-destructive migrations only.
+Adds effective-dated investor rate history, reinvested-profit statement fields, and an Admin exchange-performance ledger.
+Existing users, memberships, signals, trades, investor transactions, statements, mobile API routes, and historical investment records are preserved.
+Rollback intentionally retains financial/audit history.

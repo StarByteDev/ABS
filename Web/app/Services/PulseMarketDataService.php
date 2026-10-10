@@ -8,6 +8,7 @@ use App\Models\PulseMarketPrice;
 use App\Models\PulsePair;
 use App\Models\PulsePlan;
 use App\Models\PulseSignal;
+use App\Models\PulseSignalValidation;
 use App\Models\PulseSystemSetting;
 use App\Models\UserServiceAccess;
 use Illuminate\Support\Collection;
@@ -71,11 +72,11 @@ class PulseMarketDataService
                 $candleSymbolsUpdated += $this->syncCandleBatch($dueSymbols, $timeframe, (int) config('pulse.market_data.scanner_candle_limit', 180));
             }
 
-            $validationSymbols = PulseSignal::query()
-                ->whereIn('status', ['active', 'expired', 'executed'])
-                ->whereIn('direction', ['LONG', 'SHORT'])
-                ->where('generated_at', '>=', now()->subHours(4))
-                ->pluck('symbol')->map(fn ($s) => strtoupper((string) $s))->filter()->unique()->values();
+            $validationSymbols = Schema::hasTable('pulse_signal_validations')
+                ? PulseSignalValidation::query()->whereNull('resolved_at')->where('generated_at','>=',now()->subDays(14))
+                    ->pluck('symbol')->map(fn ($s) => strtoupper((string) $s))->filter()->unique()->values()
+                : PulseSignal::query()->whereIn('status', ['active', 'expired', 'executed'])->whereIn('direction', ['LONG', 'SHORT'])
+                    ->where('generated_at', '>=', now()->subDays(14))->pluck('symbol')->map(fn ($s) => strtoupper((string) $s))->filter()->unique()->values();
             $validationUpdated = $this->syncCandleBatch($validationSymbols, '1m', (int) config('pulse.market_data.validation_1m_limit', 180));
 
             $run->update([

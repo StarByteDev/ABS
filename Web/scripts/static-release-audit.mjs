@@ -162,7 +162,7 @@ const openApiLines = fs.readFileSync(path.join(root, 'docs', 'openapi.yaml'), 'u
 const documentedOperations = [];
 let openApiPath = null;
 for (const line of openApiLines) {
-    const pathMatch = line.match(/^  (\/[^:]+):\s*$/);
+    const pathMatch = line.match(/^  (\/[^:]*):\s*$/);
     if (pathMatch) { openApiPath = pathMatch[1]; continue; }
     const methodMatch = line.match(/^    (get|post|put|patch|delete):\s*$/);
     if (methodMatch && openApiPath) documentedOperations.push(`${methodMatch[1]} ${openApiPath}`);

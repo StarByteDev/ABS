@@ -29,9 +29,11 @@ class ScannerController extends Controller
         }
 
         $winner = $run->bestSignal;
+        $signalSet = collect((array)$run->summary)->first(fn($item)=>is_array($item) && ($item['type'] ?? '') === 'qualified_signal_set');
+        $qualifiedCount = (int) data_get($signalSet,'qualified_count',$winner ? 1 : 0);
         $message = $winner
-            ? 'Best Signal unlocked: '.strtoupper($winner->symbol).' '.strtoupper($winner->direction).'. Included with your active Pulse package.'
-            : 'No qualifying Best Signal was found in this scan.';
+            ? 'Scan complete: '.$qualifiedCount.' qualified setup'.($qualifiedCount===1?'':'s').' found. Best Signal: '.strtoupper($winner->symbol).' '.strtoupper($winner->direction).'.'
+            : 'No qualifying signal was found in this scan.';
 
         if ($request->expectsJson()) {
             return response()->json([

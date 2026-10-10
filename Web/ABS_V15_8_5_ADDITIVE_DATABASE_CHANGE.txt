@@ -1,0 +1,1 @@
+ABS V15.8.5 — ADDITIVE migrations ONLY. Two new Pulse macro push outbox tables; existing production data and schema retained. Run php artisan migrate --force. Keep existing 1-minute HostGator cron. Requires FCM credentials and mobile app token integration before push works.

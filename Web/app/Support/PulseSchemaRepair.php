@@ -303,7 +303,7 @@ class PulseSchemaRepair
                 $table->string('timeframe', 12)->default('15m');
                 $table->unsignedInteger('pairs_scanned')->default(0);
                 $table->unsignedInteger('signals_created')->default(0);
-                $table->timestamp('started_at')->nullable();
+                $table->timestamp('started_at')->nullable()->index();
                 $table->timestamp('completed_at')->nullable();
                 $table->json('summary')->nullable();
                 $table->text('error_message')->nullable();
@@ -324,6 +324,15 @@ class PulseSchemaRepair
             'created_at' => fn (Blueprint $t) => $t->timestamp('created_at')->nullable(),
             'updated_at' => fn (Blueprint $t) => $t->timestamp('updated_at')->nullable(),
         ]);
+        try {
+            if (Schema::hasColumn('pulse_scanner_runs', 'started_at') && ! Schema::hasIndex('pulse_scanner_runs', ['started_at', 'id'])) {
+                Schema::table('pulse_scanner_runs', function (Blueprint $table): void {
+                    $table->index(['started_at', 'id'], 'pulse_scanner_runs_started_at_id_idx');
+                });
+            }
+        } catch (\Throwable $e) {
+            // Best-effort on shared hosting: the scan-audit controller also avoids sorting full JSON rows.
+        }
     }
 
     private static function signals(): void

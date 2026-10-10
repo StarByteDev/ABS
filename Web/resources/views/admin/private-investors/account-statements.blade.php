@@ -8,7 +8,8 @@
     @include('admin.private-investors._account-tabs')
     @php($currency=strtoupper((string)$account->currency))
     @php($isUsd=$currency==='USD')
-    @php($profitPaid=(float)$account->transactions()->where('status','posted')->where('type','profit')->sum('amount'))
+    @php($profitPaid=(float)$account->transactions()->where('status','posted')->where('type','profit')->where(function($q){ $q->whereNull('entry_source')->orWhereNotIn('entry_source',['automatic_profit_reinvestment','admin_profit_reinvestment']); })->sum('amount'))
+    @php($profitReinvested=(float)$account->transactions()->where('status','posted')->where('type','profit')->whereIn('entry_source',['automatic_profit_reinvestment','admin_profit_reinvestment'])->sum('amount'))
 
     <div class="pi71-two-column">
         <article class="pi71-card">
@@ -22,27 +23,28 @@
                 <label><span>Investor-visible note</span><textarea name="notes" placeholder="Optional note for this monthly statement"></textarea></label>
                 <button class="pi-btn primary">Reconcile Statement From Ledger</button>
             </form>
-            <div class="pi71-notice"><b>Automatic monthly workflow</b><span>Daily performance accrues from the agreed monthly percentage. At the configured payout date ABS records one Profit Paid transaction, leaves principal unchanged, and publishes the monthly statement automatically.</span></div>
+            <div class="pi71-notice"><b>Automatic monthly workflow</b><span>Daily performance accrues from the agreed monthly percentage. At the configured settlement date ABS either records Profit Paid (external distribution) or Profit Reinvested (retained capital), according to the effective-dated agreement, and then publishes the monthly statement automatically.</span></div>
         </article>
         <aside class="pi71-card pi71-summary-card">
             <div class="pi71-card-head"><div><h3>Reporting Status</h3><p>{{ $statements->total() }} statement(s)</p></div></div>
             <div class="pi71-metric-row"><span>Investor principal</span><b>{{ $currency }} {{ number_format((float)$account->net_contributions,2) }}</b></div>
             <div class="pi71-metric-row"><span>Profit paid to date</span><b class="pi-positive">{{ $currency }} {{ number_format($profitPaid,2) }}</b></div>
+            <div class="pi71-metric-row"><span>Profit reinvested to date</span><b class="pi-positive">{{ $currency }} {{ number_format($profitReinvested,2) }}</b></div>
             <div class="pi71-metric-row"><span>Current-month paid profit</span><b>{{ $currency }} {{ number_format((float)$account->monthly_profit,2) }}</b></div>
             <div class="pi71-divider"></div>
             <div class="pi71-metric-row"><span>Admin USD principal basis</span><b>USD {{ number_format((float)($account->net_contributions_usd ?? ($isUsd?$account->net_contributions:0)),2) }}</b></div>
-            <div class="pi71-metric-row"><span>Admin profit paid</span><b>USD {{ number_format((float)($account->total_profit_usd ?? ($isUsd?$account->total_profit:0)),2) }}</b></div>
+            <div class="pi71-metric-row"><span>Total profit / net P&amp;L (USD basis)</span><b>USD {{ number_format((float)($account->total_profit_usd ?? ($isUsd?$account->total_profit:0)),2) }}</b></div>
             <div class="pi71-metric-row"><span>Realized FX gain / loss</span><b class="{{ (float)($account->realized_fx_gain_loss_usd ?? 0)>=0?'pi-positive':'pi-negative' }}">{{ (float)($account->realized_fx_gain_loss_usd ?? 0)>=0?'+':'' }}USD {{ number_format((float)($account->realized_fx_gain_loss_usd ?? 0),2) }}</b></div>
         </aside>
     </div>
 
     <article class="pi71-card">
         <div class="pi71-card-head"><div><h3>Statement History</h3><p>Newest first · automatically reconciled</p></div></div>
-        <div class="pi-table-wrap"><table class="pi-table pi-v1570-table"><thead><tr><th>Month</th><th>Opening</th><th>Added</th><th>Capital Withdrawn</th><th>P/L</th><th>Profit Paid</th><th>Closing Capital</th><th>Payment</th><th>USD Closing</th></tr></thead><tbody>
+        <div class="pi-table-wrap"><table class="pi-table pi-v1570-table"><thead><tr><th>Month</th><th>Opening</th><th>Added</th><th>Capital Withdrawn</th><th>P/L</th><th>Profit Paid</th><th>Profit Reinvested</th><th>Closing Capital</th><th>Payment</th><th>USD Closing</th></tr></thead><tbody>
         @forelse($statements as $s)
-            <tr><td><b>{{ $s->statement_month->format('F Y') }}</b></td><td>{{ $currency }} {{ number_format((float)$s->opening_balance,2) }}</td><td>{{ $currency }} {{ number_format((float)$s->contributions,2) }}</td><td>{{ $currency }} {{ number_format((float)$s->withdrawals,2) }}</td><td class="{{ $s->profit_loss>=0?'pi-positive':'pi-negative' }}">{{ $currency }} {{ number_format((float)$s->profit_loss,2) }}</td><td class="pi-positive">{{ $currency }} {{ number_format((float)$s->profit_paid,2) }}</td><td>{{ $currency }} {{ number_format((float)$s->closing_balance,2) }}</td><td>{{ $s->payment_date?->format('d M Y') ?: '—' }}</td><td>{{ $s->closing_balance_usd !== null ? 'USD '.number_format((float)$s->closing_balance_usd,2) : 'FX reconciliation pending' }}</td></tr>
+            <tr><td><b>{{ $s->statement_month->format('F Y') }}</b></td><td>{{ $currency }} {{ number_format((float)$s->opening_balance,2) }}</td><td>{{ $currency }} {{ number_format((float)$s->contributions,2) }}</td><td>{{ $currency }} {{ number_format((float)$s->withdrawals,2) }}</td><td class="{{ $s->profit_loss>=0?'pi-positive':'pi-negative' }}">{{ $currency }} {{ number_format((float)$s->profit_loss,2) }}</td><td class="pi-positive">{{ $currency }} {{ number_format((float)$s->profit_paid,2) }}</td><td class="pi-positive">{{ $currency }} {{ number_format((float)($s->profit_reinvested ?? 0),2) }}</td><td>{{ $currency }} {{ number_format((float)$s->closing_balance,2) }}</td><td>{{ $s->payment_date?->format('d M Y') ?: '—' }}</td><td>{{ $s->closing_balance_usd !== null ? 'USD '.number_format((float)$s->closing_balance_usd,2) : 'FX reconciliation pending' }}</td></tr>
         @empty
-            <tr><td colspan="9">No completed statement period is available yet.</td></tr>
+            <tr><td colspan="10">No completed statement period is available yet.</td></tr>
         @endforelse
         </tbody></table></div>
         {{ $statements->links() }}

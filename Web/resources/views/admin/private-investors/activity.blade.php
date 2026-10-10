@@ -72,7 +72,7 @@
                             <small>{{ $tx->account?->user?->email }}</small>
                         </td>
                         <td>
-                            <b>{{ match($tx->type) {'deposit'=>'Investment','withdrawal'=>'Capital Withdrawal','profit'=>'Profit','loss'=>'Loss','fee'=>'Fee',default=>'Adjustment'} }}</b>
+                            <b>{{ ($tx->type==='profit' && in_array((string)$tx->entry_source,['automatic_profit_reinvestment','admin_profit_reinvestment'],true)) ? 'Profit Reinvested' : match($tx->type) {'deposit'=>'Investment','withdrawal'=>'Capital Withdrawal','profit'=>'Profit Paid','loss'=>'Loss','fee'=>'Fee',default=>'Adjustment'} }}</b>
                             @if($tx->description)<small>{{ $tx->description }}</small>@endif
                             @if($tx->status === 'voided' && $tx->void_reason)<small>Correction: {{ $tx->void_reason }}</small>@endif
                         </td>

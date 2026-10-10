@@ -19,6 +19,7 @@ use App\Models\PulseStrategy;
 use App\Models\PulseTrade;
 use App\Models\PulseUserSetting;
 use App\Models\UserServiceAccess;
+use App\Services\PulseAdaptiveStrategyService;
 use App\Services\BinanceFuturesService;
 use App\Services\BrandedMailService;
 use App\Services\PulseAccessService;
@@ -588,20 +589,34 @@ class PulseController extends Controller
         ],'meta'=>['schema_ready'=>Schema::hasTable('pulse_signal_daily_metrics') && Schema::hasTable('pulse_signal_validations'),'detailed_validation_retention_days'=>(int)config('pulse.validation.detailed_retention_days',7)]]);
     }
 
-    public function strategyPerformance(Request $request)
+    public function strategyHealth(Request $request, \App\Services\PulseResearchReportService $report)
+    {
+        $data=$request->validate(['days'=>['nullable','integer',\Illuminate\Validation\Rule::in([1,7,30,90])]]);
+        $plan=$request->user()->pulsePlan();
+        $slugs=$plan && $plan->strategies()->exists()
+            ? $plan->strategies()->pluck('pulse_strategies.slug')->all()
+            : PulseStrategy::query()->where('is_enabled',true)->pluck('slug')->all();
+        return response()->json(['data'=>$report->report((int)($data['days']??30),$slugs)]);
+    }
+
+    public function strategyPerformance(Request $request, PulseAdaptiveStrategyService $adaptive)
     {
         $from=$request->date('from')?:now()->subDays(30)->startOfDay(); $to=$request->date('to')?:now()->endOfDay();
         $plan=$request->user()->pulsePlan();
         $slugs=$plan && $plan->strategies()->exists()?$plan->strategies()->pluck('pulse_strategies.slug'):PulseStrategy::query()->where('is_enabled',true)->pluck('slug');
+        $strategyModels=PulseStrategy::query()->whereIn('slug',$slugs)->get()->keyBy('slug');
         $rows=Schema::hasTable('pulse_strategy_daily_metrics')
             ? PulseStrategyDailyMetric::query()->whereIn('strategy_slug',$slugs)->where('market_regime','ALL')->whereBetween('metric_date',[$from->toDateString(),$to->toDateString()])->get()
             : collect();
-        $groups=$rows->groupBy(fn($r)=>$r->strategy_slug.'|'.$r->strategy_version.'|'.$r->timeframe.'|'.$r->direction)->map(function($g,$key){
+        $groups=$rows->groupBy(fn($r)=>$r->strategy_slug.'|'.$r->strategy_version.'|'.$r->timeframe.'|'.$r->direction)->map(function($g,$key) use ($adaptive,$strategyModels){
             [$slug,$version,$tf,$dir]=explode('|',$key,4); $wins=(int)$g->sum('wins');$losses=(int)$g->sum('losses');$samples=(int)$g->sum('sample_count');
             $modelTrades=(int)$g->sum('model_trades'); $netR=(float)$g->sum('model_net_r'); $grossProfitR=(float)$g->sum('model_gross_profit_r'); $grossLossR=(float)$g->sum('model_gross_loss_r');
+            $strategy=$strategyModels->get($slug);
+            $adaptiveProfile=$strategy ? $adaptive->profile($strategy,$tf,$dir,'ALL') : null;
             return ['strategy_slug'=>$slug,'strategy_version'=>$version,'timeframe'=>$tf,'direction'=>$dir,'samples'=>$samples,'wins'=>$wins,'losses'=>$losses,'ambiguous'=>(int)$g->sum('ambiguous'),
                 'win_rate'=>($wins+$losses)>0?round($wins/($wins+$losses)*100,2):null,'avg_mfe_r'=>$this->weightedMetric($g,'avg_mfe_r','entries'),'avg_mae_r'=>$this->weightedMetric($g,'avg_mae_r','entries'),
-                'model_trades'=>$modelTrades,'model_net_r'=>round($netR,6),'model_expectancy_r'=>$modelTrades>0?round($netR/$modelTrades,6):null,'model_profit_factor'=>$grossLossR>0?round($grossProfitR/$grossLossR,4):null,'model_return_pct'=>(float)$g->sum('model_return_pct')];
+                'model_trades'=>$modelTrades,'model_net_r'=>round($netR,6),'model_expectancy_r'=>$modelTrades>0?round($netR/$modelTrades,6):null,'model_profit_factor'=>$grossLossR>0?round($grossProfitR/$grossLossR,4):null,'model_return_pct'=>(float)$g->sum('model_return_pct'),
+                'adaptive'=>$adaptiveProfile];
         })->values();
         return response()->json(['data'=>$groups,'meta'=>['schema_ready'=>Schema::hasTable('pulse_strategy_daily_metrics'),'period'=>['from'=>$from,'to'=>$to],'learning_scope'=>'strategy+version+timeframe+direction']]);
     }
@@ -769,6 +784,15 @@ class PulseController extends Controller
                 'version' => $item['version'] ?? null,
                 'bias' => $item['bias'] ?? null,
                 'reason' => $item['reason'] ?? null,
+                // V15.8.3 additive evidence. Existing mobile clients can ignore these
+                // keys while newer clients can explain adaptive/member eligibility.
+                'category' => $item['category'] ?? null,
+                'adaptive_status' => $item['adaptive_status'] ?? null,
+                'adaptive_rr' => $item['adaptive_rr'] ?? null,
+                'adaptive_weight_multiplier' => $item['adaptive_weight_multiplier'] ?? null,
+                'adaptive_expected_r' => $item['adaptive_expected_r'] ?? null,
+                'adaptive_samples' => $item['adaptive_samples'] ?? null,
+                'member_eligible' => $item['member_eligible'] ?? null,
             ])->values()->all();
 
         return [

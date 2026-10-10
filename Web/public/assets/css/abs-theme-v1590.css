@@ -1,0 +1,90 @@
+/* ABS V15.9.0 — scoped UI-family repair, not broad global text resets.
+   This file loads LAST in all web shells. Light and Dark backgrounds/text change
+   as a pair. Never recolor charts' encoded meaning or remove signal blur gate. */
+:root[data-abs-theme="light"]{--ui90-surface:#ffffff;--ui90-alt:#f2f7fb;--ui90-page:#eef4f8;--ui90-ink:#183046;--ui90-heading:#10283f;--ui90-sub:#496478;--ui90-line:#c8d9e5;--ui90-link:#09688a;--ui90-gold:#946108;--ui90-green:#08704b;--ui90-red:#b32e42;--ui90-amber:#79540b;--ui90-shadow:0 6px 22px rgba(15,42,66,.055)}
+:root[data-abs-theme="dark"]{--ui90-surface:#0c1e2e;--ui90-alt:#142a3c;--ui90-page:#081521;--ui90-ink:#d9e9f3;--ui90-heading:#f1f7fc;--ui90-sub:#aac0d0;--ui90-line:#365268;--ui90-link:#81d7f2;--ui90-gold:#f0c96e;--ui90-green:#77e4b1;--ui90-red:#ff98a8;--ui90-amber:#f6d281;--ui90-shadow:0 8px 24px rgba(0,0,0,.17)}
+/* Sidebar is a regular grid: glyphs and wrapped labels always start at same X.
+   Previous flex center-align could shift wrapped labels and squeeze badges. */
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav{gap:5px!important;padding:0 2px!important;min-width:0;align-items:stretch;overflow-x:hidden!important}
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav>a{display:grid!important;grid-template-columns:24px minmax(0,1fr) auto!important;gap:11px!important;align-items:center!important;justify-content:stretch!important;min-height:48px!important;padding:8px 11px!important;border-radius:9px!important;line-height:1.25!important;text-align:left!important;overflow:visible}
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav>a>.pulse-icon{grid-column:1;width:21px!important;height:21px!important;justify-self:center;align-self:center;flex:none!important}
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav>a>span{grid-column:2;display:block!important;font-size:13px!important;font-weight:650!important;min-width:0!important;margin:0!important;padding:0!important;text-align:left!important;line-height:1.28!important;white-space:normal!important;overflow-wrap:break-word!important;color:inherit!important}
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav>a>small{grid-column:3;margin:0!important;justify-self:end;white-space:nowrap}
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav>a.locked{opacity:1!important}
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav>a:focus-visible{outline:2px solid var(--ui90-link)!important;outline-offset:0!important}
+html[data-abs-theme] body.pulse-body.pulse-sidebar-collapsed .pulse-sidebar .pulse-nav>a{display:flex!important;justify-content:center!important;grid-template-columns:none!important;gap:0!important;padding-inline:5px!important}
+html[data-abs-theme] body.pulse-body.pulse-sidebar-collapsed .pulse-sidebar .pulse-nav>a>span,
+html[data-abs-theme] body.pulse-body.pulse-sidebar-collapsed .pulse-sidebar .pulse-nav>a>small{display:none!important}
+html[data-abs-theme] body.pulse-body .pulse-sidebar-account{min-width:0}
+/* /profile account linked services, never let dark-only translucent blocks survive Light */
+html[data-abs-theme] body.pulse-body .pp-profile-page :is(.pp-service-tile,.pp-profile-person,.pp-plan-primary,.pp-profile-notice){background:var(--ui90-surface)!important;color:var(--ui90-ink)!important;border-color:var(--ui90-line)!important;box-shadow:var(--ui90-shadow)}
+html[data-abs-theme] body.pulse-body .pp-profile-page .pp-service-tile :is(h3,strong),
+html[data-abs-theme] body.pulse-body .pp-profile-page :is(.pp-profile-person h3,.pp-plan-primary strong,.pp-profile-details dd){color:var(--ui90-heading)!important}
+html[data-abs-theme] body.pulse-body .pp-profile-page .pp-service-tile :is(p,small),
+html[data-abs-theme] body.pulse-body .pp-profile-page :is(.pp-profile-details dt,.pp-profile-card-head>span,.pp-plan-primary p,.pp-plan-primary small){color:var(--ui90-sub)!important}
+html[data-abs-theme] body.pulse-body .pp-profile-page .pp-service-tile a{color:var(--ui90-link)!important;border-color:var(--ui90-line)!important}
+html[data-abs-theme] body.pulse-body .pp-profile-page .pp-service-tile .pp-service-icon{color:var(--ui90-link)!important;border-color:var(--ui90-line)!important}
+html[data-abs-theme] body.pulse-body .pp-profile-page :is(.pp-watchlist-form input,.pp-watchlist-form select){background:var(--ui90-surface)!important;color:var(--ui90-ink)!important;border-color:var(--ui90-line)!important}
+html[data-abs-theme] body.pulse-body .pp-profile-page .pp-status-chip.good{color:var(--ui90-green)!important;background:var(--ui90-alt)!important;border-color:var(--ui90-line)!important}
+html[data-abs-theme] body.pulse-body .pp-profile-page :is(.pp-positive,.pp-profile-details dd.pp-positive){color:var(--ui90-green)!important}
+/* Free Signal is public abs-body, uses isolated fixed-dark .free-signal-page colors.
+   Never alter [hidden], blur/teaser locked state, eligibility, or ads behavior. */
+html[data-abs-theme] body.abs-body .free-signal-page{--fs-bg:var(--ui90-page);--fs-panel:var(--ui90-surface);--fs-panel-2:var(--ui90-alt);--fs-line:var(--ui90-line);color:var(--ui90-ink)!important;background:var(--ui90-page)!important}
+html[data-abs-theme] body.abs-body .free-signal-page :is(.free-signal-benefits article,.pulse-ad-card,.free-signal-grow-card,.signal-teaser,.signal-result,.free-signal-membership,.free-signal-risk-note,.next-signal-banner,.free-signal-consent,.free-signal-market-state,.free-signal-cooldown,.signal-market-card,.signal-share-card,.signal-key-card,.signal-context-card,.signal-chart,.signal-levels,.signal-core-grid,.signal-detail-card,.signal-score-card){background:var(--ui90-surface)!important;color:var(--ui90-ink)!important;border-color:var(--ui90-line)!important}
+html[data-abs-theme] body.abs-body .free-signal-page :is(.free-signal-benefits article,.pulse-ad-card,.free-signal-grow-card,.free-signal-membership,.free-signal-risk-note,.next-signal-banner,.free-signal-consent,.free-signal-market-state,.signal-teaser,.signal-result) :is(h1,h2,h3,h4,b,strong){color:var(--ui90-heading)!important}
+html[data-abs-theme] body.abs-body .free-signal-page :is(.free-signal-benefits article,.pulse-ad-card,.free-signal-grow-card,.free-signal-membership,.free-signal-risk-note,.next-signal-banner,.free-signal-consent,.free-signal-market-state,.signal-teaser,.signal-result) :is(p,small){color:var(--ui90-sub)!important}
+html[data-abs-theme] body.abs-body .free-signal-page :is(.free-signal-grow-card .grow-icon,.free-signal-benefits .benefit-icon,.free-signal-consent .consent-control,.pulse-core){border-color:var(--ui90-line)!important}
+html[data-abs-theme] body.abs-body .free-signal-page :is(.signal-teaser-head,.signal-teaser-lock,.signal-teaser-lock h2,.pulse-ad-kicker,.free-signal-consent a,.free-signal-risk-note a,.free-signal-grow-card b){color:var(--ui90-heading)!important}
+html[data-abs-theme] body.abs-body .free-signal-page :is(.free-signal-grow-card p,.free-signal-benefits small,.free-signal-consent small,.signal-teaser-lock p,.free-signal-membership p){color:var(--ui90-sub)!important}
+html[data-abs-theme] body.abs-body .free-signal-page :is(.signal-teaser-head,.signal-teaser-lock,.free-signal-grow-card,.free-signal-consent){border-color:var(--ui90-line)!important}
+/* Preserve high-contrast dark text on GOLD CTAs */
+html[data-abs-theme] body.abs-body .free-signal-page :is(.free-signal-button,.teaser-watch){color:#142231!important}
+html[data-abs-theme="light"] body.abs-body .free-signal-page .signal-teaser-blur{opacity:.36!important} /* same locked blur, not a reveal */
+/* Macro event widgets: old nested navy boxes did not inherit parent light theme. */
+html[data-abs-theme] body.abs-body .macro-v1512 :is(.macro-v1512-tabs a,.macro-v1512-values>span,.macro-v1512-empty,.macro-status-v1561 span){background:var(--ui90-surface)!important;border-color:var(--ui90-line)!important;color:var(--ui90-ink)!important}
+html[data-abs-theme] body.abs-body .macro-v1512 .macro-v1512-tabs a.active{background:var(--ui90-alt)!important;color:var(--ui90-heading)!important;border-color:var(--ui90-link)!important;box-shadow:inset 0 -3px var(--ui90-link)!important}
+html[data-abs-theme] body.abs-body .macro-v1512 .macro-v1512-tabs a b,
+html[data-abs-theme] body.abs-body .macro-v1512 .macro-v1512-values>span>b,
+html[data-abs-theme] body.abs-body .macro-v1512 .macro-v1512-time b{color:var(--ui90-heading)!important}
+html[data-abs-theme] body.abs-body .macro-v1512 .macro-v1512-values>span>small,
+html[data-abs-theme] body.abs-body .macro-v1512 .macro-v1512-title>small,
+html[data-abs-theme] body.abs-body .macro-v1512 .macro-v1512-time span{color:var(--ui90-sub)!important}
+html[data-abs-theme] body.abs-body .macro-v1512 .macro-v1512-values>.actual>b{color:var(--ui90-green)!important}
+html[data-abs-theme] body.abs-body .macro-v1512 .macro-v1512-context>span{color:var(--ui90-link)!important}
+html[data-abs-theme] body.abs-body .macro-v1512 .macro-v1512-context p b{color:var(--ui90-heading)!important}
+html[data-abs-theme] body.abs-body .macro-v1512 :is(.macro-v1512-event,.macro-v1512-note){background:var(--ui90-surface)!important;border-color:var(--ui90-line)!important}
+html[data-abs-theme] body.abs-body .macro-v1512 .macro-v1512-event.high{border-left-color:#c54d58!important}
+html[data-abs-theme] body.abs-body .macro-v1512 .macro-v1512-event.medium{border-left-color:#bb8928!important}
+html[data-abs-theme] body.abs-body .macro-v1512 .macro-v1512-event.low{border-left-color:#2e968e!important}
+/* Impact chips are status colors; retain hues with adequate text in each theme. */
+html[data-abs-theme="light"] body.abs-body .macro-v1512 :is(.macro-impact.high,.macro-v1512-legend .high){color:#9e2135!important;background:#fff1f3!important;border-color:#dd9da7!important}
+html[data-abs-theme="light"] body.abs-body .macro-v1512 :is(.macro-impact.medium,.macro-v1512-legend .medium){color:#795009!important;background:#fff7db!important;border-color:#dcc27c!important}
+html[data-abs-theme="light"] body.abs-body .macro-v1512 :is(.macro-impact.low,.macro-v1512-legend .low){color:#086b60!important;background:#e8f9f3!important;border-color:#8ac9bb!important}
+/* Impact filter: distinct form, keyboard focus, responsive wrap. */
+html[data-abs-theme] body.abs-body .macro-impact-filter{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 14px;margin:12px 0 16px;padding:12px 14px;border:1px solid var(--ui90-line);border-radius:10px;background:var(--ui90-surface);color:var(--ui90-ink)}
+html[data-abs-theme] body.abs-body .macro-impact-filter>span{font-size:12px;font-weight:750;color:var(--ui90-heading)}
+html[data-abs-theme] body.abs-body .macro-impact-options{display:flex;flex-wrap:wrap;gap:8px}
+html[data-abs-theme] body.abs-body .macro-impact-options a{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:8px 13px;border-radius:8px;border:1px solid var(--ui90-line)!important;background:var(--ui90-alt)!important;color:var(--ui90-ink)!important;font-size:12px;font-weight:650;text-decoration:none}
+html[data-abs-theme] body.abs-body .macro-impact-options a[aria-current="true"]{background:var(--ui90-heading)!important;color:var(--ui90-surface)!important;border-color:var(--ui90-heading)!important}
+html[data-abs-theme] body.abs-body .macro-impact-options a:focus-visible{outline:3px solid var(--ui90-link)!important;outline-offset:2px}
+html[data-abs-theme] body.abs-body .macro-impact-filter small{color:var(--ui90-sub)!important;font-size:11px}
+@media(max-width:900px){html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav>a{min-height:46px!important}html[data-abs-theme] body.pulse-body .pulse-sidebar{overscroll-behavior:contain}}
+@media(max-width:600px){html[data-abs-theme] body.abs-body .macro-impact-filter{align-items:flex-start}html[data-abs-theme] body.abs-body .macro-impact-options{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}html[data-abs-theme] body.abs-body .macro-impact-options a{width:100%;padding:8px 7px}html[data-abs-theme] body.abs-body .macro-v1512 .macro-v1512-values{min-width:0}html[data-abs-theme] body.abs-body .macro-v1512 .macro-v1512-values>span{min-width:0;padding:7px}html[data-abs-theme] body.abs-body .macro-v1512 .macro-v1512-values>span>b{font-size:12px;overflow-wrap:anywhere}}
+/* Visual regression correction: legacy .pulse-nav a>span has width:20px.
+   Reset width as well as display or labels stack one character per line. */
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav>a>span{
+ width:100%!important;max-width:none!important;white-space:normal!important;
+ word-break:normal!important;overflow-wrap:normal!important;
+}
+/* Unlocked free-signal teaser heading uses a dark-only header and dark secondary text. */
+html[data-abs-theme] body.abs-body .free-signal-page .signal-teaser-head{
+ background:var(--ui90-alt)!important;color:var(--ui90-ink)!important;border-color:var(--ui90-line)!important;
+}
+html[data-abs-theme] body.abs-body .free-signal-page .signal-teaser-head :is(span,b){color:var(--ui90-ink)!important}
+html[data-abs-theme] body.abs-body .free-signal-page .pulse-core span{color:#fff!important}
+/* Mobile profile service badge was stretching into its own 1fr row. */
+@media(max-width:700px){
+ html[data-abs-theme] body.pulse-body .pp-profile-page .pp-service-tile{min-height:0!important;grid-template-columns:42px minmax(0,1fr)!important;grid-template-rows:auto auto auto!important;align-content:start!important;gap:10px!important}
+ html[data-abs-theme] body.pulse-body .pp-profile-page .pp-service-tile>.pp-status-chip{grid-column:1/-1!important;grid-row:auto!important;justify-self:start!important;align-self:start!important;display:inline-flex!important;width:auto!important;max-width:100%!important;min-height:28px!important;height:auto!important;padding:5px 9px!important}
+ html[data-abs-theme] body.pulse-body .pp-profile-page .pp-service-tile>a{margin-top:2px!important}
+}

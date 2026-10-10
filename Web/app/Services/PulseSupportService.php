@@ -309,7 +309,7 @@ class PulseSupportService
         }
 
         if (Str::contains($text, ['scanner', 'scan', 'best signal', 'find signal'])) {
-            return ['Find Best Signal evaluates the markets available to your package across the configured 15M and 4H strategy engine, then ranks qualifying setups and presents the strongest eligible signal. If scanning appears delayed, check that the market feed is current and try again after the next price sync.', true, 'scanner'];
+            return ['Find Best Signal evaluates the full enabled Binance USD-M Futures universe across 15M and 4H, ranks qualifying setups, highlights the strongest Best Signal, and shows a ranked qualified shortlist. Package pair assignments do not restrict the scan universe. If scanning appears delayed, check that the market feed is current and try again after the next price sync.', true, 'scanner'];
         }
 
         if (Str::contains($text, ['mobile', 'app', 'android', 'iphone', 'ios', 'notification'])) {

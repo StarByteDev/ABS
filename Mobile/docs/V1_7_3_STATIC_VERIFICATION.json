@@ -1,0 +1,33 @@
+{
+  "status": "static checks passed",
+  "changed": [
+    {
+      "file": "lib/investor/futures_command_home.dart",
+      "lines": 192,
+      "brackets": "pass",
+      "imports": "pass"
+    },
+    {
+      "file": "lib/investor/markets_analysis_screen.dart",
+      "lines": 154,
+      "brackets": "pass",
+      "imports": "pass"
+    },
+    {
+      "file": "lib/investor/pulse_experience.dart",
+      "lines": 245,
+      "brackets": "pass",
+      "imports": "pass"
+    },
+    {
+      "file": "lib/investor/investor_portfolio.dart",
+      "lines": 539,
+      "brackets": "pass",
+      "imports": "pass"
+    }
+  ],
+  "home_market_separation": true,
+  "investor_transaction_pagination": true,
+  "investor_accounting_fields": true,
+  "flutter_compilation": "not available in this environment"
+}

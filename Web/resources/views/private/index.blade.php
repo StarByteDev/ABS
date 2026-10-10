@@ -93,10 +93,11 @@
             </article>
         </div>
 
-        <div class="pi-grid pi-grid-5">
+        <div class="pi-grid pi-grid-6">
             <article class="pi-stat"><small>Indicative Capital + Accrual</small><strong>{{ $account->currency }} {{ number_format($indicative, 2) }}</strong><em>Reported value + provisional performance</em></article>
             <article class="pi-stat"><small>Agreed Monthly Rate</small><strong>{{ $agreementTerm ? number_format((float)$agreementTerm->monthly_target_rate,2).'%' : '—' }}</strong><em>{{ $agreementTerm?->effective_from?->format('d M Y') ?: 'Not configured' }}</em></article>
             <article class="pi-stat"><small>Profit Paid To Date</small><strong class="pi-positive">{{ $account->currency }} {{ number_format((float)$metrics['profitPaid'],2) }}</strong><em>Completed distributions</em></article>
+            <article class="pi-stat"><small>Profit Reinvested</small><strong class="pi-positive">{{ $account->currency }} {{ number_format((float)($metrics['profitReinvested'] ?? 0),2) }}</strong><em>Retained and added to capital</em></article>
             <article class="pi-stat"><small>Open Requests</small><strong>{{ number_format($openRequests) }}</strong><em>Investment, withdrawal or review</em></article>
             <article class="pi-stat"><small>Statements</small><strong>{{ number_format($statements->count()) }}</strong><em>Published reports</em></article>
         </div>
@@ -193,10 +194,10 @@
                 <div class="pi-card-head"><h2>Recent Statements</h2><a class="pi-btn" href="{{ route('private.statements') }}">View All</a></div>
                 <div class="pi-table-wrap">
                     <table class="pi-table">
-                        <thead><tr><th>Month</th><th>Opening</th><th>Profit / Loss</th><th>Profit Paid</th><th>Closing Capital</th><th></th></tr></thead>
+                        <thead><tr><th>Month</th><th>Opening</th><th>Profit / Loss</th><th>Profit Paid</th><th>Profit Reinvested</th><th>Closing Capital</th><th></th></tr></thead>
                         <tbody>
                         @if($statements->take(5)->isEmpty())
-                            <tr><td colspan="6">No completed statement period is available yet.</td></tr>
+                            <tr><td colspan="7">No completed statement period is available yet.</td></tr>
                         @else
                             @foreach($statements->take(5) as $statement)
                                 <tr>
@@ -204,6 +205,7 @@
                                     <td>{{ number_format((float) $statement->opening_balance, 2) }}</td>
                                     <td class="{{ $statement->profit_loss >= 0 ? 'pi-positive' : 'pi-negative' }}">{{ $account->currency }} {{ number_format((float) $statement->profit_loss, 2) }}</td>
                                     <td class="pi-positive">{{ $account->currency }} {{ number_format((float) $statement->profit_paid, 2) }}</td>
+                                    <td class="pi-positive">{{ $account->currency }} {{ number_format((float) ($statement->profit_reinvested ?? 0), 2) }}</td>
                                     <td>{{ $account->currency }} {{ number_format((float) $statement->closing_balance, 2) }}</td>
                                     <td><a href="{{ route('private.statement', $statement) }}">Open</a></td>
                                 </tr>
@@ -222,7 +224,7 @@
                     @foreach($recentTransactions->take(6) as $tx)
                         <div class="pi-admin-investor {{ $tx->status === 'voided' ? 'is-voided' : '' }}">
                             <div>
-                                <b>{{ match($tx->type){'deposit'=>'Investment','withdrawal'=>'Capital Withdrawal','profit'=>'Profit Paid','loss'=>'Loss','fee'=>'Fee','adjustment'=>'Adjustment',default=>ucfirst($tx->type)} }} @if($tx->status === 'voided')<span class="pi-status voided">Corrected</span>@endif</b>
+                                <b>{{ ($tx->type==='profit' && in_array((string)$tx->entry_source,['automatic_profit_reinvestment','admin_profit_reinvestment'],true)) ? 'Profit Reinvested' : match($tx->type){'deposit'=>'Investment','withdrawal'=>'Capital Withdrawal','profit'=>'Profit Paid','loss'=>'Loss','fee'=>'Fee','adjustment'=>'Adjustment',default=>ucfirst($tx->type)} }} @if($tx->status === 'voided')<span class="pi-status voided">Corrected</span>@endif</b>
                                 <small>{{ optional($tx->transaction_date)->format('d M Y') }} · {{ $tx->reference ?: 'Portfolio activity' }}</small>
                             </div>
                             <strong class="{{ $tx->status === 'voided' ? 'pi-muted' : (in_array($tx->type, ['profit','deposit']) ? 'pi-positive' : (in_array($tx->type, ['loss','fee','withdrawal']) ? 'pi-negative' : '')) }}">{{ $account->currency }} {{ number_format((float) $tx->amount, 2) }}</strong>

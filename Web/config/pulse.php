@@ -19,13 +19,15 @@ return [
     'allow_live_trading' => ! filter_var(env('PULSE_DISABLE_LIVE_TRADING', false), FILTER_VALIDATE_BOOL),
     'allow_automatic_trading' => filter_var(env('PULSE_ALLOW_AUTOMATIC_TRADING', false), FILTER_VALIDATE_BOOL),
     'scanner' => [
+        // V15.8.1: keep Best Signal API compatibility while exposing a ranked web shortlist.
+        'member_result_limit' => 12,
         'timeframe' => env('PULSE_SCANNER_TIMEFRAME', '15m'),
         'candle_limit' => (int) env('PULSE_SCANNER_CANDLE_LIMIT', 120),
         'signal_threshold' => (float) env('PULSE_SIGNAL_THRESHOLD', 65),
         'signal_expiry_minutes' => (int) env('PULSE_SIGNAL_EXPIRY_MINUTES', 90),
         // V14.8.7: old production .env files may still contain PULSE_MAX_PAIRS_PER_RUN=20.
         // Never let that legacy value undercut the modern selected-market scanner.
-        'max_pairs_per_run' => max(1000, (int) env('PULSE_MAX_PAIRS_PER_RUN', 1000)),
+        'max_pairs_per_run' => max(2000, (int) env('PULSE_MAX_PAIRS_PER_RUN', 2000)),
         'batch_concurrency' => (int) env('PULSE_SCANNER_BATCH_CONCURRENCY', 25),
         'stale_run_minutes' => (int) env('PULSE_SCANNER_STALE_RUN_MINUTES', 15),
     ],
@@ -45,6 +47,11 @@ return [
     ],
     'validation' => [
         'detailed_retention_days' => (int) env('PULSE_SIGNAL_VALIDATION_RETENTION_DAYS', 90),
+        'max_hold_minutes' => [
+            '15m' => (int) env('PULSE_15M_MAX_HOLD_MINUTES', 1440),
+            '4h' => (int) env('PULSE_4H_MAX_HOLD_MINUTES', 10080),
+            '1d' => (int) env('PULSE_1D_MAX_HOLD_MINUTES', 20160),
+        ],
     ],
     'learning' => [
         'prior_samples' => (int) env('PULSE_LEARNING_PRIOR_SAMPLES', 20),
@@ -53,6 +60,22 @@ return [
         'context_minimum_samples' => (int) env('PULSE_LEARNING_CONTEXT_MINIMUM_SAMPLES', 40),
         'daily_decay' => (float) env('PULSE_LEARNING_DAILY_DECAY', 0.97),
     ],
+    'optimizer' => [
+        // V15.8.3: evidence-aware member-signal adaptation. Raw/internal research
+        // continues unchanged so the system can keep learning even when a mature
+        // contributor is throttled for poor expectancy.
+        'enabled' => ! filter_var(env('PULSE_ADAPTIVE_STRATEGY_DISABLE', false), FILTER_VALIDATE_BOOL),
+        'minimum_samples' => (int) env('PULSE_OPTIMIZER_MINIMUM_SAMPLES', 30),
+        'established_samples' => (int) env('PULSE_OPTIMIZER_ESTABLISHED_SAMPLES', 75),
+        'lookback_days' => (int) env('PULSE_OPTIMIZER_LOOKBACK_DAYS', 90),
+        'minimum_contributors' => (int) env('PULSE_OPTIMIZER_MINIMUM_CONTRIBUTORS', 2),
+        'minimum_directional_gap' => (float) env('PULSE_OPTIMIZER_MIN_DIRECTIONAL_GAP', 8),
+        'macro_event_gate_enabled' => ! filter_var(env('PULSE_MACRO_EVENT_GATE_DISABLE', false), FILTER_VALIDATE_BOOL),
+        'macro_event_minutes_before' => (int) env('PULSE_MACRO_EVENT_MINUTES_BEFORE', 45),
+        'macro_event_minutes_after' => (int) env('PULSE_MACRO_EVENT_MINUTES_AFTER', 30),
+        'rr_candidates' => [1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 3.0],
+    ],
+
     'settings' => [
         // After a user saves a changed trading-market selection, the pair list
         // remains fixed for this many hours to prevent rapid package/pair hopping.

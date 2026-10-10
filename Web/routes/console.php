@@ -13,6 +13,7 @@ use App\Services\EconomicCalendarService;
 use App\Services\MarketDataService;
 use App\Services\InvestorPerformanceService;
 use App\Services\InvestorSettlementService;
+use App\Services\PulseAnalyticsBackfillService;
 use App\Services\PulseAutomationService;
 use App\Services\PulseMarketDataService;
 use App\Services\PulseRuntimeCadenceService;
@@ -22,8 +23,6 @@ use App\Services\PulseStrategyCycleService;
 use App\Services\PulseStrategyResearchService;
 use App\Services\PulseLearningService;
 use App\Services\PulseTradeService;
-use App\Services\Push\PulsePushEventService;
-use App\Services\Push\PushNotificationService;
 use App\Support\AbsSchemaRepair;
 use App\Support\LegacyMigrationBaseline;
 use Illuminate\Support\Facades\Artisan;
@@ -339,7 +338,7 @@ Artisan::command('abs:test-doctor', function (): int {
     return Command::SUCCESS;
 })->purpose('Detect stale legacy migrations before running PHPUnit');
 
-Artisan::command('abs:pulse-maintenance', function (): int {
+Artisan::command('abs:pulse-maintenance', function (PulseAnalyticsBackfillService $backfill): int {
     $expiredSignals = PulseSignal::query()
         ->where('status', 'active')
         ->whereNotNull('expires_at')
@@ -353,9 +352,17 @@ Artisan::command('abs:pulse-maintenance', function (): int {
         ->where('ends_at', '<=', now())
         ->update(['status' => 'expired']);
 
-    $this->info("Pulse maintenance complete: {$expiredSignals} signals expired; {$expiredAccess} access records expired.");
-    return Command::SUCCESS;
-})->purpose('Expire stale Pulse signals and ended service access without sending exchange orders');
+    // V15.8.4: process only a small bounded analytics slice during the existing
+    // maintenance cycle. The HostGator/cPanel cron remains untouched.
+    $backfillResult = $backfill->processPendingChunk(3, 20);
+    $state = (array) ($backfillResult['state'] ?? []);
+    $backfillText = in_array((string)($state['status'] ?? 'idle'), ['queued','running','completed','failed'], true)
+        ? '; analytics backfill '.(string)($state['status'] ?? 'idle').' '.number_format((float)($state['progress_pct'] ?? 0), 1).'%'
+        : '';
+
+    $this->info("Pulse maintenance complete: {$expiredSignals} signals expired; {$expiredAccess} access records expired{$backfillText}.");
+    return (($state['status'] ?? '') === 'failed') ? Command::FAILURE : Command::SUCCESS;
+})->purpose('Expire stale Pulse records and process queued shared-hosting-safe maintenance work');
 
 Artisan::command('abs:pulse-sync', function (PulseTradeService $trades): int {
     $completed = 0;
@@ -696,10 +703,11 @@ Artisan::command('abs:pulse-analytics-backfill {--days=7 : Rebuild recent retain
             return Command::SUCCESS;
         }
         foreach ($availableDates as $date) {
-            $learning->rebuildDate((string) $date);
+            $learning->rebuildDate((string) $date, false);
             $this->line('  rebuilt '.$date);
         }
-        $this->info('Profitability analytics backfill complete: '.$availableDates->count().' day(s) rebuilt.');
+        $learning->refreshLearningStates();
+        $this->info('Profitability analytics backfill complete: '.$availableDates->count().' day(s) rebuilt; learning and adaptive evidence refreshed once.');
         return Command::SUCCESS;
     } catch (Throwable $e) {
         $this->error('Profitability analytics backfill failed: '.$e->getMessage());
@@ -780,6 +788,28 @@ Artisan::command('abs:sync-economic-calendar', function (EconomicCalendarService
     }
 })->purpose('Sync CPI, PPI, FOMC, jobs, GDP and other macro events with previous, forecast, actual and crypto context');
 
+Artisan::command('abs:sync-economic-calendar-hot', function (EconomicCalendarService $calendar): int {
+    if (! $calendar->configured()) return Command::SUCCESS;
+    // Focused polling around imminent/just-published releases on existing 1-min cron.
+    try {
+        $result = $calendar->sync(
+            \Carbon\CarbonImmutable::now(config('app.timezone'))->subHours(5),
+            \Carbon\CarbonImmutable::now(config('app.timezone'))->addHours(18)
+        );
+        $this->info('Pulse macro hot-sync: '.$result['updated'].' updated, '.$result['created'].' new.');
+        return Command::SUCCESS;
+    } catch (Throwable $e) {
+        $this->warn('Pulse macro hot-sync: '.$e->getMessage());
+        return Command::FAILURE;
+    }
+})->purpose('Refresh imminent economic releases and actuals before next full sync');
+
+Artisan::command('abs:send-macro-push', function (\App\Services\PulseMacroReleaseService $service): int {
+    $stats = $service->deliver(config('pulse.scheduler.hostgator_shared', false) ? 10 : 40);
+    $this->info('Pulse macro push: '.json_encode($stats));
+    return Command::SUCCESS;
+})->purpose('Deliver one-time factual Pulse release analysis to opted-in mobile devices');
+
 // V15.3.0 Strategy Lab: the Admin chooses Production Cron, ABS Internal Scheduler,
 // or Manual Only. HostGator remains protected at one-minute resolution; local/VPS
 // schedule:work can execute the configured 5/30/60/120/300-second research cadence.
@@ -792,6 +822,9 @@ if ((bool) config('pulse.scheduler.hostgator_shared', false)) {
     Schedule::command('abs:cache-market')->everyFiveMinutes()->withoutOverlapping(5);
     Schedule::command('abs:investor-accruals')->everyMinute()->withoutOverlapping(5);
     Schedule::command('abs:sync-economic-calendar')->everyFifteenMinutes()->withoutOverlapping(10)->when(fn () => app(EconomicCalendarService::class)->autoSyncEnabled());
+    Schedule::command('abs:sync-economic-calendar-hot')->everyFiveMinutes()->withoutOverlapping(5)->when(fn () => app(EconomicCalendarService::class)->autoSyncEnabled() && now()->minute % 15 !== 0);
+    Schedule::command('abs:send-macro-push')->everyMinute()->withoutOverlapping(5);
+    Schedule::command('abs:send-pulse-push')->everyMinute()->withoutOverlapping(5);
     Schedule::command('abs:pulse-learning')->dailyAt('00:30')->withoutOverlapping(60);
     Schedule::command('abs:expiry-reminders')->dailyAt('08:00')->withoutOverlapping(60);
     Schedule::command('abs:daily-market-brief')->dailyAt('08:15')->withoutOverlapping(60);
@@ -806,6 +839,9 @@ if ((bool) config('pulse.scheduler.hostgator_shared', false)) {
     Schedule::command('abs:cache-market')->everyMinute()->withoutOverlapping(5);
     Schedule::command('abs:investor-accruals')->everyMinute()->withoutOverlapping(5);
     Schedule::command('abs:sync-economic-calendar')->everyFifteenMinutes()->withoutOverlapping(10)->when(fn () => app(EconomicCalendarService::class)->autoSyncEnabled());
+    Schedule::command('abs:sync-economic-calendar-hot')->everyFiveMinutes()->withoutOverlapping(5)->when(fn () => app(EconomicCalendarService::class)->autoSyncEnabled() && now()->minute % 15 !== 0);
+    Schedule::command('abs:send-macro-push')->everyMinute()->withoutOverlapping(5);
+    Schedule::command('abs:send-pulse-push')->everyMinute()->withoutOverlapping(5);
     Schedule::command('abs:expiry-reminders')->dailyAt('08:00')->withoutOverlapping(60);
     Schedule::command('abs:daily-market-brief')->dailyAt('08:15')->withoutOverlapping(60);
     Schedule::command('abs:pulse-maintenance')->everyFiveMinutes()->withoutOverlapping(10);
@@ -813,49 +849,6 @@ if ((bool) config('pulse.scheduler.hostgator_shared', false)) {
     Schedule::command('abs:pulse-sync')->everyMinute()->withoutOverlapping(5);
     Schedule::command('abs:pulse-automation')->everyMinute()->withoutOverlapping(5);
 }
-
-// Pulse push notifications (both scheduler profiles): event producers then the
-// FCM outbox dispatch. Every producer is deduplicated and rate-limited.
-Schedule::command('abs:push-events')->everyMinute()->withoutOverlapping(5);
-
-Artisan::command('abs:push-events {--dispatch-only : Only send already-queued pushes}', function (PulsePushEventService $events, PushNotificationService $push): int {
-    if (! $this->option('dispatch-only')) {
-        foreach ($events->runAll() as $producer => $queued) {
-            if ($queued > 0) $this->line("Queued {$queued} {$producer} push(es).");
-        }
-    }
-    $result = $push->dispatch();
-    $this->info("Push dispatch: {$result['sent']} sent; {$result['skipped']} skipped; {$result['failed']} failed.");
-    return Command::SUCCESS;
-})->purpose('Produce deduplicated Pulse push events (market moves, macro, news, brief, expiry) and dispatch the FCM outbox');
-
-Artisan::command('abs:push-test {--topic= : Public topic, e.g. abs_breaking_news} {--user= : User ID for a private device push} {--type=breaking_news : Notification type for routing} {--title=Pulse test notification} {--body=This is a Pulse push delivery test.}', function (PushNotificationService $push): int {
-    $type = (string) $this->option('type');
-    $key = 'test:'.now()->format('YmdHis').':'.bin2hex(random_bytes(3));
-    $topic = (string) $this->option('topic');
-    $user = (string) $this->option('user');
-    if (($topic === '') === ($user === '')) {
-        $this->error('Pass exactly one of --topic or --user.');
-        return Command::FAILURE;
-    }
-    try {
-        $queued = $topic !== ''
-            ? $push->queueTopic($topic, $type, (string) $this->option('title'), (string) $this->option('body'), [], $key)
-            : $push->queueUser((int) $user, $type, (string) $this->option('title'), (string) $this->option('body'), [], $key);
-    } catch (\InvalidArgumentException $e) {
-        $this->error($e->getMessage());
-        return Command::FAILURE;
-    }
-    if (! $queued) {
-        $this->error('Not queued: notifications disabled, push table missing, or user not found.');
-        return Command::FAILURE;
-    }
-    $result = $push->dispatch();
-    $this->info("Push test: {$result['sent']} sent; {$result['skipped']} skipped; {$result['failed']} failed.");
-    $log = \App\Models\PushNotificationLog::query()->where('dedupe_key', $key)->first();
-    if ($log?->error) $this->warn('Detail: '.$log->error);
-    return $result['sent'] > 0 ? Command::SUCCESS : Command::FAILURE;
-})->purpose('Send one Pulse push to a public topic or a user\'s devices to verify FCM delivery');
 
 Artisan::command('abs:view-audit', function (): int {
     $this->info('ABS V15.1.2 Blade view and named-route audit');
@@ -928,3 +921,10 @@ Artisan::command('abs:view-audit', function (): int {
 
     return ($compileFailures === [] && $routeFailures === []) ? Command::SUCCESS : Command::FAILURE;
 })->purpose('Compile every Blade view and verify every literal named route referenced by the UI');
+
+// V15.8.6: bounded push outbox, existing one-minute cron compatible.
+Artisan::command('abs:send-pulse-push', function(\App\Services\PulseMobilePushDispatcher $dispatcher): int {
+    $result=$dispatcher->deliver(40);
+    $this->line(json_encode($result));
+    return 0;
+})->purpose('Send queued Pulse mobile alerts through Firebase FCM v1');

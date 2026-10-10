@@ -1,0 +1,126 @@
+/* ABS V15.9.1 — unified premium theme layer. This is the FINAL sheet on all 4 shells.
+   Scope: visual surfaces, typography, tables, controls, nav; no business logic changes.
+   Never hide/alter paid access, signal-blur, warning severity, or P&L direction. */
+html[data-abs-theme="light"]{
+ --abs91-page:#f2f6fa;--abs91-surface:#fff;--abs91-raised:#f5f9fc;--abs91-inset:#eaf1f7;
+ --abs91-text:#182a3e;--abs91-heading:#10263b;--abs91-muted:#4d6478;--abs91-line:#ccdbe7;
+ --abs91-accent:#166185;--abs91-accent-bg:#e9f4fa;--abs91-positive:#08704b;--abs91-negative:#b12a42;
+ --abs91-gold:#a56d14;--abs91-gold-soft:#fff5dd;--abs91-shadow:0 8px 28px rgba(17,43,64,.055);color-scheme:light;
+}
+html[data-abs-theme="dark"]{
+ --abs91-page:#071521;--abs91-surface:#0e2132;--abs91-raised:#142a3c;--abs91-inset:#172d40;
+ --abs91-text:#e0ecf5;--abs91-heading:#f4f8fc;--abs91-muted:#b6c7d5;--abs91-line:#3b566c;
+ --abs91-accent:#8ddcf7;--abs91-accent-bg:#16384d;--abs91-positive:#77e9b4;--abs91-negative:#ff9caf;
+ --abs91-gold:#efc879;--abs91-gold-soft:#42341e;--abs91-shadow:0 12px 36px rgba(0,0,0,.16);color-scheme:dark;
+}
+/* Consistent shell and typography. Tokens cascade into all view-specific layouts. */
+html[data-abs-theme] body:is(.pulse-body,.abs-body,.admin-body,.abs-auth-page){
+ color:var(--abs91-text)!important;background:var(--abs91-page)!important;
+ --text:var(--abs91-text);--pulse-soft:var(--abs91-muted);--pulse-line:var(--abs91-line);
+ --pulse-premium-text:var(--abs91-text);--pulse-premium-muted:var(--abs91-muted);
+}
+html[data-abs-theme] body :is(.pulse-main,.pulse-content,.admin-main,.admin-content,.abs-main){min-width:0}
+html[data-abs-theme] body :is(h1,h2,h3,h4,.page-title){letter-spacing:-.018em}
+/* Pulse: positions, orders, trade history, alerts, reports, signals, strategy and trading setup
+   all reuse these five card/table families. Set backdrop and foreground together. */
+html[data-abs-theme] body.pulse-body :is(
+ .pulse-work-card,.pulse-metric-row article,.pulse-panel,.pulse-card,.pulse-status-strip>div,
+ .position-live-grid>section,.signal-review-grid>section,.strategy-library-item,
+ .execution-signal-grid>section,.pulse-action-list a,.pulse-market-row>div,
+ .report-metrics article,.watchlist-table,.pulse-guidance-banner,
+ .connection-list>section,.market-selector span,.readiness-strip>div,
+ .risk-control-status,.pulse-warning,.pulse-table-row,.pulse-info-card,
+ .pulse-dashboard-card,.pulse-account-card,.pulse-stat-card
+){background:var(--abs91-surface)!important;background-image:none!important;color:var(--abs91-text)!important;border-color:var(--abs91-line)!important;box-shadow:var(--abs91-shadow)!important}
+html[data-abs-theme] body.pulse-body :is(.pulse-work-card,.pulse-panel,.pulse-card,.pulse-metric-row article,.position-live-grid>section,.strategy-library-item,.execution-signal-grid>section){border-radius:13px!important}
+html[data-abs-theme] body.pulse-body .pulse-metric-row article{padding:18px 18px!important;min-height:106px!important;gap:13px!important}
+html[data-abs-theme] body.pulse-body .pulse-metric-row article strong{font-size:clamp(21px,2vw,28px)!important;font-weight:750!important;letter-spacing:-.025em;white-space:normal!important;overflow-wrap:anywhere;color:var(--abs91-heading)!important}
+html[data-abs-theme] body.pulse-body .pulse-metric-row article small{font-size:11px!important;line-height:1.45!important;font-weight:700!important;color:var(--abs91-muted)!important}
+html[data-abs-theme] body.pulse-body .pulse-metric-row article em{font-size:11px!important;line-height:1.5!important;color:var(--abs91-muted)!important}
+html[data-abs-theme] body.pulse-body :is(.pulse-page-hero h1,.pulse-card-heading h2,.pulse-card-heading h3,.pulse-work-card h2,.pulse-work-card h3,.pulse-panel h2,.pulse-panel h3,.signal-review-grid h3,.strategy-library-item h3){color:var(--abs91-heading)!important}
+html[data-abs-theme] body.pulse-body :is(.pulse-page-hero p,.pulse-page-hero>div:first-child>span,.pulse-card-heading p,.pulse-card-heading small,.pulse-accuracy-note,.pulse-card-empty,.content-empty,.risk-snapshot dt,.risk-control-status small,.pulse-live-state small,.pulse-card-heading>span,.pulse-work-card p,.pulse-work-card small,.pulse-panel p,.pulse-panel small,.connection-list p,.alert-inbox-content p){color:var(--abs91-muted)!important}
+html[data-abs-theme] body.pulse-body .pulse-card-heading{border-color:var(--abs91-line)!important;align-items:center!important;padding-bottom:14px!important;margin-bottom:16px!important}
+html[data-abs-theme] body.pulse-body .pulse-card-heading h2{font-size:17px!important;font-weight:750!important}
+html[data-abs-theme] body.pulse-body .pulse-card-heading p{font-size:12px!important;line-height:1.55!important}
+html[data-abs-theme] body.pulse-body .pulse-card-heading>small{font-size:11px!important}
+html[data-abs-theme] body.pulse-body .pulse-work-card{padding:clamp(16px,2vw,22px)!important;margin-bottom:16px!important}
+html[data-abs-theme] body.pulse-body .pulse-page-hero h1{font-size:clamp(27px,3vw,37px)!important;font-weight:750!important}
+html[data-abs-theme] body.pulse-body .pulse-page-hero p{font-size:13px!important;line-height:1.6!important}
+html[data-abs-theme] body.pulse-body .pulse-page-hero>div:first-child>span{font-size:11px!important;font-weight:800!important;letter-spacing:.12em!important}
+/* Side by side financial cards and inner details. */
+html[data-abs-theme] body.pulse-body :is(.pulse-metric-row article,.pulse-work-card,.pulse-panel,.pulse-card,.pulse-status-strip>div) :is(b,strong,dd):not(.positive):not(.negative):not(.pi-positive):not(.pi-negative):not([class*='badge']):not(.pulse-button){color:var(--abs91-heading)!important}
+html[data-abs-theme] body.pulse-body :is(.pulse-work-card,.pulse-panel,.pulse-card,.pulse-metric-row article) :is(dt,small,em):not(.positive):not(.negative){color:var(--abs91-muted)!important}
+html[data-abs-theme] body.pulse-body :is(.positive,.pi-positive){color:var(--abs91-positive)!important}
+html[data-abs-theme] body.pulse-body :is(.negative,.pi-negative){color:var(--abs91-negative)!important}
+/* Tables: harmonize headers, body, hover, placeholders, and responsive swipe containers. */
+html[data-abs-theme] body.pulse-body :is(.pulse-data-table-wrap,.pulse-table-wrap,.table-responsive,.pulse-scroll-table){max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:9px;border:1px solid var(--abs91-line)!important;background:var(--abs91-surface)!important}
+html[data-abs-theme] body.pulse-body :is(.pulse-data-table,.pulse-table,table:not(.pi-table):not(.pi-v1570-table):not(.pi71-ledger)){background:var(--abs91-surface)!important;color:var(--abs91-text)!important;border-color:var(--abs91-line)!important}
+html[data-abs-theme] body.pulse-body .pulse-data-table :is(thead,tr,th){border-color:var(--abs91-line)!important}
+html[data-abs-theme] body.pulse-body .pulse-data-table th{background:var(--abs91-inset)!important;color:var(--abs91-muted)!important;font-size:11px!important;font-weight:750!important;padding:11px 12px!important;letter-spacing:.025em!important}
+html[data-abs-theme] body.pulse-body .pulse-data-table td{background:var(--abs91-surface)!important;color:var(--abs91-text)!important;border-color:var(--abs91-line)!important;font-size:12px!important;line-height:1.55!important;padding:11px 12px!important}
+html[data-abs-theme] body.pulse-body .pulse-data-table td :is(small,em){font-size:11px!important;color:var(--abs91-muted)!important}
+html[data-abs-theme] body.pulse-body .pulse-data-table tbody tr:hover td{background:var(--abs91-raised)!important}
+html[data-abs-theme] body.pulse-body .pulse-data-table td :is(.positive,.pi-positive){color:var(--abs91-positive)!important}
+html[data-abs-theme] body.pulse-body .pulse-data-table td :is(.negative,.pi-negative){color:var(--abs91-negative)!important}
+/* Grid components that were hardcoded to navy across older source files. */
+html[data-abs-theme] body.pulse-body :is(.pulse-card-empty,.content-empty,.pulse-filter-grid,.pulse-field,.trade-filters,.signal-filters,.pulse-action-list,
+ .risk-snapshot,.position-live-grid dl,.position-live-grid dl>div,.market-selector span,
+ .risk-control-status>div,.connection-list dl>div,.watchlist-table .head,.watchlist-table .row,
+ .notification-preference-list>div,.fee-asset-list>div,.alert-inbox section,.signal-review-grid .evidence-list>div){border-color:var(--abs91-line)!important}
+html[data-abs-theme] body.pulse-body :is(.pulse-card-empty,.content-empty){font-size:12px!important;line-height:1.6!important}
+html[data-abs-theme] body.pulse-body :is(.signal-review-grid,.readiness-strip,.watchlist-table,.alert-inbox) :is(h2,h3,h4,b){color:var(--abs91-heading)!important}
+html[data-abs-theme] body.pulse-body :is(.signal-review-grid,.readiness-strip,.watchlist-table,.alert-inbox) :is(p,small,dt){color:var(--abs91-muted)!important}
+html[data-abs-theme] body.pulse-body :is(.pulse-input,.pulse-field input,.pulse-field select,.pulse-field textarea,.environment-switch select,
+ .pulse-filter-grid input,.pulse-filter-grid select,.pulse-filter-grid textarea,.trade-filters input,.trade-filters select,
+ .signal-filters input,.signal-filters select,.watchlist-add-form input,.watchlist-add-form select,.secret-input input,
+ .pulse-work-card input:not([type='checkbox']):not([type='radio']),.pulse-work-card select,.pulse-work-card textarea){
+ background:var(--abs91-surface)!important;color:var(--abs91-heading)!important;border:1px solid var(--abs91-line)!important;
+ border-radius:8px!important;min-height:42px!important;font-size:13px!important}
+html[data-abs-theme] body.pulse-body :is(.pulse-field label,.pulse-filter-grid label,.trade-filters label,.signal-filters label,.environment-switch label){color:var(--abs91-muted)!important;font-size:12px!important;font-weight:700!important}
+html[data-abs-theme] body.pulse-body input::placeholder{color:var(--abs91-muted)!important;opacity:.83!important}
+html[data-abs-theme] body.pulse-body .pulse-button.secondary{background:var(--abs91-accent-bg)!important;border-color:var(--abs91-line)!important;color:var(--abs91-accent)!important;font-weight:700!important}
+html[data-abs-theme] body.pulse-body .pulse-button.ghost{color:var(--abs91-accent)!important}
+html[data-abs-theme] body.pulse-body :is(.review-link,.pulse-card-heading>a){color:var(--abs91-accent)!important}
+html[data-abs-theme] body.pulse-body :is(.pulse-button,.review-link,.pulse-badge){font-size:11px!important;line-height:1.25!important}
+html[data-abs-theme] body.pulse-body .pulse-badge{background:var(--abs91-accent-bg)!important;color:var(--abs91-accent)!important;border-color:var(--abs91-line)!important;font-weight:750!important}
+/* Sidebar: consistent hierarchy, good spacing for multiline items, collapsed layout intact. */
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav>a{border:1px solid transparent!important;margin:1px 0!important;min-height:47px!important;padding:10px 12px!important;gap:10px!important}
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav>a>span{font-size:13px!important;font-weight:650!important;line-height:1.4!important}
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav>a.active{background:var(--abs91-accent-bg)!important;color:var(--abs91-accent)!important;border-color:var(--abs91-line)!important}
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav>a:hover{background:var(--abs91-raised)!important;color:var(--abs91-heading)!important}
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav>a>small{color:var(--abs91-accent)!important;background:var(--abs91-raised)!important}
+/* Public, member, admin: last-mile consistent surfaces; no universal color:inherit on status nodes. */
+html[data-abs-theme] body.abs-body :is(.final-feature-card,.final-card,.final-market-card,.final-snapshot-top>article,.final-movers-columns>article,.final-market-snapshot,
+ .final-news-card,.news-article-card,.macro-v1512-event,.macro-v1512-values>span,.abs-card,.abs-panel,.service-card,.plan-card){background:var(--abs91-surface)!important;border-color:var(--abs91-line)!important;color:var(--abs91-text)!important}
+html[data-abs-theme] body.abs-body :is(.final-feature-card,.final-card,.final-market-card,.final-news-card,.news-article-card,.abs-card,.abs-panel) :is(h2,h3,h4,strong):not(.positive):not(.negative){color:var(--abs91-heading)!important}
+html[data-abs-theme] body.abs-body :is(.final-feature-card,.final-card,.final-market-card,.final-news-card,.news-article-card,.abs-card,.abs-panel) :is(p,small){color:var(--abs91-muted)!important}
+html[data-abs-theme] body.admin-body :is(.wf-panel,.admin-card,.admin-panel,.enterprise-surface,.abs-exec-card,.abs-exec-panel,.strategy-kpi-grid article,.wf-mini-kpis article,.wf-result-hero article){background:var(--abs91-surface)!important;color:var(--abs91-text)!important;border-color:var(--abs91-line)!important}
+html[data-abs-theme] body.admin-body :is(.wf-panel,.admin-card,.admin-panel,.enterprise-surface,.abs-exec-card,.abs-exec-panel) :is(h1,h2,h3,h4,strong):not(.positive):not(.negative){color:var(--abs91-heading)!important}
+html[data-abs-theme] body.admin-body :is(.wf-panel,.admin-card,.admin-panel,.enterprise-surface,.abs-exec-card,.abs-exec-panel) :is(p,small,label){color:var(--abs91-muted)!important}
+html[data-abs-theme] body :is(button,a,input,select,textarea,[tabindex]):focus-visible{outline:3px solid var(--abs91-accent)!important;outline-offset:2px!important}
+/* Tiny legacy labels are not acceptable at full-HD or on mobile. */
+html[data-abs-theme] body.pulse-body :is(.pulse-work-card,.pulse-metric-row,.pulse-panel) :is(label,dt,small,em){font-size:max(11px,.73rem)!important;line-height:1.45!important}
+/* Theme-aware native form control rendering on every shell. */
+html[data-abs-theme] body input,html[data-abs-theme] body textarea,html[data-abs-theme] body select{color-scheme:inherit}
+html[data-abs-theme] body input:-webkit-autofill,html[data-abs-theme] body textarea:-webkit-autofill{
+ -webkit-text-fill-color:var(--abs91-heading)!important;box-shadow:0 0 0 1000px var(--abs91-surface) inset!important;
+}
+@media(max-width:1100px){html[data-abs-theme] body.pulse-body .pulse-work-card .pulse-card-heading{flex-wrap:wrap!important}}
+@media(max-width:760px){html[data-abs-theme] body.pulse-body .pulse-content{padding:14px!important}
+ html[data-abs-theme] body.pulse-body .pulse-metric-row{gap:10px!important}
+ html[data-abs-theme] body.pulse-body .pulse-metric-row article{padding:13px!important;min-height:86px!important}
+ html[data-abs-theme] body.pulse-body .pulse-metric-row article strong{font-size:22px!important}
+ html[data-abs-theme] body.pulse-body .pulse-data-table-wrap{max-width:calc(100vw - 44px)!important}
+ html[data-abs-theme] body.pulse-body .pulse-data-table{min-width:680px}
+ html[data-abs-theme] body.pulse-body .pulse-page-hero{gap:12px!important}
+}
+/* Status semantics on the number node itself must outrank generic table and KPI ink. */
+html[data-abs-theme] body.pulse-body .pulse-data-table :is(td,th).positive,
+html[data-abs-theme] body.pulse-body .pulse-metric-row article strong.positive,
+html[data-abs-theme] body.pulse-body .pulse-work-card :is(strong,b,dd).positive {color:var(--abs91-positive)!important}
+html[data-abs-theme] body.pulse-body .pulse-data-table :is(td,th).negative,
+html[data-abs-theme] body.pulse-body .pulse-metric-row article strong.negative,
+html[data-abs-theme] body.pulse-body .pulse-work-card :is(strong,b,dd).negative {color:var(--abs91-negative)!important}
+/* Accessibility of the small symbol/monetary labels on dark and light financial KPIs. */
+html[data-abs-theme] body.pulse-body .pulse-metric-row .metric-icon {color:var(--abs91-accent)!important;border-color:var(--abs91-line)!important;background:var(--abs91-raised)!important}
+html[data-abs-theme] body.pulse-body .pulse-badge:is(.status-failed,.status-cancelled,.status-rejected){color:var(--abs91-negative)!important;border-color:var(--abs91-line)!important}

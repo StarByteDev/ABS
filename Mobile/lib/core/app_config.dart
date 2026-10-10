@@ -1,9 +1,9 @@
 class AppConfig {
   static const String name = 'Pulse';
   static const String shortName = 'Pulse';
-  static const String mobileVersion = '1.6.4';
-  static const int mobileBuild = 164;
-  static const String supportedBackendBuild = '15.7.4';
+  static const String mobileVersion = '1.7.1';
+  static const int mobileBuild = 171;
+  static const String supportedBackendBuild = '15.9.1';
   static const String minimumBackendBuild = '15.7.4';
 
   static const String apiBaseUrl = String.fromEnvironment(

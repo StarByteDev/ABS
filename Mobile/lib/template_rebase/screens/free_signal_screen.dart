@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import '../../investor/premium_ui.dart';
+import '../../investor/investor_ui.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -14,6 +16,7 @@ import '../../core/json_tools.dart';
 import '../../core/session.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
+import '../widgets/rewarded_ad_consent.dart';
 
 class FreeSignalScreen extends StatefulWidget {
   const FreeSignalScreen({super.key, this.embedded = false});
@@ -138,17 +141,36 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
           error = e.message;
         });
       }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          busy = false;
+          error = 'Could not start the rewarded ad session. Check your connection and try again.';
+        });
+      }
     }
   }
 
   Future<void> _loadAndShowAd() async {
     final completer = Completer<void>();
     final unitId = AdConfig.rewardedUnitId;
+    var abandoned = false;
+    if (unitId.isEmpty) {
+      if (mounted) setState(() {
+        busy = false;
+        error = 'Rewarded ads are not configured in this app build. Contact Pulse support.';
+      });
+      return;
+    }
     RewardedAd.load(
       adUnitId: unitId,
       request: const AdRequest(),
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {
+          if (abandoned || !mounted) {
+            ad.dispose();
+            return;
+          }
           rewardedAd = ad;
           ad.fullScreenContentCallback = FullScreenContentCallback(
             onAdShowedFullScreenContent: (_) =>
@@ -187,6 +209,7 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
           if (!completer.isCompleted) completer.complete();
         },
         onAdFailedToLoad: (failure) {
+          if (abandoned) return;
           if (mounted) {
             setState(() {
               busy = false;
@@ -198,7 +221,13 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
         },
       ),
     );
-    return completer.future;
+    await completer.future.timeout(const Duration(seconds: 25), onTimeout: () {
+      abandoned = true;
+      if (mounted) setState(() {
+        busy = false;
+        error = 'The ad network did not respond in time. Please try again.';
+      });
+    });
   }
 
   Future<void> _claim(RewardItem reward) async {
@@ -265,6 +294,11 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
           }
         });
       }
+    } catch (_) {
+      if (mounted) setState(() {
+        busy = false;
+        error = 'ABS could not finish the reward claim. Refresh to recover an available reveal.';
+      });
     }
   }
 
@@ -751,7 +785,7 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
           ),
         ],
       ),
-      body: body,
+      body: PremiumBackdrop(child: body),
     );
   }
 
@@ -771,107 +805,57 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
             ? AppColors.amber
             : AppColors.muted;
     return <Widget>[
-      Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: fade(AppColors.gold, .36)),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[fade(AppColors.gold, .17), AppColors.surface],
+      const SizedBox(height: 12),
+      PremiumCard(highlight: true, child: Column(children: [
+        const SizedBox(height: 10),
+        const Text('Free Signal', style: TextStyle(color: Colors.white,
+          fontSize: 25, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 9),
+        const Text('Watch one rewarded ad to reveal a qualified market setup or entry watch.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: invMuted, fontSize: 12.5, height: 1.45)),
+        const SizedBox(height: 24),
+        Container(width: 130, height: 130, alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(colors: [invGold.withAlpha(65),
+              invGold.withAlpha(15), Colors.transparent]),
+            border: Border.all(color: invGold.withAlpha(80)),
           ),
+          child: Container(width: 82, height: 82, alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: invGold, width: 1.5),
+              color: invGold.withAlpha(28),
+              boxShadow: [BoxShadow(color: invGold.withAlpha(35), blurRadius: 25)],
+            ),
+            child: const Icon(Icons.card_giftcard_rounded, size: 43, color: invGold))),
+        const SizedBox(height: 16),
+        const _BenefitLine('Live market analysis and entry watch'),
+        const _BenefitLine('Entry, target and stop where qualified'),
+        const _BenefitLine('Server-enforced 30-minute cooldown'),
+        const _BenefitLine('No registration or subscription required'),
+        const SizedBox(height: 15),
+        PremiumChip(statusText, color: statusColor),
+        const SizedBox(height: 10),
+        if (claimNotice != null && claimNotice!.isNotEmpty) _notice(claimNotice!, AppColors.amber),
+        if (error != null && error!.isNotEmpty) _notice(error!, AppColors.down),
+        RewardedAdConsentTile(
+          value: consent,
+          enabled: !busy,
+          onChanged: (value) => setState(() => consent = value),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: fade(AppColors.gold, .12),
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(color: fade(AppColors.gold, .35)),
-                  ),
-                  child: const Icon(Icons.play_circle_fill_rounded,
-                      color: AppColors.gold, size: 30),
-                ),
-                const SizedBox(width: 13),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text('ABS PULSE · REWARDED ACCESS', style: AppText.label),
-                      SizedBox(height: 4),
-                      Text('Reveal today\'s best available public setup',
-                          style: AppText.h2),
-                    ],
-                  ),
-                ),
-                Pill(statusText, color: statusColor),
-              ],
-            ),
-            const SizedBox(height: 14),
-            const Text(
-              'ABS first checks for a qualified Free Signal. If none is available it may show Entry Watch, an eligible active-package setup, or BTC 4H market context without inventing trade levels.',
-              style: TextStyle(color: AppColors.muted, height: 1.48),
-            ),
-            if (claimNotice != null && claimNotice!.isNotEmpty) ...<Widget>[
-              const SizedBox(height: 12),
-              _notice(claimNotice!, AppColors.amber),
-            ],
-            if (error != null && error!.isNotEmpty) ...<Widget>[
-              const SizedBox(height: 12),
-              _notice(error!, AppColors.down),
-            ],
-            const SizedBox(height: 14),
-            InkWell(
-              onTap: busy ? null : () => setState(() => consent = !consent),
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Checkbox(
-                      value: consent,
-                      onChanged: busy
-                          ? null
-                          : (value) => setState(() => consent = value ?? false),
-                      activeColor: AppColors.accent,
-                    ),
-                    const SizedBox(width: 2),
-                    const Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.only(top: 11),
-                        child: Text(
-                          'I want to watch a rewarded ad to reveal the Free Signal. No purchase is required.',
-                          style: TextStyle(
-                              color: AppColors.muted,
-                              fontSize: 12.5,
-                              height: 1.4),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            PrimaryButton(
-              label: busy
-                  ? 'Preparing rewarded ad…'
-                  : available
-                      ? 'Watch ad & reveal'
-                      : statusText,
-              icon: Icons.play_arrow_rounded,
-              onPressed: enabled && available && !busy ? _unlock : null,
-            ),
-          ],
+        const SizedBox(height: 9),
+        PremiumButton(
+          label: busy ? 'Preparing rewarded ad…' : available ? 'Watch Ad & Unlock Signal' : statusText,
+          icon: Icons.play_circle_filled_rounded,
+          onTap: enabled && available && !busy ? _unlock : null,
         ),
-      ),
+        const SizedBox(height: 7),
+        const Text('The actual reward is confirmed by ABS. A setup is not guaranteed.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: invMuted, fontSize: 10.5)),
+      ])),
       const SizedBox(height: 16),
       const SectionTitle('How Free Signal works'),
       AbsCard(
@@ -1134,6 +1118,19 @@ class _FreeSignalScreenState extends State<FreeSignalScreen> {
     final remain = seconds % 60;
     return '${minutes.toString().padLeft(2, '0')}:${remain.toString().padLeft(2, '0')}';
   }
+}
+
+class _BenefitLine extends StatelessWidget {
+  const _BenefitLine(this.text);
+  final String text;
+  @override Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Row(children: [
+      const Icon(Icons.check_circle_rounded, color: invGold, size: 17),
+      const SizedBox(width: 9),
+      Expanded(child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 12))),
+    ]),
+  );
 }
 
 class _FlowRow extends StatelessWidget {

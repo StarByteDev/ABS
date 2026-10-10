@@ -10,6 +10,20 @@ use Illuminate\Http\Request;
 
 class AppController extends Controller
 {
+
+    public function health(Request $request)
+    {
+        return response()->json([
+            'ok' => true,
+            'api_version' => 'v1',
+            'build' => '15.8.5',
+            'service' => 'ABS Pulse API',
+            'timestamp' => now()->toIso8601String(),
+            'mobile_api_compatible' => true,
+            'note' => 'TLS certificate validation occurs before Laravel receives the request.',
+        ]);
+    }
+
     public function bootstrap(Request $request, PulseMembershipService $membership)
     {
         $settings = SiteSetting::query()->whereIn('group', ['general', 'mobile', 'contact', 'legal'])->get()->mapWithKeys(function (SiteSetting $item) {
@@ -21,7 +35,7 @@ class AppController extends Controller
             'authentication', 'account', 'dashboard', 'market', 'watchlist', 'news', 'research', 'learning',
             'economic_calendar', 'pulse_packages', 'pulse_free_signal', 'pulse_scanner', 'pulse_signals',
             'binance_connections', 'execution_readiness', 'positions', 'orders', 'trades', 'reports',
-            'signal_sharing', 'pulse_signal_insights', 'strategy_profitability', 'what_if_simulation', 'market_feed_health', 'alerts', 'notifications', 'devices', 'pulse_support', 'contact', 'newsletter',
+            'signal_sharing', 'pulse_signal_insights', 'strategy_profitability', 'adaptive_strategy_intelligence', 'what_if_simulation', 'market_feed_health', 'alerts', 'notifications', 'devices', 'pulse_support', 'contact', 'newsletter',
         ];
         if ($isPrivateInvestor) {
             $mobileModules[] = 'private_investor_portfolio';
@@ -44,8 +58,8 @@ class AppController extends Controller
                 'name' => config('app.name', 'Alpha Block Solutions'),
                 'environment' => config('app.env'),
                 'api_version' => 'v1',
-                'build' => '15.7.4',
-                'release' => 'Private Investor Investment Terms & Automatic Monthly Progress',
+                'build' => '15.8.5',
+                'release' => 'Macro Calendar Enrichment & Pulse Mobile Push',
                 'mobile_api_ready' => true,
                 'presentation_schema_version' => 3,
                 'free_signal_fallback' => 'btc_4h_outlook',

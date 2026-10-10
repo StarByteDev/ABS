@@ -1,0 +1,20 @@
+{
+  "fixture_checks": 168,
+  "failures": [],
+  "minimum_contrast": 4.69,
+  "widths": [
+    390,
+    768,
+    1440
+  ],
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "fixture_areas": [
+    "public_free_signal",
+    "economic_calendar",
+    "member_profile_and_sidebar"
+  ],
+  "limits": "Component fixtures from production class names; not every authenticated route or visual state is verified"
+}

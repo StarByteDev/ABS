@@ -40,7 +40,7 @@ class AdminPortfolioController extends Controller
         $profit = (float) $accounts->sum(fn ($a) => $usdValue($a, 'total_profit_usd', 'total_profit'));
         $monthly = (float) $accounts->sum(fn ($a) => $usdValue($a, 'monthly_profit_usd', 'monthly_profit'));
         $realizedFx = (float) $accounts->sum(fn ($a) => (float)($a->realized_fx_gain_loss_usd ?? 0));
-        $profitPaid = (float) PortfolioTransaction::query()->where('status','posted')->where('type','profit')->sum('usd_profit_effect');
+        $profitPaid = (float) PortfolioTransaction::query()->where('status','posted')->where('type','profit')->where(function($q){ $q->whereNull('entry_source')->orWhereNotIn('entry_source',['automatic_profit_reinvestment','admin_profit_reinvestment']); })->sum('usd_profit_effect');
         $return = $contributions > 0 ? ($profit / $contributions) * 100 : 0.0;
 
         $currentPlans = PortfolioPerformancePlan::query()->with(['accruals','account.transactions'])
@@ -128,13 +128,15 @@ class AdminPortfolioController extends Controller
         $activityMetrics = [
             'deposits'=>(float)$posted->where('type','deposit')->sum(fn($r)=>(float)$r->amount),
             'withdrawals'=>(float)$posted->where('type','withdrawal')->sum(fn($r)=>(float)$r->amount),
-            'profit_paid'=>(float)$posted->where('type','profit')->sum(fn($r)=>(float)$r->amount),
+            'profit_paid'=>(float)$posted->where('type','profit')->reject(fn($r)=>in_array((string)$r->entry_source,['automatic_profit_reinvestment','admin_profit_reinvestment'],true))->sum(fn($r)=>(float)$r->amount),
+            'profit_reinvested'=>(float)$posted->where('type','profit')->filter(fn($r)=>in_array((string)$r->entry_source,['automatic_profit_reinvestment','admin_profit_reinvestment'],true))->sum(fn($r)=>(float)$r->amount),
             'profit'=>(float)$posted->where('type','profit')->sum(fn($r)=>(float)$r->amount),
             'losses'=>(float)$posted->filter(fn($r)=>in_array($r->type,['loss','fee'],true))->sum(fn($r)=>(float)$r->amount),
             'drafts'=>$account->transactions->where('status','draft')->count(),
             'voided'=>$account->transactions->where('status','voided')->count(),
             'principal_usd'=>(float)($account->net_contributions_usd ?? (strtoupper((string)$account->currency)==='USD'?$account->net_contributions:0)),
-            'profit_paid_usd'=>(float)($account->total_profit_usd ?? (strtoupper((string)$account->currency)==='USD'?$account->total_profit:0)),
+            'profit_paid_usd'=>(float)$posted->where('type','profit')->reject(fn($r)=>in_array((string)$r->entry_source,['automatic_profit_reinvestment','admin_profit_reinvestment'],true))->sum(fn($r)=>(float)($r->usd_profit_effect ?? 0)),
+            'profit_reinvested_usd'=>(float)$posted->where('type','profit')->filter(fn($r)=>in_array((string)$r->entry_source,['automatic_profit_reinvestment','admin_profit_reinvestment'],true))->sum(fn($r)=>(float)($r->usd_profit_effect ?? 0)),
         ];
         return view('admin.private-investors.show', [
             'account' => $account,
@@ -163,6 +165,7 @@ class AdminPortfolioController extends Controller
             'fullMonthTarget' => $term ? round($capital * ((float)$term->monthly_target_rate / 100), 2) : 0.0,
             'performance' => $performance->snapshot($account),
             'agreement' => $performance->agreementSummary($account),
+            'rateHistory' => $performance->rateHistory($account),
             'supportedCurrencies' => $currencies->supported(),
             'currencyEditable' => $currencies->canChange($account),
             'currencyLockMessage' => $currencies->lockMessage($account),
@@ -177,10 +180,16 @@ class AdminPortfolioController extends Controller
             'status' => ['required', Rule::in(['active','paused','closed'])],
             'auto_payout' => ['nullable','boolean'],
             'payout_day' => ['nullable','integer','min:1','max:28'],
+            'profit_disposition' => ['required', Rule::in(['payout','reinvest'])],
             'notes' => ['nullable','string','max:3000'],
         ]);
         $data['auto_payout'] = true;
         $data['payout_day'] = filled($data['payout_day'] ?? null) ? (int)$data['payout_day'] : null;
+        $existingRateCount = $performance->rateHistory($account)->count();
+        $latestPublishedMonth = $account->statements()->whereNotNull('published_at')->max('statement_month');
+        if ($existingRateCount > 0 && $latestPublishedMonth && Carbon::parse($data['effective_from'])->startOfMonth()->lte(Carbon::parse($latestPublishedMonth)->startOfMonth())) {
+            return back()->withErrors(['effective_from'=>'The new rate cannot rewrite an already published statement month. Choose a date after '.Carbon::parse($latestPublishedMonth)->endOfMonth()->format('d M Y').'.'])->withInput();
+        }
         $term = $performance->saveInvestmentTerm($account, $data, $request->user()->id);
         $settlements->processAccount($account, now(), false);
         $audit->record('admin.private_investor_investment_terms_saved', $request->user(), 'PortfolioInvestmentTerm', $term->id, null, [
@@ -188,7 +197,7 @@ class AdminPortfolioController extends Controller
             'effective_from' => $term->effective_from?->toDateString(),
             'monthly_target_rate' => (float)$term->monthly_target_rate,
             'status' => $term->status,
-            'auto_payout' => (bool)$term->auto_payout, 'payout_day' => $term->payout_day,
+            'auto_payout' => (bool)$term->auto_payout, 'payout_day' => $term->payout_day, 'profit_disposition'=>$term->profit_disposition,
         ], $request);
         PulseAlert::create([
             'user_id'=>$account->user_id,'type'=>'private_investor','title'=>'Investment terms updated',
@@ -451,8 +460,10 @@ class AdminPortfolioController extends Controller
                 'current_value_usd'=>(float)($a->current_value_usd ?? (strtoupper((string)$a->currency)==='USD'?$a->current_value:0)),
                 'net_contributions_usd'=>(float)($a->net_contributions_usd ?? (strtoupper((string)$a->currency)==='USD'?$a->net_contributions:0)),
                 'total_profit_usd'=>(float)($a->total_profit_usd ?? (strtoupper((string)$a->currency)==='USD'?$a->total_profit:0)),
-                'profit_paid'=>(float)$a->transactions->where('status','posted')->where('type','profit')->sum(fn($tx)=>(float)$tx->amount),
-                'profit_paid_usd'=>(float)$a->transactions->where('status','posted')->where('type','profit')->sum(fn($tx)=>(float)($tx->usd_profit_effect ?? 0)),
+                'profit_paid'=>(float)$a->transactions->where('status','posted')->where('type','profit')->reject(fn($tx)=>in_array((string)$tx->entry_source,['automatic_profit_reinvestment','admin_profit_reinvestment'],true))->sum(fn($tx)=>(float)$tx->amount),
+                'profit_reinvested'=>(float)$a->transactions->where('status','posted')->where('type','profit')->filter(fn($tx)=>in_array((string)$tx->entry_source,['automatic_profit_reinvestment','admin_profit_reinvestment'],true))->sum(fn($tx)=>(float)$tx->amount),
+                'profit_paid_usd'=>(float)$a->transactions->where('status','posted')->where('type','profit')->reject(fn($tx)=>in_array((string)$tx->entry_source,['automatic_profit_reinvestment','admin_profit_reinvestment'],true))->sum(fn($tx)=>(float)($tx->usd_profit_effect ?? 0)),
+                'profit_reinvested_usd'=>(float)$a->transactions->where('status','posted')->where('type','profit')->filter(fn($tx)=>in_array((string)$tx->entry_source,['automatic_profit_reinvestment','admin_profit_reinvestment'],true))->sum(fn($tx)=>(float)($tx->usd_profit_effect ?? 0)),
                 'realized_fx_gain_loss_usd'=>(float)($a->realized_fx_gain_loss_usd ?? 0),
                 'open_requests'=>$a->requests->whereIn('status',['submitted','under_review'])->count(),
                 'last_statement'=>$last,
@@ -655,22 +666,26 @@ class AdminPortfolioController extends Controller
             'fx_gain_loss_usd' => (float)($transaction->fx_gain_loss_usd ?? 0),
         ], $request);
         if ($postNow) {
-            if ($transaction->type === 'deposit' && $targetRate !== null) {
+            $existingTerm = $performance->investmentTerm($account);
+            if ($transaction->type === 'deposit' && $targetRate !== null && ! $existingTerm) {
                 $performance->saveInvestmentTerm($account, [
                     'effective_from' => $performanceStart,
                     'monthly_target_rate' => $targetRate,
                     'status' => 'active',
-                    'notes' => 'Agreed monthly performance rate configured when the investment was posted.',
+                    'profit_disposition' => 'payout',
+                    'notes' => 'Initial agreed monthly performance rate configured when the first investment was posted.',
                 ], $request->user()->id);
                 $account->unsetRelation('investmentTerm');
-            } elseif (in_array($transaction->type, ['deposit','withdrawal'], true) && $performance->investmentTerm($account)) {
+            } elseif (in_array($transaction->type, ['deposit','withdrawal'], true) && $existingTerm) {
+                // Capital movements never silently rewrite the agreed rate. Rate changes are effective-dated
+                // only from Investment Setup, where published history is protected.
                 $performance->rebuildAgreementPlans($account, Carbon::parse($transaction->transaction_date), now(), $request->user()->id);
             }
             $emailReady = $this->notifyTransaction($account, $transaction, $mail);
         }
         if (! $postNow) return back()->with('success','Draft activity saved. It has not changed the investor balance.');
-        $message = $transaction->type === 'deposit' && $targetRate !== null
-            ? 'Investment posted and the monthly performance schedule was created automatically.'
+        $message = $transaction->type === 'deposit' && $targetRate !== null && ! $existingTerm
+            ? 'Investment posted and the initial monthly performance schedule was created automatically.'
             : 'Portfolio activity posted successfully.';
         $message .= ($emailReady ?? false) ? ' Investor email was queued for delivery.' : ' In-app alert created; email delivery requires mail setup.';
         return back()->with('success',$message);

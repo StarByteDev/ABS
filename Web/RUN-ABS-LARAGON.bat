@@ -1,6 +1,6 @@
 @echo off
 setlocal
-TITLE Alpha Block Solutions V15.3.0
+TITLE Alpha Block Solutions V15.8.4
 cd /d "%~dp0"
 
 call setup-local.bat
@@ -13,7 +13,7 @@ echo Change 5s / 30s / 1m / 2m / 5m from Admin ^> Pulse Strategy Lab.
 start "ABS Pulse Background Engine" /D "%~dp0" cmd /k php artisan schedule:work
 
 echo.
-echo Starting Alpha Block Solutions V15.3.0...
+echo Starting Alpha Block Solutions V15.8.4...
 echo Browser URL: http://127.0.0.1:8000
 echo Keep the background engine window open while testing.
 echo Press Ctrl+C here to stop the local web server.

@@ -54,6 +54,9 @@ class NewsController extends Controller
         $mode = (string) $request->query('calendar', 'upcoming');
         if (! in_array($mode, ['today', 'upcoming', 'history', 'all'], true)) $mode = 'upcoming';
 
+        $macroImpact = strtolower(trim((string) $request->query('impact', 'all')));
+        if (! in_array($macroImpact, ['all', 'high', 'medium', 'low'], true)) $macroImpact = 'all';
+
         $eventQuery = EconomicEvent::query();
         $relevant($eventQuery);
         if ($mode === 'today') {
@@ -66,11 +69,15 @@ class NewsController extends Controller
             $eventQuery->whereBetween('event_at', [$now, $now->copy()->addDays(45)->endOfDay()])->orderBy('event_at');
         }
 
+        // Impact filtering is applied before the result limit, not just visually.
+        // Counts below use the same impact scope as the displayed events.
+        if ($macroImpact !== 'all') $eventQuery->where('impact', $macroImpact);
         $macroEvents = $eventQuery->limit(240)->get();
 
-        $countFor = function ($from, $to) use ($relevant): int {
+        $countFor = function ($from, $to) use ($relevant, $macroImpact): int {
             $q = EconomicEvent::query()->whereBetween('event_at', [$from, $to]);
             $relevant($q);
+            if ($macroImpact !== 'all') $q->where('impact', $macroImpact);
             return $q->count();
         };
 
@@ -87,6 +94,7 @@ class NewsController extends Controller
             'macroEvents' => $macroEvents,
             'macroTimezone' => config('app.timezone'),
             'macroMode' => $mode,
+            'macroImpact' => $macroImpact,
             'macroCounts' => $macroCounts,
             'calendarConfigured' => $calendar->configured(),
             'calendarLastSyncAt' => $calendar->lastSyncAt(),

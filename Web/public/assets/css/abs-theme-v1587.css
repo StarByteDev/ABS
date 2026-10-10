@@ -1,0 +1,247 @@
+/* ABS V15.8.7 — audited member design system + unified light/dark contrast.
+   Loaded LAST after each page's stylesheet; scoped rules prevent mixed-mode islands.
+   No structural/UI-template rewrite. Status colors remain semantic. */
+:root[data-abs-theme="dark"] {
+  color-scheme:dark;
+  --abs7-bg:#07121d;--abs7-bg2:#091826;--abs7-panel:#0d2233;--abs7-panel-alt:#10283b;
+  --abs7-header:#081927;--abs7-sidebar:#071824;--abs7-table-head:#112b3d;
+  --abs7-text:#e8f4fa;--abs7-strong:#f4f9fc;--abs7-muted:#a4baca;--abs7-dim:#8da8bb;
+  --abs7-line:#2d5065;--abs7-soft-line:#214357;--abs7-hover:#17354a;
+  --abs7-link:#7cdef7;--abs7-accent:#6cdbf1;--abs7-shadow:0 12px 36px rgba(0,0,0,.2);
+  --abs7-green:#70e0ac;--abs7-red:#ff8993;--abs7-amber:#ffce77;
+  --pulse-premium-bg:#07121d;--pulse-premium-bg-deep:#060f19;
+  --pulse-premium-surface:#0d2233;--pulse-premium-surface-2:#10283b;
+  --pulse-premium-line:#2d5065;--pulse-premium-copy:#e8f4fa;--pulse-premium-muted:#a4baca;
+  --pulse-premium-green:#70e0ac;--pulse-premium-red:#ff8993;
+  --pulse-premium-cyan:#7cdef7;--pulse-premium-amber:#ffce77;
+}
+:root[data-abs-theme="light"] {
+  color-scheme:light;
+  --abs7-bg:#f3f7fa;--abs7-bg2:#eef4f8;--abs7-panel:#ffffff;--abs7-panel-alt:#f7fbfe;
+  --abs7-header:#ffffff;--abs7-sidebar:#ffffff;--abs7-table-head:#e9f2f7;
+  --abs7-text:#18354b;--abs7-strong:#102a3e;--abs7-muted:#516f83;--abs7-dim:#607b8d;
+  --abs7-line:#cbdce7;--abs7-soft-line:#dce8f0;--abs7-hover:#eaf5fa;
+  --abs7-link:#087e9c;--abs7-accent:#087fa3;--abs7-shadow:0 8px 26px rgba(30,60,82,.07);
+  --abs7-green:#087d52;--abs7-red:#bf3047;--abs7-amber:#8a5b0f;
+  --pulse-premium-bg:#f3f7fa;--pulse-premium-bg-deep:#eef4f8;
+  --pulse-premium-surface:#ffffff;--pulse-premium-surface-2:#f7fbfe;
+  --pulse-premium-line:#cbdce7;--pulse-premium-copy:#18354b;--pulse-premium-muted:#516f83;
+  --pulse-premium-green:#087d52;--pulse-premium-red:#bf3047;
+  --pulse-premium-cyan:#087e9c;--pulse-premium-amber:#8a5b0f;
+}
+/* Shell, parent containers, overflow and responsive behavior */
+html[data-abs-theme] body.pulse-body,
+html[data-abs-theme] body.pulse-body .pulse-app-shell,
+html[data-abs-theme] body.pulse-body .pulse-workspace,
+html[data-abs-theme] body.pulse-body .pulse-main,
+html[data-abs-theme] body.pulse-body .pulse-content {
+  background:var(--abs7-bg)!important;color:var(--abs7-text)!important;
+}
+html[data-abs-theme] body.pulse-body .pulse-global-header,
+html[data-abs-theme] body.pulse-body .pulse-mobile-toolbar {
+  background:var(--abs7-header)!important;color:var(--abs7-strong)!important;
+  border-color:var(--abs7-line)!important;
+}
+html[data-abs-theme] body.pulse-body .pulse-sidebar {
+  background:var(--abs7-sidebar)!important;color:var(--abs7-text)!important;
+  border-color:var(--abs7-line)!important;
+}
+html[data-abs-theme] body.pulse-body .pulse-nav a,
+html[data-abs-theme] body.pulse-body .pulse-user-card,
+html[data-abs-theme] body.pulse-body .pulse-plan-chip {
+  color:var(--abs7-text)!important;
+}
+html[data-abs-theme] body.pulse-body .pulse-nav a:hover {
+  color:var(--abs7-strong)!important;background:var(--abs7-hover)!important;
+}
+html[data-abs-theme] body.pulse-body .pulse-nav a.active {
+  color:var(--abs7-link)!important;background:var(--abs7-hover)!important;border-color:var(--abs7-accent)!important;
+}
+html[data-abs-theme] body.pulse-body .pulse-global-nav a,
+html[data-abs-theme] body.pulse-body .pulse-global-brand,
+html[data-abs-theme] body.pulse-body .pulse-global-actions {
+  color:var(--abs7-text)!important;
+}
+html[data-abs-theme] body.pulse-body .pulse-user-copy small,
+html[data-abs-theme] body.pulse-body .pulse-global-header small {
+  color:var(--abs7-muted)!important;
+}
+/* IMPORTANT: dashboard was excluded from all V15.8.6 theme selectors.
+   This makes the entire pp-* design family theme-aware, including positions,
+   scanner, signals, strategies, settings and trade drawer. */
+html[data-abs-theme] body.pulse-body .pp-page,
+html[data-abs-theme] body.pulse-body .pp-title,
+html[data-abs-theme] body.pulse-body .pp-page-head {
+  background:transparent!important;color:var(--abs7-text)!important;
+}
+html[data-abs-theme] body.pulse-body .pp-page :is(h1,h2,h3,h4),
+html[data-abs-theme] body.pulse-body .pp-page :is(.pp-dashboard-summary,.pp-card-title,.pp-section-head h2,.pp-title h1,.pp-performance-top strong,.pp-metric-copy strong,.pp-standing-list span:last-child,.pp-engagement strong,.pp-risk-ring span,.pp-donut>span,.pp-four-stats strong,.pp-outcome-count strong,.pp-card-heading h2,.pp-profile-details b,.pp-strategy-card h3,.pp-strategy-simple-head h3) {
+  color:var(--abs7-strong)!important;
+}
+html[data-abs-theme] body.pulse-body .pp-page :is(.pp-title p,.pp-card-subtitle,.pp-metric-copy small,.pp-metric-copy em,.pp-chart-y,.pp-chart-x,.pp-performance-stats small,.pp-standing-list div,.pp-activity-list div,.pp-activity-list .pulse-icon,.pp-engagement small,.pp-risk-list div,.pp-signal-activity small,.pp-decision-note,.pp-outcome-count span,.pp-four-stats small,.pp-position-total,.pp-card-empty,.pp-empty,.pp-muted,.pp-page-note,.pp-chart-label,.pp-field,.pp-card-heading p,.pp-strategy-simple-description,.pp-evidence-more) {
+  color:var(--abs7-muted)!important;
+}
+/* Dark and light must change the actual CARDS, not only the outer layout. */
+html[data-abs-theme] body.pulse-body .pp-page :is(
+  .pp-card,.pp-metric,.pp-scanner-filters,.pp-market-conditions,.pp-scan-quality,.pp-saved-view,
+  .pp-selected-grid,.pp-evidence,.pp-risk-snapshot,.pp-signal-selected,.pp-strategy-card,
+  .pp-strategy-performance-card,.pp-strategy-essentials,.pp-strategy-insights,.pp-selected-signal,
+  .pp-order-ticket,.pp-calculation,.pp-account,.pp-decision-box,.pp-profile-identity,
+  .pp-profile-access,.pp-services-panel,.pp-watchlist-card,.pp-market-card,.pp-plan-wallet-card,
+  .pp-wallet-hero,.pp-wallet-balance-card,.pp-momentum-card,.pp-checkin-card,.pp-payment-panel,
+  .pp-pack-card,.pp-reward-item,.pp-reward-list,.pp-purchase-flow,.pp-purchase-status,
+  .pp-rewarded-ad-section,.pp-trade-drawer,.pp-trade-state-card,.pp-trade-hero,
+  .pp-trade-confirm-hero,.pp-trade-confirm-summary,.pp-trade-simple-meta,.pp-trade-levels,
+  .pp-trade-preview-grid,.pp-trade-simple-body,.pp-strategy-catalog-simplified,
+  .pp-strategy-engine-simple,.pp-controls,.pp-health,.pp-card-heading
+) {
+  background:var(--abs7-panel)!important;color:var(--abs7-text)!important;
+  border-color:var(--abs7-line)!important;box-shadow:var(--abs7-shadow)!important;
+}
+html[data-abs-theme] body.pulse-body .pp-page :is(
+  .pp-standing-list div,.pp-four-stats,.pp-performance-stats,.pp-risk-list div,
+  .pp-activity-list,.pp-activity-summary,.pp-snapshot-list div,.pp-signal-activity-body,
+  .pp-risk-note,.pp-section-head,.pp-card-heading,.pp-performance-stats div,
+  .pp-strategy-card-head,.pp-strategy-metrics,.pp-trade-section-head
+) {border-color:var(--abs7-soft-line)!important;}
+html[data-abs-theme] body.pulse-body .pp-page :is(
+  .pp-decision-note,.pp-page-note,.pp-trade-protection-note,.pp-status-chip,
+  .pp-risk-note,.pp-standing-banner,.pp-status-pill,.pp-chip,.pp-binance-recommendation
+) {
+  background:var(--abs7-panel-alt)!important;color:var(--abs7-text)!important;
+  border-color:var(--abs7-line)!important;
+}
+html[data-abs-theme] body.pulse-body .pp-page .pp-donut:before,
+html[data-abs-theme] body.pulse-body .pp-page .pp-risk-ring:before {
+  background:var(--abs7-panel)!important;
+}
+html[data-abs-theme] body.pulse-body .pp-page .pp-donut>span,
+html[data-abs-theme] body.pulse-body .pp-page .pp-risk-ring span {color:var(--abs7-strong)!important;}
+html[data-abs-theme] body.pulse-body .pp-page .pp-chart {
+  border-color:var(--abs7-line)!important;
+  background:repeating-linear-gradient(to bottom,transparent 0 24.7%,var(--abs7-soft-line) 25% 25.3%,transparent 25.6% 49.7%)!important;
+}
+html[data-abs-theme] body.pulse-body .pp-page .pp-progress {background:var(--abs7-line)!important;}
+html[data-abs-theme] body.pulse-body .pp-page .pp-chart .line {stroke:#12ac92!important;}
+html[data-abs-theme="dark"] body.pulse-body .pp-page .pp-chart .line {stroke:#64e3bd!important;}
+/* Tables: no leftover navy table nested inside light cards. */
+html[data-abs-theme] body.pulse-body .pp-page :is(.pp-table,.pp-ledger-table,table) {
+  background:var(--abs7-panel)!important;color:var(--abs7-text)!important;
+}
+html[data-abs-theme] body.pulse-body .pp-page :is(.pp-table,.pp-ledger-table,table) thead th {
+  background:var(--abs7-table-head)!important;color:var(--abs7-muted)!important;
+  border-color:var(--abs7-line)!important;
+}
+html[data-abs-theme] body.pulse-body .pp-page :is(.pp-table,.pp-ledger-table,table) tbody tr,
+html[data-abs-theme] body.pulse-body .pp-page :is(.pp-table,.pp-ledger-table,table) tbody td {
+  background:var(--abs7-panel)!important;color:var(--abs7-text)!important;
+  border-color:var(--abs7-soft-line)!important;
+}
+html[data-abs-theme] body.pulse-body .pp-page :is(.pp-table,.pp-ledger-table,table) tbody tr:hover,
+html[data-abs-theme] body.pulse-body .pp-page :is(.pp-table,.pp-ledger-table,table) tbody tr:hover td {
+  background:var(--abs7-hover)!important;
+}
+html[data-abs-theme] body.pulse-body .pp-page :is(.pp-pill,.pp-chip,.pp-status-pill,.pp-status-chip) {
+  border-color:var(--abs7-line)!important;color:var(--abs7-text)!important;
+}
+/* Interactive controls, buttons and navigation: stable contrast in both modes. */
+html[data-abs-theme] body.pulse-body :is(.pp-period,.pp-period a,.pp-button,.pp-trade-close,.pp-pagination a,.pp-profile-actions a,.pp-field input,.pp-field select,.pp-ticket-field input,.pp-ticket-field select,.pp-page input,.pp-page textarea,.pp-page select,.pulse-sidebar-toggle) {
+  border-color:var(--abs7-line)!important;
+  background:var(--abs7-panel)!important;
+  color:var(--abs7-text)!important;
+}
+html[data-abs-theme] body.pulse-body .pp-period a:hover {background:var(--abs7-hover)!important;color:var(--abs7-strong)!important;}
+html[data-abs-theme] body.pulse-body :is(.pp-period a.active,.pp-button.primary,.pp-trade-submit:not(:disabled),.pp-trade-continue:not(:disabled)) {
+  background:#0e89ac!important;border-color:#0784a6!important;color:#fff!important;
+}
+html[data-abs-theme="dark"] body.pulse-body :is(.pp-period a.active,.pp-button.primary,.pp-trade-submit:not(:disabled),.pp-trade-continue:not(:disabled)) {
+  background:#0c7d9b!important;color:#f6fdff!important;
+}
+html[data-abs-theme] body.pulse-body .pp-button.disabled,
+html[data-abs-theme] body.pulse-body .pp-button:disabled {opacity:.55!important;cursor:not-allowed!important;}
+html[data-abs-theme] body.pulse-body .pp-page :is(.pp-link,.pp-card a:not(.pp-button):not(.pp-pill)) {
+  color:var(--abs7-link)!important;
+}
+html[data-abs-theme] body.pulse-body .pp-page input::placeholder,
+html[data-abs-theme] body.pulse-body .pp-page textarea::placeholder {color:var(--abs7-dim)!important;opacity:1;}
+/* Make status colors win after prior broad !important headline/strong selectors. */
+html[data-abs-theme] body.pulse-body .pp-page :is(.pp-positive,.pp-positive strong,.pp-positive span,.pp-standing-list span.pp-positive,.pp-metric-copy strong.pp-positive) {color:var(--abs7-green)!important;}
+html[data-abs-theme] body.pulse-body .pp-page :is(.pp-negative,.pp-negative strong,.pp-negative span,.pp-metric-copy strong.pp-negative) {color:var(--abs7-red)!important;}
+html[data-abs-theme] body.pulse-body .pp-page :is(.pp-warning,.pp-warning strong,.pp-warning span) {color:var(--abs7-amber)!important;}
+html[data-abs-theme] body.pulse-body .pp-page :is(.pp-cyan,.pp-cyan strong) {color:var(--abs7-link)!important;}
+html[data-abs-theme] body.pulse-body .pp-page .pp-metric-icon {background:transparent!important;}
+html[data-abs-theme] body.pulse-body .pp-page .pp-metric-icon.green {color:var(--abs7-green)!important;border-color:var(--abs7-green)!important;}
+html[data-abs-theme] body.pulse-body .pp-page .pp-metric-icon.red {color:var(--abs7-red)!important;border-color:var(--abs7-red)!important;}
+html[data-abs-theme] body.pulse-body .pp-page .pp-metric-icon.cyan {color:var(--abs7-link)!important;border-color:var(--abs7-link)!important;}
+html[data-abs-theme] body.pulse-body .pp-page .pp-metric-icon.orange {color:var(--abs7-amber)!important;border-color:var(--abs7-amber)!important;}
+/* Header, sidebar and account details: prevent muted text from disappearing. */
+html[data-abs-theme] body.pulse-body :is(.pulse-plan-chip,.pulse-sidebar-account,.pulse-user-copy b,.pulse-global-nav a,.pulse-header-icon,.pulse-sidebar-toggle) {
+  color:var(--abs7-text)!important;border-color:var(--abs7-line)!important;
+}
+html[data-abs-theme] body.pulse-body .pulse-nav a>.pulse-icon {color:var(--abs7-accent)!important;}
+html[data-abs-theme] body.pulse-body .pp-page :is(.pp-performance-top strong,.pp-metric-copy strong,.pp-performance-stats strong) {font-variant-numeric:tabular-nums;}
+/* Global user-accessible toggle. Label shows NEXT action, not current state. */
+html[data-abs-theme] .abs-theme-toggle {
+  min-width:126px!important;min-height:38px!important;display:flex!important;
+  align-items:center!important;justify-content:center!important;gap:5px!important;
+  padding:9px 14px!important;background:var(--abs7-panel)!important;
+  color:var(--abs7-strong)!important;border:1px solid var(--abs7-accent)!important;
+  box-shadow:var(--abs7-shadow)!important;letter-spacing:.01em!important;
+}
+html[data-abs-theme] .abs-theme-toggle span {margin:0!important;}
+html[data-abs-theme] .abs-theme-toggle:focus-visible {outline:3px solid var(--abs7-accent)!important;outline-offset:3px!important;}
+@media (max-width:1100px) {
+  html[data-abs-theme] body.pulse-body .pp-page .pp-head-actions{flex-wrap:wrap;justify-content:flex-start;}
+}
+@media (max-width:760px) {
+  html[data-abs-theme] body.pulse-body .pulse-content{padding:14px!important;}
+  html[data-abs-theme] body.pulse-body .pp-page :is(.pp-dashboard-main,.pp-dashboard-secondary) {height:auto!important;}
+  html[data-abs-theme] body.pulse-body .pp-page :is(.pp-performance,.pp-standing,.pp-outcome,.pp-risk,.pp-signal-activity) {min-height:170px!important;}
+}
+/* Admin/public content: cover legacy named surfaces missed by the earlier generic patch.
+   Keep focused scope—never force native SVG, chart canvas or status badges to generic colors. */
+html[data-abs-theme] body.admin-body :is(.admin-content,.admin-main,.admin-dashboard,.abs-exec-content),
+html[data-abs-theme] body.abs-body :is(.page-hero,.reading-layout,.final-home-main) {
+  color:var(--abs7-text)!important;
+}
+html[data-abs-theme="dark"] body.admin-body :is(.admin-sidebar,.admin-main,.abs-exec-sidebar,.abs-exec-topbar),
+html[data-abs-theme="dark"] body.abs-body :is(.final-site-header,.final-nav-inner) {
+  background:var(--abs7-sidebar)!important;color:var(--abs7-text)!important;border-color:var(--abs7-line)!important;
+}
+html[data-abs-theme="light"] body.admin-body :is(.admin-sidebar,.admin-main,.abs-exec-sidebar,.abs-exec-topbar),
+html[data-abs-theme="light"] body.abs-body :is(.final-site-header,.final-nav-inner) {
+  background:var(--abs7-panel)!important;color:var(--abs7-text)!important;border-color:var(--abs7-line)!important;
+}
+html[data-abs-theme="light"] body.abs-body :is(.panel,.content-card,.live-headline-card,.final-feature-card,.auth-card,.reading-layout,.focused-account-grid>.panel,.focused-account-services>a,.focused-account-services>div) {
+  background:var(--abs7-panel)!important;color:var(--abs7-text)!important;border-color:var(--abs7-line)!important;
+}
+html[data-abs-theme="light"] body.abs-body :is(.focused-account-hero h1,.focused-account-grid>.panel h2,.focused-account-services b,.final-site-header a,.page-hero h1) {color:var(--abs7-strong)!important;}
+html[data-abs-theme="light"] body.abs-body :is(.focused-account-hero p,.focused-account-grid>.panel p,.focused-account-services small,.page-hero p) {color:var(--abs7-muted)!important;}
+/* Footer/legal surfaces: last remaining visible mixed-mode areas. */
+html[data-abs-theme] body.pulse-body .abs-global-disclaimer {
+  color:var(--abs7-muted)!important;
+  background:var(--abs7-panel-alt)!important;
+  border:1px solid var(--abs7-line)!important;
+  border-radius:9px;
+}
+html[data-abs-theme] body.pulse-body .abs-global-disclaimer :is(strong,b) {color:var(--abs7-strong)!important;}
+html[data-abs-theme] body.pulse-body .abs-global-disclaimer a {color:var(--abs7-link)!important;}
+html[data-abs-theme] body.abs-body .site-footer.final-site-footer {
+  background:var(--abs7-sidebar)!important;color:var(--abs7-text)!important;
+  border-color:var(--abs7-line)!important;
+}
+html[data-abs-theme] body.abs-body .final-site-footer :is(h4,b) {color:var(--abs7-strong)!important;}
+html[data-abs-theme] body.abs-body .final-site-footer :is(p,small,.final-footer-bottom) {color:var(--abs7-muted)!important;}
+html[data-abs-theme] body.abs-body .final-site-footer nav a {color:var(--abs7-text)!important;}
+html[data-abs-theme] body.abs-body .final-site-footer :is(input,select,textarea) {
+  background:var(--abs7-panel)!important;color:var(--abs7-strong)!important;border-color:var(--abs7-line)!important;
+}
+html[data-abs-theme="light"] body.admin-body :is(.admin-kpi,.abs-exec-card,.abs-exec-panel,.admin-card,.admin-panel) {
+  background:var(--abs7-panel)!important;color:var(--abs7-text)!important;border-color:var(--abs7-line)!important;
+}
+html[data-abs-theme="light"] body.admin-body :is(.admin-kpi b,.admin-kpi strong,.abs-exec-card h2,.abs-exec-panel h2) {color:var(--abs7-strong)!important;}
+html[data-abs-theme="light"] body.admin-body :is(.admin-kpi span,.admin-kpi small,.abs-exec-card p) {color:var(--abs7-muted)!important;}
+/* Selected range must use white-on-accent; generic content links must not wash it out. */
+html[data-abs-theme] body.pulse-body .pp-page .pp-period a.active {
+  color:#fff!important;text-shadow:none!important;font-weight:700!important;
+}

@@ -89,3 +89,16 @@ flutter {
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
+
+// Pulse production update safety: reject unsigned / debug-signed release tasks.
+// Restore the existing production keystore and key.properties privately before release.
+gradle.taskGraph.whenReady {
+    if (!hasReleaseSigning && allTasks.any { task ->
+            task.name.equals("bundleRelease", ignoreCase = true) ||
+            task.name.equals("assembleRelease", ignoreCase = true)
+        }) {
+        throw org.gradle.api.GradleException(
+            "Pulse release signing is missing. Restore the EXISTING Play Store signing credentials; never ship a debug-signed update."
+        )
+    }
+}

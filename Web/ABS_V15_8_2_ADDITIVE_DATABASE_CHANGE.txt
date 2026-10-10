@@ -1,0 +1,8 @@
+ABS V15.8.2 uses additive, non-destructive database changes only.
+
+Database change:
+- Best-effort performance index on pulse_scanner_runs(started_at, id).
+
+No production data is deleted, truncated, rewritten or re-seeded.
+No customer, membership, payment, investor, transaction, statement, signal, validation, trade or strategy-learning record is removed.
+The migration down() intentionally leaves the index in place because it is a safe performance optimization.

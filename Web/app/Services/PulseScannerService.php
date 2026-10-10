@@ -21,6 +21,8 @@ class PulseScannerService
         private readonly BinanceFuturesService $binance,
         private readonly PulseMarketDataService $market,
         private readonly PulseLearningService $learning,
+        private readonly PulseAdaptiveStrategyService $adaptive,
+        private readonly PulseMacroRiskService $macroRisk,
         private readonly PulseSignalValidationService $validations,
         private readonly PulseAuditService $audit,
         private readonly PulseAccessService $access,
@@ -70,7 +72,7 @@ class PulseScannerService
         $settings = $user ? PulseUserSetting::firstOrCreate(['user_id' => $user->id], $this->defaultUserSettings($user)) : null;
         $plan = $user?->pulsePlan();
         $staleMinutes = max(5, (int) config('pulse.scanner.stale_run_minutes', 15));
-        $safetyMax = max(1000, (int) config('pulse.scanner.max_pairs_per_run', 1000), (int) ($plan?->max_selected_pairs ?? 0));
+        $safetyMax = max(2000, (int) config('pulse.scanner.max_pairs_per_run', 2000), (int) ($plan?->max_selected_pairs ?? 0));
 
         // Release interrupted/stale scanner runs so they cannot block a future Best Signal request.
         PulseScannerRun::query()
@@ -101,7 +103,7 @@ class PulseScannerService
             ->update(['status' => 'expired']);
 
         // Targeted symbols remain available only to internal/system scans. A
-        // signed-in user always scans the complete Admin/package-defined universe.
+        // signed-in user always scans the complete enabled Binance Futures universe.
         $explicitSymbols = ! $user && is_array($symbols) && $symbols !== [];
         $requestedSymbols = $explicitSymbols
             ? array_values(array_unique(array_filter(array_map(fn ($symbol) => strtoupper(trim((string) $symbol)), $symbols))))
@@ -112,12 +114,11 @@ class PulseScannerService
         }
 
         if ($user) {
-            $allowed = $this->pairAccess->allowedPairs($user)->values();
-            $allowedSymbols = $allowed->pluck('symbol')->map(fn ($symbol) => strtoupper((string) $symbol))->all();
-
-            // ABS V15: Admin/package market access is authoritative. No user
-            // market selection is consulted by the scanner.
-            $pairs = $allowed->values();
+            // V15.8.0: Find Best Signal scans the complete enabled Binance USD-M
+            // Futures universe maintained by Admin, independent of commercial package
+            // pair assignments. Packages still control feature access; they no longer
+            // shrink the market search universe.
+            $pairs = PulsePair::query()->where('is_enabled', true)->orderBy('sort_order')->orderBy('symbol')->get();
         } else {
             $query = PulsePair::query()->where('is_enabled', true)->orderBy('sort_order')->orderBy('symbol');
             if ($explicitSymbols) $query->whereIn('symbol', $requestedSymbols);
@@ -128,7 +129,7 @@ class PulseScannerService
             throw new RuntimeException("The selected market set contains {$pairs->count()} markets, above the scanner safety ceiling of {$safetyMax}. Reduce the selected markets or raise the server ceiling.");
         }
         if ($pairs->isEmpty()) {
-            throw new RuntimeException('No Admin/package-approved Pulse markets are available for scanning.');
+            throw new RuntimeException('No enabled Binance Futures markets are available for scanning.');
         }
 
         $strategies = $this->strategiesFor($user);
@@ -199,7 +200,7 @@ class PulseScannerService
                         }
 
                         try {
-                            $analysis = $this->analyze($pair, $scanTimeframe, $strategies, $payload['data']);
+                            $analysis = $this->analyze($pair, $scanTimeframe, $strategies, $payload['data'], $user !== null);
                             $analysis['timeframe'] = $scanTimeframe;
                             $ticker = $tickerMap->get($symbol);
                             $analysis['last_price'] = $ticker && is_numeric($ticker->price ?? null)
@@ -267,7 +268,7 @@ class PulseScannerService
             }
 
             if ($available === 0) {
-                throw new RuntimeException("Central candle buffers could not be evaluated for any of the {$pairs->count()} Admin/package markets. No signal was created.");
+                throw new RuntimeException("Central candle buffers could not be evaluated for any of the {$pairs->count()} enabled Binance Futures markets. No signal was created.");
             }
 
             if ($qualifiedCandidates !== []) {
@@ -280,30 +281,58 @@ class PulseScannerService
                 });
 
                 if ($user) {
-                    // Member / Professional scans remain a single Best Signal experience.
-                    $winner = $qualifiedCandidates[0];
-                    $existing = $winner['existing_signal'];
-                    if ($existing instanceof PulseSignal) {
-                        $bestSignal = $existing;
-                        if (! $bestSignal->unlocked_at) {
-                            $bestSignal->forceFill(['unlocked_at' => now()])->save();
-                        }
-                    } else {
-                        $bestSignal = DB::transaction(fn (): PulseSignal => $this->createSignalRecord($winner, $user, $run), 5);
-                        $created = 1;
+                    // V15.8.1: keep one canonical Best Signal for mobile/API compatibility, but
+                    // also persist a ranked shortlist of the strongest qualified setups for web.
+                    // This avoids hiding valid opportunities while preventing hundreds of duplicate
+                    // signal rows on broad-market scans.
+                    $memberLimit = max(1, min(50, (int) config('pulse.scanner.member_result_limit', 12)));
+                    $memberCandidates = array_slice($qualifiedCandidates, 0, $memberLimit);
+                    $signalSet = [];
+
+                    foreach ($memberCandidates as $rank => $candidate) {
+                        $existing = $candidate['existing_signal'];
+                        $signal = $existing instanceof PulseSignal
+                            ? $existing
+                            : DB::transaction(fn (): PulseSignal => $this->createSignalRecord($candidate, $user, $run), 5);
+                        if (! $existing) $created++;
+                        if (! $signal->unlocked_at) $signal->forceFill(['unlocked_at' => now()])->save();
+                        if ($rank === 0) $bestSignal = $signal;
+                        $signalSet[] = [
+                            'rank' => $rank + 1,
+                            'signal_id' => (int) $signal->id,
+                            'symbol' => $candidate['symbol'],
+                            'timeframe' => $candidate['timeframe'],
+                            'direction' => (string) data_get($candidate, 'analysis.direction'),
+                            'score' => (float) data_get($candidate, 'analysis.score', 0),
+                            'confidence' => (float) $candidate['confidence'],
+                            'persistence' => $existing ? 'reused' : 'created',
+                        ];
                     }
 
-                    if (($settings?->notification_preferences['signals'] ?? true)) {
+                    $results[] = [
+                        'type' => 'qualified_signal_set',
+                        'qualified_count' => count($qualifiedCandidates),
+                        'displayed_count' => count($signalSet),
+                        'new_signals_created' => $created,
+                        'signals' => $signalSet,
+                    ];
+
+                    if ($bestSignal && ($settings?->notification_preferences['signals'] ?? true)) {
                         try {
-                            PulseAlert::create([
+                            $signalAlert = PulseAlert::create([
                                 'user_id' => $user->id,
                                 'type' => 'signal',
                                 'title' => "Best Signal: {$bestSignal->direction} {$bestSignal->symbol}",
-                                'message' => "ABS reviewed the Admin-defined market universe across 15M and 4H. {$bestSignal->symbol} {$bestSignal->timeframe} ranked highest with {$bestSignal->confidence_score} confidence.",
+                                'message' => "ABS reviewed the enabled Binance USD-M Futures universe across 15M and 4H. {$bestSignal->symbol} {$bestSignal->timeframe} ranked highest with {$bestSignal->confidence_score} confidence.",
                                 'severity' => 'info',
                                 'action_url' => route('pulse.signals.show', $bestSignal),
                                 'data' => ['signal_id' => $bestSignal->id, 'symbol' => $bestSignal->symbol, 'timeframe' => $bestSignal->timeframe, 'access_model' => 'active_package'],
                             ]);
+                            // The scanner can reuse equivalent signals across cycles.
+                            // Never send duplicate mobile pushes for the reused best signal.
+                            if ($bestSignal->wasRecentlyCreated) {
+                                app(PulseMobilePushDispatcher::class)->queueForAlert($signalAlert);
+                            }
                             $this->mail->qualifiedSignal($user, $bestSignal);
                         } catch (\Throwable $sideEffectError) {
                             $results[] = ['type' => 'warning', 'scope' => 'notification', 'message' => $sideEffectError->getMessage()];
@@ -418,8 +447,9 @@ class PulseScannerService
         }
     }
 
-    public function analyze(PulsePair $pair, string $timeframe, ?Collection $strategies = null, ?array $rows = null): array
+    public function analyze(PulsePair $pair, string $timeframe, ?Collection $strategies = null, ?array $rows = null, bool $adaptive = true): array
     {
+        $adaptive = $adaptive && (bool) config('pulse.optimizer.enabled', true);
         $rows ??= $this->market->scannerRows($pair->symbol, $timeframe, (int) config('pulse.scanner.candle_limit', 120));
         if (count($rows) < 60) {
             throw new RuntimeException('Insufficient live candle history.');
@@ -459,21 +489,33 @@ class PulseScannerService
         $strategies ??= PulseStrategy::query()->where('is_enabled', true)->orderBy('sort_order')->get();
         $long = 0.0;
         $short = 0.0;
-        $maximumWeightedScore = 0.0;
+        $maximumDirectionalScore = 0.0;
         $breakdown = [];
+        $hardFilterFailed = false;
+        $regime = $atrPercent >= 2.5 ? 'high_volatility'
+            : ($atrPercent <= 0.35 ? 'low_volatility'
+                : (($ema20 > 0 && $ema50 > 0 && abs($ema20 - $ema50) / max($ema50, 0.00000001) >= 0.01) ? 'trending' : 'balanced'));
+        $candleAt = \Carbon\CarbonImmutable::createFromTimestampMs((int) $lastCandle['open_time'])->setTimezone(config('app.timezone'));
+        $macroRisk = $this->macroRisk->snapshot($candleAt);
+        if ($adaptive && (bool) ($macroRisk['blocked'] ?? false)) $hardFilterFailed = true;
 
         foreach ($strategies as $strategy) {
-            $weight = max(0.0, (float) ($strategy->pivot?->weight_override ?? $strategy->weight ?? 1));
+            $baseWeight = max(0.0, (float) ($strategy->pivot?->weight_override ?? $strategy->weight ?? 1));
+            $settings = (array) ($strategy->settings ?? []);
+            $category = $this->strategyCategory((string) $strategy->slug, $settings);
+            $directionalRole = ! in_array($category, ['Market Regime Filter', 'Risk Filter'], true);
             $maximumPoints = match ($strategy->slug) {
                 'trend-alignment' => 8, 'ema-crossover' => 7, 'rsi-recovery' => 6,
                 'macd-momentum' => 7, 'breakout-confirmation' => 9, 'volume-expansion' => 6,
                 'atr-volatility' => 4, 'market-structure' => 7, 'trend-pullback' => 6,
                 'bollinger-reversion' => 5, 'momentum-continuation' => 6, 'range-compression' => 4,
                 'candle-strength' => 5, 'swing-sequence' => 5, 'risk-reward-quality' => 7,
+                'trend-volume-confluence' => 8, 'macd-rsi-confluence' => 8, 'breakout-momentum' => 9,
                 default => 0,
             };
-            $maximumWeightedScore += $maximumPoints * $weight;
-            [$bias, $points, $reason] = match ($strategy->slug) {
+            if ($directionalRole) $maximumDirectionalScore += $maximumPoints * $baseWeight;
+
+            [$bias, $rawPoints, $reason] = match ($strategy->slug) {
                 'trend-alignment' => $ema20 > $ema50 && $last > $ema20
                     ? ['LONG', 8, 'Price, EMA20 and EMA50 are aligned upward']
                     : ($ema20 < $ema50 && $last < $ema20 ? ['SHORT', 8, 'Price, EMA20 and EMA50 are aligned downward'] : ['NEUTRAL', 0, 'Trend alignment is mixed']),
@@ -482,36 +524,128 @@ class PulseScannerService
                 'macd-momentum' => $macd > $macdSignal ? ['LONG', 7, 'MACD is above its signal line'] : ($macd < $macdSignal ? ['SHORT', 7, 'MACD is below its signal line'] : ['NEUTRAL', 0, 'MACD is neutral']),
                 'breakout-confirmation' => $last > $previousHigh ? ['LONG', 9, 'Close is above the prior 20-candle high'] : ($last < $previousLow ? ['SHORT', 9, 'Close is below the prior 20-candle low'] : ['NEUTRAL', 0, 'No confirmed range breakout']),
                 'volume-expansion' => $averageVolume > 0 && $lastVolume >= $averageVolume * 1.25 ? [$last >= $previous['close'] ? 'LONG' : 'SHORT', 6, 'Volume is at least 25% above the recent average'] : ['NEUTRAL', 0, 'Volume is not materially expanded'],
-                'atr-volatility' => $atrPercent >= 0.15 && $atrPercent <= 4.5 ? [$last >= $ema20 ? 'LONG' : 'SHORT', 4, 'ATR is inside the configured operating range'] : ['NEUTRAL', -4, 'Volatility is outside the configured operating range'],
+                // ATR is a market-regime gate, not a directional strategy. It no longer
+                // invents LONG/SHORT bias from price-vs-EMA and contaminate attribution.
+                'atr-volatility' => $atrPercent >= 0.15 && $atrPercent <= 4.5 ? ['NEUTRAL', 4, 'ATR is inside the configured operating range'] : ['NEUTRAL', -4, 'Volatility is outside the configured operating range'],
                 'market-structure' => $recentHigh > $previousHigh && $recentLow >= $previousLow ? ['LONG', 7, 'Recent structure is forming higher highs and higher lows'] : ($recentLow < $previousLow && $recentHigh <= $previousHigh ? ['SHORT', 7, 'Recent structure is forming lower highs and lower lows'] : ['NEUTRAL', 0, 'Market structure is not directional']),
                 'trend-pullback' => $ema20 > $ema50 && $last >= $ema20 && abs($last - $ema20) <= $atr ? ['LONG', 6, 'Price is holding near EMA20 within an upward trend'] : ($ema20 < $ema50 && $last <= $ema20 && abs($last - $ema20) <= $atr ? ['SHORT', 6, 'Price is holding near EMA20 within a downward trend'] : ['NEUTRAL', 0, 'No qualified trend pullback']),
                 'bollinger-reversion' => $last <= $bbLower && $rsi < 38 ? ['LONG', 5, 'Price is below the lower Bollinger band with weak RSI'] : ($last >= $bbUpper && $rsi > 62 ? ['SHORT', 5, 'Price is above the upper Bollinger band with strong RSI'] : ['NEUTRAL', 0, 'No Bollinger reversion condition']),
                 'momentum-continuation' => $return5 >= 0.8 && $last > $ema20 ? ['LONG', 6, 'Five-candle momentum remains positive above EMA20'] : ($return5 <= -0.8 && $last < $ema20 ? ['SHORT', 6, 'Five-candle momentum remains negative below EMA20'] : ['NEUTRAL', 0, 'Momentum continuation is not confirmed']),
-                'range-compression' => $bbWidth <= 0.035 ? [$last >= $bbMid ? 'LONG' : 'SHORT', 4, 'Bollinger width indicates range compression'] : ['NEUTRAL', 0, 'Range is not compressed'],
+                // Compression is market context; it should not choose a direction by itself.
+                'range-compression' => $bbWidth <= 0.035 ? ['NEUTRAL', 4, 'Bollinger width indicates range compression'] : ['NEUTRAL', 0, 'Range is not compressed'],
                 'candle-strength' => $bodyRatio >= 0.65 ? [$lastCandle['close'] >= $lastCandle['open'] ? 'LONG' : 'SHORT', 5, 'Latest candle has a strong directional body'] : ['NEUTRAL', 0, 'Latest candle body is not decisive'],
                 'swing-sequence' => $last > $closes[count($closes)-3] && $closes[count($closes)-3] > $closes[count($closes)-5] ? ['LONG', 5, 'Recent closes form an upward sequence'] : ($last < $closes[count($closes)-3] && $closes[count($closes)-3] < $closes[count($closes)-5] ? ['SHORT', 5, 'Recent closes form a downward sequence'] : ['NEUTRAL', 0, 'Recent swing sequence is mixed']),
-                'risk-reward-quality' => $atr > 0 ? [$last >= $ema20 ? 'LONG' : 'SHORT', 7, 'ATR supports a defined stop and reward distance'] : ['NEUTRAL', -5, 'Risk distance cannot be calculated'],
+                // Risk/reward quality is also a gate. It confirms that a measurable risk
+                // unit exists but cannot create directional conviction on its own.
+                'risk-reward-quality' => $atr > 0 ? ['NEUTRAL', 7, 'ATR supports a measurable stop and reward distance'] : ['NEUTRAL', -5, 'Risk distance cannot be calculated'],
+                'trend-volume-confluence' => $averageVolume > 0 && $lastVolume >= $averageVolume * 1.15 && $ema20 > $ema50 && $last > $ema20
+                    ? ['LONG', 8, 'Trend alignment is confirmed by above-average participation']
+                    : ($averageVolume > 0 && $lastVolume >= $averageVolume * 1.15 && $ema20 < $ema50 && $last < $ema20 ? ['SHORT', 8, 'Downtrend alignment is confirmed by above-average participation'] : ['NEUTRAL', 0, 'Trend and volume are not jointly confirmed']),
+                'macd-rsi-confluence' => $macd > $macdSignal && $rsi >= 52 && $rsi <= 68
+                    ? ['LONG', 8, 'MACD and RSI agree on controlled bullish momentum']
+                    : ($macd < $macdSignal && $rsi <= 48 && $rsi >= 32 ? ['SHORT', 8, 'MACD and RSI agree on controlled bearish momentum'] : ['NEUTRAL', 0, 'MACD and RSI are not in directional confluence']),
+                'breakout-momentum' => $last > $previousHigh && $return5 > 0.4 && $lastVolume >= max($averageVolume, 0.00000001) * 1.10
+                    ? ['LONG', 9, 'Range breakout is supported by momentum and participation']
+                    : ($last < $previousLow && $return5 < -0.4 && $lastVolume >= max($averageVolume, 0.00000001) * 1.10 ? ['SHORT', 9, 'Downside breakout is supported by momentum and participation'] : ['NEUTRAL', 0, 'Breakout lacks momentum/volume confirmation']),
                 default => ['NEUTRAL', 0, 'No executable evaluator is configured for this strategy'],
             };
 
-            $points *= $weight;
-            if ($bias === 'LONG') $long += max(0, $points);
-            elseif ($bias === 'SHORT') $short += max(0, $points);
-            elseif ($points < 0) { $long += $points; $short += $points; }
+            $profile = $adaptive && in_array($bias, ['LONG','SHORT'], true)
+                ? $this->adaptive->profile($strategy, $timeframe, $bias, $regime)
+                : [
+                    'samples'=>0,'reliability'=>50.0,'base_rr'=>(float)($settings['risk_reward_target']??2.0),
+                    'effective_rr'=>(float)($settings['risk_reward_target']??2.0),'base_weight'=>$baseWeight,
+                    'weight_multiplier'=>1.0,'effective_weight'=>$baseWeight,'expected_r'=>null,'profit_factor'=>null,
+                    'member_eligible'=>true,'status'=>$adaptive?'collecting':'research_baseline','source'=>$adaptive?'neutral_prior':'research_baseline','scope'=>'NONE',
+                ];
+            $effectiveWeight = $adaptive ? max(0.0, (float)($profile['effective_weight'] ?? $baseWeight)) : $baseWeight;
+            $points = $rawPoints * $effectiveWeight;
 
-            $breakdown[] = ['name' => $strategy->name, 'slug' => $strategy->slug, 'version' => (string) ($strategy->version ?? '1.0'), 'bias' => $bias, 'points' => round($points, 2), 'reason' => $reason];
+            if ($directionalRole && (! $adaptive || (bool) ($profile['member_eligible'] ?? true))) {
+                // A research-only contributor is shown in the audit breakdown, but
+                // cannot push member signals across the qualifying score threshold.
+                if ($bias === 'LONG') $long += max(0, $points);
+                elseif ($bias === 'SHORT') $short += max(0, $points);
+            } elseif ($rawPoints < 0 && in_array($strategy->slug, ['atr-volatility','risk-reward-quality'], true)) {
+                $hardFilterFailed = true;
+            }
+
+            $breakdown[] = [
+                'name' => $strategy->name,
+                'slug' => $strategy->slug,
+                'version' => (string) ($strategy->version ?? '1.0'),
+                'category' => $category,
+                'directional_role' => $directionalRole,
+                'bias' => $bias,
+                'raw_points' => round((float)$rawPoints * $baseWeight, 2),
+                'points' => round($points, 2),
+                'reason' => $reason,
+                'base_rr' => round((float)($profile['base_rr'] ?? ($settings['risk_reward_target'] ?? 2.0)), 2),
+                'adaptive_rr' => round((float)($profile['effective_rr'] ?? ($settings['risk_reward_target'] ?? 2.0)), 2),
+                'adaptive_status' => (string)($profile['status'] ?? 'collecting'),
+                'adaptive_weight_multiplier' => (float)($profile['weight_multiplier'] ?? 1.0),
+                'adaptive_expected_r' => $profile['expected_r'] ?? null,
+                'adaptive_samples' => (int)($profile['samples'] ?? 0),
+                'member_eligible' => (bool)($profile['member_eligible'] ?? true),
+                'stop_atr_multiplier' => (float)($settings['stop_atr_multiplier'] ?? 1.25),
+                'tp1_r' => (float)($settings['tp1_r'] ?? 1.0),
+                'tp2_r' => (float)($settings['tp2_r'] ?? 1.5),
+            ];
         }
 
-        // Normalize against the maximum score of the strategies actually
-        // included in this package. A plan with 5 strategies and a plan with
-        // all 15 therefore share the same meaningful 0–100 signal threshold.
-        $scale = $maximumWeightedScore > 0 ? (100 / $maximumWeightedScore) : 0;
+        if ((bool) ($macroRisk['enabled'] ?? false)) {
+            $eventTitles = collect((array) ($macroRisk['events'] ?? []))->pluck('title')->filter()->take(2)->implode(', ');
+            $breakdown[] = [
+                'name' => 'Macro Event Risk', 'slug' => 'macro-event-risk', 'version' => '1.0',
+                'category' => 'Risk Filter', 'directional_role' => false, 'bias' => 'NEUTRAL',
+                'raw_points' => (bool)($macroRisk['blocked'] ?? false) ? -5 : 0,
+                'points' => 0,
+                'reason' => (bool)($macroRisk['blocked'] ?? false)
+                    ? 'High-impact macro event risk window is active'.($eventTitles !== '' ? ': '.$eventTitles : '')
+                    : 'No high-impact macro event is inside the configured risk window',
+                'base_rr' => null, 'adaptive_rr' => null, 'adaptive_status' => 'risk_gate',
+                'adaptive_weight_multiplier' => 1.0, 'adaptive_expected_r' => null, 'adaptive_samples' => 0,
+                'member_eligible' => ! (bool)($macroRisk['blocked'] ?? false), 'stop_atr_multiplier' => null, 'tp1_r' => null, 'tp2_r' => null,
+            ];
+        }
+
+        // Normalize against the untouched base directional capacity. When a mature,
+        // losing strategy is throttled, its reduced weight genuinely lowers the member
+        // score instead of being cancelled out by re-normalization.
+        $scale = $maximumDirectionalScore > 0 ? (100 / $maximumDirectionalScore) : 0;
         $long = max(0, min(100, $long * $scale));
         $short = max(0, min(100, $short * $scale));
-        $direction = abs($long - $short) < 8 ? 'NEUTRAL' : ($long > $short ? 'LONG' : 'SHORT');
-        $score = round(max($long, $short), 2);
-        $stopDistance = max($atr * 1.25, $last * ((float) config('pulse.risk.default_stop_loss_percent', 1) / 100));
-        $rewardDistance = max($atr * 2.0, $last * ((float) config('pulse.risk.default_take_profit_percent', 2) / 100));
+        $direction = abs($long - $short) < (float) config('pulse.optimizer.minimum_directional_gap', 8) ? 'NEUTRAL' : ($long > $short ? 'LONG' : 'SHORT');
+
+        $contributors = collect($breakdown)->filter(fn($row) =>
+            ($row['directional_role'] ?? false) &&
+            (float)($row['points'] ?? 0) > 0 &&
+            strtoupper((string)($row['bias'] ?? 'NEUTRAL')) === $direction &&
+            (bool)($row['member_eligible'] ?? true)
+        );
+        $coreContributors = $contributors->filter(fn($row) => in_array((string)($row['category'] ?? ''), ['Core Strategy','Entry Trigger'], true));
+        if ($adaptive && ($hardFilterFailed || $contributors->count() < (int) config('pulse.optimizer.minimum_contributors', 2) || $coreContributors->isEmpty())) {
+            $direction = 'NEUTRAL';
+        }
+
+        $score = $direction === 'NEUTRAL' ? 0.0 : round(max($long, $short), 2);
+        $matchingRows = collect($breakdown)->filter(fn($row) =>
+            ($row['directional_role'] ?? false) && (float)($row['points'] ?? 0) > 0 &&
+            strtoupper((string)($row['bias'] ?? 'NEUTRAL')) === $direction &&
+            (bool)($row['member_eligible'] ?? true)
+        );
+        $weightedAverage = static function (Collection $rows, string $field, float $default): float {
+            if ($rows->isEmpty()) return $default;
+            $den = (float) $rows->sum(fn($row) => max(0.0001, (float)($row['points'] ?? 0)));
+            if ($den <= 0) return $default;
+            return (float) $rows->sum(fn($row) => (float)($row[$field] ?? $default) * max(0.0001, (float)($row['points'] ?? 0))) / $den;
+        };
+        $riskRewardTarget = $weightedAverage($matchingRows, 'adaptive_rr', 2.0);
+        $tp1R = min($riskRewardTarget, $weightedAverage($matchingRows, 'tp1_r', 1.0));
+        $tp2R = min($riskRewardTarget, max($tp1R, $weightedAverage($matchingRows, 'tp2_r', 1.5)));
+        $stopAtrMultiplier = $weightedAverage($matchingRows, 'stop_atr_multiplier', 1.25);
+        $stopDistance = max($atr * $stopAtrMultiplier, $last * ((float) config('pulse.risk.default_stop_loss_percent', 1) / 100));
+        $rewardDistance = max($stopDistance * $riskRewardTarget, $last * ((float) config('pulse.risk.default_take_profit_percent', 2) / 100));
         $stop = $direction === 'SHORT' ? $last + $stopDistance : $last - $stopDistance;
         $target = $direction === 'SHORT' ? $last - $rewardDistance : $last + $rewardDistance;
 
@@ -523,7 +657,7 @@ class PulseScannerService
             'entry_price' => $this->binance->normalizePrice($pair, $last),
             'stop_loss' => $this->binance->normalizePrice($pair, max($stop, 0.00000001)),
             'take_profit' => $this->binance->normalizePrice($pair, max($target, 0.00000001)),
-            'indicators' => compact('ema9', 'ema20', 'ema50', 'rsi', 'atr', 'macd', 'macdSignal', 'bbWidth', 'return5', 'atrPercent'),
+            'indicators' => array_merge(compact('ema9', 'ema20', 'ema50', 'rsi', 'atr', 'macd', 'macdSignal', 'bbWidth', 'return5', 'atrPercent'), ['riskRewardTarget' => round($riskRewardTarget, 2), 'tp1R' => round($tp1R,2), 'tp2R' => round($tp2R,2), 'stopAtrMultiplier' => round($stopAtrMultiplier, 2), 'adaptiveEnabled' => $adaptive, 'marketRegime' => $regime, 'macroRisk' => $macroRisk, 'qualifiedContributors' => $contributors->count(), 'coreContributors' => $coreContributors->count(), 'hardFilterPassed' => ! $hardFilterFailed]),
             'strategies' => $breakdown,
         ];
     }
@@ -688,7 +822,7 @@ class PulseScannerService
         $identity = collect($strategies)->map(fn ($s) => [
             'slug' => (string) ($s['slug'] ?? ''), 'version' => (string) ($s['version'] ?? '1.0'),
         ])->sortBy('slug')->values()->all();
-        return 'engine-14.8.17-'.substr(hash('sha256', json_encode($identity)), 0, 12);
+        return 'engine-15.8.3-'.substr(hash('sha256', json_encode($identity)), 0, 12);
     }
 
     private function marketRegime(array $analysis): string
@@ -707,8 +841,29 @@ class PulseScannerService
         $entry = (float) ($analysis['entry_price'] ?? 0); $stop = (float) ($analysis['stop_loss'] ?? 0); $final = (float) ($analysis['take_profit'] ?? 0);
         $risk = abs($entry - $stop); if ($entry <= 0 || $risk <= 0 || $final <= 0) return [$final];
         $sign = strtoupper((string) ($analysis['direction'] ?? 'LONG')) === 'SHORT' ? -1 : 1;
-        $levels = [$entry + ($sign * $risk), $entry + ($sign * $risk * 1.5), $final];
+        $finalR = max(1.0, abs($final - $entry) / $risk);
+        $tp1R = max(0.5, min($finalR, (float) data_get($analysis,'indicators.tp1R',1.0)));
+        $tp2R = max($tp1R, min($finalR, (float) data_get($analysis,'indicators.tp2R',1.5)));
+        $levels = [$entry + ($sign * $risk * $tp1R), $entry + ($sign * $risk * $tp2R), $final];
         return collect($levels)->map(fn ($p) => (float) $this->binance->normalizePrice($pair, max($p, 0.00000001)))->unique()->values()->all();
+    }
+
+    private function strategyCategory(string $slug, array $settings): string
+    {
+        $configured = trim((string) ($settings['category'] ?? ''));
+        if ($configured !== '') return $configured;
+
+        // Safe fallback for a production database that has not yet run the V15.8.3
+        // defaults migration. This prevents filters/confirmations from being treated as
+        // directional core strategies during the deployment window.
+        return match ($slug) {
+            'ema-crossover' => 'Entry Trigger',
+            'rsi-recovery', 'macd-momentum', 'volume-expansion', 'candle-strength',
+            'swing-sequence', 'macd-rsi-confluence' => 'Confirmation',
+            'atr-volatility', 'range-compression' => 'Market Regime Filter',
+            'risk-reward-quality' => 'Risk Filter',
+            default => 'Core Strategy',
+        };
     }
 
     private function confidenceLabel(float $score): string { return match (true) { $score >= 85 => 'Strong', $score >= 75 => 'High', $score >= 65 => 'Qualified', default => 'Review' }; }

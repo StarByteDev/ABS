@@ -1,0 +1,81 @@
+/* V15.8.6 consistent light surfaces across admin, member and public layouts.
+ * Deliberately loaded after page-specific CSS. No DOM re-skinning or inline styles. */
+:root[data-abs-theme="light"] {
+    color-scheme: light;
+    --abs83-bg:#f2f6fa;--abs83-bg-deep:#edf3f7;
+    --abs83-surface:#fff;--abs83-surface-2:#f7fafc;--abs83-surface-3:#edf4f8;
+    --abs83-line:#d2e1ea;--abs83-line-soft:#e4edf2;
+    --abs83-text:#132f43;--abs83-muted:#577085;--abs83-dim:#6e879a;
+    --abs83-cyan:#087fa3;--abs83-cyan-2:#079ab9;
+    --abs83-gold:#995b11;--abs83-gold-2:#9f651a;
+    --abs83-green:#0b7a4f;--abs83-red:#b42736;--abs83-amber:#936414;
+    --abs83-shadow:0 8px 28px rgba(24,54,78,.055);
+}
+[data-abs-theme="light"] :is(body,body.admin-body,body.pulse-body,.abs-body,.pulse-app-shell,.admin-main,.pulse-main,.pulse-content,main) {
+    color:var(--abs83-text)!important;background:#f3f7fa!important;
+}
+[data-abs-theme="light"] :is(.admin-sidebar,.abs-exec-sidebar,.pulse-sidebar,.final-site-header,.pulse-global-header,.pulse-header,.enterprise-command-bar,.abs-exec-topbar,.admin-topbar,.final-nav-inner,.pulse-topbar) {
+    color:var(--abs83-text)!important;background:#fff!important;border-color:var(--abs83-line)!important;
+}
+[data-abs-theme="light"] :is(.enterprise-surface,.wf-panel,.wf-result-hero article,.wf-mini-kpis article,.wf-inline-note,.pulse-card,.pulse-panel,.card,.pi71-panel,.pi71-card,.strategy-command-bar,.strategy-kpi-grid article,.wf-cycle-summary,.wf-config-fact,.wf-config-row,.wf-journey-card,.wf-source-option,.wf-focus-panel,.wf-status-strip,.wf-rank-row,.modal-content,.dropdown-menu,.popover,.notice-card,.alert-card,.admin-card,.dashboard-card,.final-feature-card,.final-card,.private-card) {
+    color:var(--abs83-text)!important;background:#fff!important;border-color:var(--abs83-line)!important;box-shadow:var(--abs83-shadow)!important;
+}
+[data-abs-theme="light"] :is(.wf-panel-head,.panel-title,.wf-table-wrap,.wf-pagination,.wf-step-head,.wf-journey-head,.wf-hero,.wf-step-copy,.wf-search,.wf-filter,.wf-facts,.wf-chip) {
+    border-color:var(--abs83-line)!important;color:var(--abs83-text)!important;
+}
+/* IMPORTANT: override legacy dark tbody rows (not just header/table). */
+[data-abs-theme="light"] :is(table,.wf-table,.enterprise-table,.data-table,.table) {background:#fff!important;color:var(--abs83-text)!important;border-color:var(--abs83-line)!important;}
+[data-abs-theme="light"] :is(.wf-table,.enterprise-table,.data-table,table) thead :is(tr,th) {
+    background:#eaf2f7!important;color:#425f73!important;border-color:#d5e5ef!important;
+}
+[data-abs-theme="light"] :is(.wf-table,.enterprise-table,.data-table,table) tbody tr,
+[data-abs-theme="light"] .wf-table tbody td,
+[data-abs-theme="light"] .enterprise-table tbody td {background:#fff!important;color:var(--abs83-text)!important;border-color:#e0eaf0!important;}
+[data-abs-theme="light"] :is(.wf-table,.enterprise-table,.data-table,table) tbody tr:nth-child(even),
+[data-abs-theme="light"] .wf-table tbody tr:nth-child(even) td {background:#f7fafc!important;}
+[data-abs-theme="light"] :is(.wf-table,.enterprise-table,.data-table,table) tbody tr:hover,
+[data-abs-theme="light"] .wf-table tbody tr:hover td {background:#e8f5fa!important;}
+[data-abs-theme="light"] :is(.wf-table,.enterprise-table,.data-table,table) :is(td,th) {border-color:#deebf1!important;}
+[data-abs-theme="light"] :is(.wf-table,.enterprise-table,.data-table,table) td :is(b,strong) {color:#132f43!important;}
+[data-abs-theme="light"] :is(.wf-table,.enterprise-table,.data-table,table) :is(td small,td .muted) {color:#657d90!important;}
+[data-abs-theme="light"] :is(.wf-table,.enterprise-table,.data-table,table) td .good,
+[data-abs-theme="light"] .good,[data-abs-theme="light"] .positive {color:#087d50!important;}
+[data-abs-theme="light"] :is(.wf-table,.enterprise-table,.data-table,table) td .bad,
+[data-abs-theme="light"] .bad,[data-abs-theme="light"] .negative {color:#bc3141!important;}
+[data-abs-theme="light"] :is(.wf-pill.is-good,.badge-success) {color:#076c46!important;background:#e3f8ed!important;border-color:#9ed5bb!important;}
+[data-abs-theme="light"] :is(.wf-pill.is-warn,.badge-warning) {color:#8b5716!important;background:#fff3dd!important;border-color:#e3c593!important;}
+[data-abs-theme="light"] :is(.wf-pill.is-neutral,.badge-muted) {color:#49657a!important;background:#edf3f7!important;border-color:#cfdee7!important;}
+[data-abs-theme="light"] :is(.wf-panel h1,.wf-panel h2,.wf-panel h3,.wf-panel strong,.wf-panel b,.wf-result-hero strong,.wf-mini-kpis b,.pi71-panel b,.pi71-card b,.strategy-kpi-grid b,.pulse-content h1,.pulse-content h2,.pulse-content h3,.pulse-content strong) {color:var(--abs83-text)!important;}
+[data-abs-theme="light"] :is(.wf-mini-kpis b.good,.strategy-kpi-grid .is-positive b) {color:#087d50!important;}
+[data-abs-theme="light"] :is(.wf-mini-kpis b.bad,.strategy-kpi-grid .is-negative b) {color:#bc3141!important;}
+[data-abs-theme="light"] :is(p,small,.muted,.text-muted,.wf-panel small,.wf-result-hero small,.wf-inline-note small,.wf-mini-kpis span,.wf-step-head p,.wf-panel-head p,.wf-table small,.strategy-kpi-grid span,.strategy-kpi-grid small) {color:var(--abs83-muted)!important;}
+[data-abs-theme="light"] :is(.wf-kicker,.pi71-kicker,.abs-nav-group-title,.wf-result-hero article span,.wf-result-hero .wf-label) {color:#866024!important;}
+[data-abs-theme="light"] :is(a,.wf-row-link,.wf-panel-head a,.pulse-content a) {--link:#087d9e;}
+[data-abs-theme="light"] :is(.wf-row-link,.wf-panel-head a,.pulse-content a:not(.button):not(.pulse-btn),.final-main-nav a,.final-site-header a,.abs-exec-topbar a,.pulse-global-header a) {color:#087d9e!important;}
+[data-abs-theme="light"] :is(.abs-nav-group-links a,.pulse-nav a,.admin-sidebar a,.pulse-sidebar a) {color:#37566c!important;border-color:transparent!important;}
+[data-abs-theme="light"] :is(.abs-nav-group-links a:hover,.pulse-nav a:hover,.admin-sidebar a:hover) {color:#066f8d!important;background:#eaf6fa!important;}
+[data-abs-theme="light"] :is(.abs-nav-group-links a.active,.pulse-nav a.active,.admin-sidebar a.active) {color:#087e9e!important;background:#e2f6fb!important;border-color:#61c8de!important;}
+[data-abs-theme="light"] :is(input,select,textarea,.wf-filter input,.wf-search input,.strategy-filter-form input,.strategy-filter-form select,.form-control,.search-input) {
+    background:#fff!important;color:#193449!important;border-color:#c5d9e4!important;color-scheme:light!important;
+}
+[data-abs-theme="light"] :is(input,select,textarea)::placeholder {color:#72899a!important;opacity:1;}
+[data-abs-theme="light"] :is(input,select,textarea):focus {outline-color:#1889ab!important;border-color:#1889ab!important;box-shadow:0 0 0 3px rgba(24,137,171,.12)!important;}
+[data-abs-theme="light"] :is(.abs-sidebar-tool,.pulse-sidebar-toggle,.pulse-header-icon,.wf-rank,.wf-note-icon,.wf-chip,.wf-range-tabs a,.strategy-period-chip,.wf-config-row) {
+    background:#f3f8fb!important;color:#2c536c!important;border-color:#cedfea!important;
+}
+[data-abs-theme="light"] :is(.wf-range-tabs a.active,.wf-top-tabs a.active) {background:#e1f4fb!important;color:#086f8e!important;border-color:#69c1d8!important;}
+[data-abs-theme="light"] :is(.wf-adaptive-note,.wf-inline-note,.wf-maintenance-panel,.wf-maintenance-grid,.wf-maintenance-copy) {background:#f7fbfd!important;border-color:#cee4ed!important;}
+[data-abs-theme="light"] :is(.wf-report-actions,.wf-report-actions a) {color:#087b9a!important;}
+[data-abs-theme="light"] :is(.wf-primary-action,.pulse-btn-primary,.button-primary) {background:#087d9e!important;color:#fff!important;border-color:#087d9e!important;}
+[data-abs-theme="light"] :is(.wf-secondary-action,.button-secondary) {background:#fff!important;color:#1c5571!important;border-color:#a6ccdc!important;}
+[data-abs-theme="light"] :is(.abs-theme-toggle,.final-header-button.outline) {background:#fff!important;color:#1b455e!important;border-color:#bed4e0!important;}
+[data-abs-theme="light"] .wf-report-actions{display:flex;gap:18px;flex-wrap:wrap;align-items:center;}
+[data-abs-theme="light"] :is(.final-site-header,.final-nav-inner) {box-shadow:0 4px 14px rgba(25,53,77,.05)!important;}
+/* Keep branded charts on native palettes; exclude canvas and SVG from generic filters. */
+
+[data-abs-theme="light"] .wf-table td b.good,
+[data-abs-theme="light"] .wf-table td strong.good,
+[data-abs-theme="light"] .wf-table td span.good {color:#087d50!important;}
+[data-abs-theme="light"] .wf-table td b.bad,
+[data-abs-theme="light"] .wf-table td strong.bad,
+[data-abs-theme="light"] .wf-table td span.bad {color:#bc3141!important;}

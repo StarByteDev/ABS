@@ -52,4 +52,9 @@ class PortfolioAccount extends Model
     {
         return $this->hasOne(PortfolioInvestmentTerm::class, 'portfolio_account_id');
     }
+
+    public function investmentRatePeriods(): HasMany
+    {
+        return $this->hasMany(PortfolioInvestmentRatePeriod::class, 'portfolio_account_id')->orderBy('effective_from');
+    }
 }

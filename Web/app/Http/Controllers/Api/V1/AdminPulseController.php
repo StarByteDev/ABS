@@ -235,7 +235,7 @@ class AdminPulseController extends Controller
         return response()->json(['message' => 'Pulse system settings updated.']);
     }
 
-    public function broadcastAlert(Request $request, PulseAuditService $audit)
+    public function broadcastAlert(Request $request, PulseAuditService $audit, \App\Services\PulseMobilePushDispatcher $pushDispatcher)
     {
         $data = $request->validate([
             'audience' => ['required', 'in:all,active,plan'],
@@ -245,6 +245,7 @@ class AdminPulseController extends Controller
             'message' => ['required', 'string', 'max:3000'],
             'severity' => ['required', 'in:info,success,warning,danger'],
             'action_url' => ['nullable', 'string', 'max:255'],
+            'push_enabled' => ['sometimes', 'boolean'],
         ]);
 
         $userIds = User::query()->whereHas('pulseAccess', function ($q) use ($data): void {
@@ -254,6 +255,7 @@ class AdminPulseController extends Controller
         })->pluck('id');
 
         foreach ($userIds->chunk(500) as $chunk) {
+            $lastAlertId = (int) (PulseAlert::query()->max('id') ?? 0);
             PulseAlert::query()->insert($chunk->map(fn ($id) => [
                 'user_id' => $id,
                 'type' => $data['type'],
@@ -266,6 +268,12 @@ class AdminPulseController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ])->all());
+            if ((bool)($data['push_enabled'] ?? false)) {
+                PulseAlert::query()->where('id','>',$lastAlertId)->whereIn('user_id',$chunk->all())
+                    ->where('title',$data['title'])->orderBy('id')->chunkById(200, function($newAlerts) use ($pushDispatcher) {
+                        foreach($newAlerts as $alert) $pushDispatcher->queueForAlert($alert);
+                    });
+            }
         }
 
         $audit->record('api.admin.alert_broadcast', $request->user(), null, null, null, ['recipients' => $userIds->count(), 'title' => $data['title'], 'audience' => $data['audience'], 'plan_id' => $data['pulse_plan_id'] ?? null], $request);

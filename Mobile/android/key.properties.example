@@ -1,0 +1,8 @@
+# Never commit real key.properties or signing files.
+# Restore original published Play Store app upload keystore privately.
+storePassword=REPLACE_WITH_YOUR_EXISTING_KEYSTORE_PASSWORD
+keyPassword=REPLACE_WITH_YOUR_EXISTING_KEY_PASSWORD
+keyAlias=REPLACE_WITH_YOUR_EXISTING_KEY_ALIAS
+storeFile=abs-pulse-upload-key.jks
+# Production AdMob application ID; not the individual ad-unit IDs.
+admobAppId=ca-app-pub-REPLACE_WITH_YOUR_ADMOB_APP_ID

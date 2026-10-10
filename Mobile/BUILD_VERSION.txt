@@ -1,3 +1,2 @@
-Pulse Flutter Mobile V1.6.4+164
-Backend: ABS V15.7.4
-Economic Calendar provider normalization + Pulse product branding
+Pulse Flutter V1.7.5+175 — Free Signal consent and ETF visibility fixes
+Target backend: ABS V15.9.1

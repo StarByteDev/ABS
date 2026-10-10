@@ -1,0 +1,11 @@
+ABS V15.8.0 — Strategy Intelligence, TP Milestone Learning & Full-Market Scan
+
+Production-safe additive migration: database/migrations/2026_10_03_000100_add_v1580_strategy_intelligence_defaults.php
+
+- No user/member/payment/investor/signal/trade/history tables are dropped or recreated.
+- Existing strategy rows are preserved; missing settings keys are backfilled only.
+- Three new strategy evaluators are inserted only when missing.
+- Existing API routes and core mobile response fields remain intact; build field advances to 15.8.0.
+- User Find Best Signal scans all enabled Binance USD-M Futures pairs in PulsePair regardless of package pair assignment. Package capability/access gates remain unchanged.
+- TP1/TP2/TP3 milestones now appear in Admin reporting and add only a modest bonus to learned reliability. Final TP/SL remain dominant evidence.
+- Dark remains default; Light is an optional persisted presentation theme.

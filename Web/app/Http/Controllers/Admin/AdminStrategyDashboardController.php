@@ -72,8 +72,8 @@ class AdminStrategyDashboardController extends Controller
             $validations = $query->orderBy('generated_at')->get();
         }
 
-        $outcomes = $this->outcomeSummary($validations);
-        $strategyRows = $this->strategyRows($validations);
+        $outcomes = $this->outcomeSummary($validations, $analytics);
+        $strategyRows = $this->strategyRows($validations, $analytics);
         $dailyTrend = $this->dailyTrend($validations, $from, $to);
         $simulation = $analytics->simulation($from, $to, $filters);
         $profitabilityByStrategy = $analytics->strategyProfitability($from, $to, $filters)->keyBy('strategy_slug');
@@ -101,9 +101,9 @@ class AdminStrategyDashboardController extends Controller
             $verdict = 'Collecting';
             $verdictKey = 'collecting';
             if ($decisive >= 5) {
-                if ((float) $row['net_r'] > 0 && (float) ($row['win_rate'] ?? 0) >= 50) {
+                if ((float) $row['virtual_net_pnl_usd'] > 0 && (float) ($row['win_rate'] ?? 0) >= 50) {
                     $verdict = 'Positive evidence'; $verdictKey = 'positive';
-                } elseif ((float) $row['net_r'] > 0) {
+                } elseif ((float) $row['virtual_net_pnl_usd'] > 0) {
                     $verdict = 'Watch'; $verdictKey = 'watch';
                 } else {
                     $verdict = 'Needs review'; $verdictKey = 'review';
@@ -121,7 +121,7 @@ class AdminStrategyDashboardController extends Controller
             return $row;
         })->sortByDesc(function (array $row): float {
             if ((int) $row['decisive_trades'] < 1) return -999999 + (int) $row['signals'];
-            return ((float) $row['net_r'] * 10000) + (float) ($row['win_rate'] ?? 0);
+            return ((float) $row['virtual_net_pnl_usd'] * 10000) + (float) ($row['win_rate'] ?? 0);
         })->values();
 
         $scanQuery = PulseScannerRun::query()->whereNull('user_id')->whereBetween('created_at', [$from, $to]);
@@ -293,14 +293,27 @@ class AdminStrategyDashboardController extends Controller
         }
 
         $summaryBase = clone $base;
-        $evidenceRuns = (clone $summaryBase)->get(['id','best_signal_id','summary']);
-        $runIdsForEvidence = $evidenceRuns->pluck('id');
-        $bestSignalIds = $evidenceRuns->pluck('best_signal_id');
-        $summarySignalIds = $evidenceRuns->flatMap(function (PulseScannerRun $run) {
-            $set = collect((array) $run->summary)->first(fn ($item) => is_array($item) && ($item['type'] ?? '') === 'qualified_signal_set');
-            return collect((array) data_get($set,'signals',[]))->pluck('signal_id');
-        });
-        $createdSignalIds = PulseSignal::query()->whereIn('scanner_run_id', $runIdsForEvidence)->pluck('id');
+        $runIdsForEvidence = collect();
+        $bestSignalIds = collect();
+        $summarySignalIds = collect();
+        // Do not hydrate every JSON-heavy scanner summary at once. A 7-day production
+        // range can contain thousands of runs, so process evidence in bounded chunks.
+        (clone $summaryBase)
+            ->select(['pulse_scanner_runs.id','pulse_scanner_runs.best_signal_id','pulse_scanner_runs.summary'])
+            ->chunkById(100, function (Collection $chunk) use (&$runIdsForEvidence, &$bestSignalIds, &$summarySignalIds): void {
+                $runIdsForEvidence = $runIdsForEvidence->merge($chunk->pluck('id'));
+                $bestSignalIds = $bestSignalIds->merge($chunk->pluck('best_signal_id')->filter());
+                foreach ($chunk as $run) {
+                    $set = collect((array) $run->summary)->first(fn ($item) => is_array($item) && ($item['type'] ?? '') === 'qualified_signal_set');
+                    $summarySignalIds = $summarySignalIds->merge(collect((array) data_get($set,'signals',[]))->pluck('signal_id')->filter());
+                }
+            }, 'pulse_scanner_runs.id', 'id');
+        $runIdsForEvidence = $runIdsForEvidence->filter()->unique()->values();
+        $bestSignalIds = $bestSignalIds->filter()->unique()->values();
+        $summarySignalIds = $summarySignalIds->filter()->unique()->values();
+        $createdSignalIds = $runIdsForEvidence->isEmpty()
+            ? collect()
+            : PulseSignal::query()->whereIn('scanner_run_id', $runIdsForEvidence)->pluck('id');
         $signalIdsForEvidence = $bestSignalIds->merge($createdSignalIds)->merge($summarySignalIds)->filter()->unique()->values();
 
         $validationQuery = Schema::hasTable('pulse_signal_validations')
@@ -347,13 +360,24 @@ class AdminStrategyDashboardController extends Controller
                 });
         }
 
+        // Shared-hosting safe pagination: sort only the narrow primary-key query, then hydrate
+        // the 30 full rows separately. This avoids MySQL filesort allocating memory for the
+        // large JSON summary column (the production HY001/1038 failure seen on scan-audit).
         $runs = (clone $base)
-            ->with(['user:id,name,email','bestSignal.validation','bestSignal.trades'])
-            ->orderByDesc('started_at')
+            ->select('pulse_scanner_runs.id')
+            ->orderByDesc('pulse_scanner_runs.id')
             ->paginate(30)
             ->withQueryString();
 
-        $pageIds = $runs->getCollection()->pluck('id');
+        $pageIds = $runs->getCollection()->pluck('id')->map(fn ($id) => (int) $id)->values();
+        $pageModels = $pageIds->isEmpty()
+            ? collect()
+            : PulseScannerRun::query()
+                ->with(['user:id,name,email','bestSignal.validation','bestSignal.trades'])
+                ->whereIn('id', $pageIds)
+                ->get()
+                ->keyBy('id');
+        $runs->setCollection($pageIds->map(fn ($id) => $pageModels->get($id))->filter()->values());
         $auditByRun = collect();
         if (Schema::hasTable('pulse_audit_logs') && $pageIds->isNotEmpty()) {
             $auditByRun = PulseAuditLog::query()
@@ -499,7 +523,7 @@ class AdminStrategyDashboardController extends Controller
         ];
     }
 
-    private function outcomeSummary(Collection $rows): array
+    private function outcomeSummary(Collection $rows, PulseStrategyAnalyticsService $analytics): array
     {
         $tp = $rows->where('outcome','tp')->count();
         $sl = $rows->where('outcome','sl')->count();
@@ -514,6 +538,7 @@ class AdminStrategyDashboardController extends Controller
         $grossLossR = (float) $sl;
         foreach ($rows->where('outcome','tp') as $row) $grossProfitR += $this->tpR($row);
         $netR = $grossProfitR - $grossLossR;
+        $virtual = $analytics->virtualSummaryFromValidations($rows);
 
         return [
             'signals'=>$rows->count(),
@@ -532,10 +557,10 @@ class AdminStrategyDashboardController extends Controller
             'net_r'=>$netR,
             'profit_factor'=>$grossLossR > 0 ? $grossProfitR / $grossLossR : ($grossProfitR > 0 ? INF : null),
             'expectancy_r'=>$decisive > 0 ? $netR / $decisive : null,
-        ];
+        ] + $virtual;
     }
 
-    private function strategyRows(Collection $validations): Collection
+    private function strategyRows(Collection $validations, PulseStrategyAnalyticsService $analytics): Collection
     {
         $catalog = Schema::hasTable('pulse_strategies')
             ? PulseStrategy::query()->orderBy('sort_order')->orderBy('name')->get()
@@ -546,8 +571,9 @@ class AdminStrategyDashboardController extends Controller
                 'slug'=>$strategy->slug,
                 'name'=>$strategy->name,
                 'enabled'=>(bool) $strategy->is_enabled,
-                'signals'=>0,'entries'=>0,'tp'=>0,'sl'=>0,'void'=>0,'open'=>0,
+                'signals'=>0,'entries'=>0,'tp'=>0,'tp1'=>0,'tp2'=>0,'tp3'=>0,'sl'=>0,'void'=>0,'open'=>0,
                 'gross_profit_r'=>0.0,'gross_loss_r'=>0.0,
+                'virtual_gross_profit_usd'=>0.0,'virtual_gross_loss_usd'=>0.0,'virtual_net_pnl_usd'=>0.0,
             ];
         }
 
@@ -560,13 +586,17 @@ class AdminStrategyDashboardController extends Controller
                     return in_array($bias, [strtoupper((string) $validation->direction), 'NEUTRAL'], true);
                 })
                 ->pluck('slug')->filter()->unique()->values();
+            $virtualPnl = $analytics->virtualPnlForValidation($validation);
 
             foreach ($contributors as $slug) {
                 if (! isset($rows[$slug])) {
-                    $rows[$slug] = ['slug'=>$slug,'name'=>str($slug)->replace('-',' ')->title()->toString(),'enabled'=>true,'signals'=>0,'entries'=>0,'tp'=>0,'sl'=>0,'void'=>0,'open'=>0,'gross_profit_r'=>0.0,'gross_loss_r'=>0.0];
+                    $rows[$slug] = ['slug'=>$slug,'name'=>str($slug)->replace('-',' ')->title()->toString(),'enabled'=>true,'signals'=>0,'entries'=>0,'tp'=>0,'tp1'=>0,'tp2'=>0,'tp3'=>0,'sl'=>0,'void'=>0,'open'=>0,'gross_profit_r'=>0.0,'gross_loss_r'=>0.0,'virtual_gross_profit_usd'=>0.0,'virtual_gross_loss_usd'=>0.0,'virtual_net_pnl_usd'=>0.0];
                 }
                 $rows[$slug]['signals']++;
                 if ($validation->entry_hit_at) $rows[$slug]['entries']++;
+                if ((int)$validation->highest_tp_level_hit >= 1) $rows[$slug]['tp1']++;
+                if ((int)$validation->highest_tp_level_hit >= 2) $rows[$slug]['tp2']++;
+                if ((int)$validation->highest_tp_level_hit >= 3) $rows[$slug]['tp3']++;
                 if ($validation->outcome === 'tp') {
                     $rows[$slug]['tp']++;
                     $rows[$slug]['gross_profit_r'] += $this->tpR($validation);
@@ -578,20 +608,29 @@ class AdminStrategyDashboardController extends Controller
                 } elseif (! $validation->resolved_at) {
                     $rows[$slug]['open']++;
                 }
+                if ($virtualPnl !== null) {
+                    $rows[$slug]['virtual_net_pnl_usd'] += $virtualPnl;
+                    if ($virtualPnl >= 0) $rows[$slug]['virtual_gross_profit_usd'] += $virtualPnl;
+                    else $rows[$slug]['virtual_gross_loss_usd'] += abs($virtualPnl);
+                }
             }
         }
 
         return collect(array_values($rows))->map(function (array $row): array {
             $decisive = $row['tp'] + $row['sl'];
             $netR = $row['gross_profit_r'] - $row['gross_loss_r'];
+            $tested = $decisive * PulseStrategyAnalyticsService::VIRTUAL_NOTIONAL_USD;
             return $row + [
                 'win_rate'=>$decisive > 0 ? ($row['tp'] / $decisive) * 100 : null,
                 'net_r'=>$netR,
                 'profit_factor'=>$row['gross_loss_r'] > 0 ? $row['gross_profit_r'] / $row['gross_loss_r'] : ($row['gross_profit_r'] > 0 ? INF : null),
                 'expectancy_r'=>$decisive > 0 ? $netR / $decisive : null,
+                'virtual_tested_notional_usd'=>$tested,
+                'virtual_roi_pct'=>$tested > 0 ? ((float)$row['virtual_net_pnl_usd'] / $tested) * 100 : null,
+                'virtual_avg_pnl_usd'=>$decisive > 0 ? ((float)$row['virtual_net_pnl_usd'] / $decisive) : null,
             ];
         })->sortByDesc(function (array $row): float {
-            return ((float) $row['net_r'] * 1000000) + (int) $row['signals'];
+            return ((float) $row['virtual_net_pnl_usd'] * 1000000) + (int) $row['signals'];
         })->values();
     }
 

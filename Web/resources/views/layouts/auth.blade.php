@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>try{document.documentElement.dataset.absTheme=(localStorage.getItem('abs.theme')==='light'?'light':'dark')}catch(e){document.documentElement.dataset.absTheme='dark'}</script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -12,6 +13,12 @@
     <title>@yield('title', 'Member Portal — Alpha Block Solutions')</title>
     <link rel="stylesheet" href="{{ asset('assets/css/abs-auth.css') }}?v={{ @filemtime(public_path('assets/css/abs-auth.css')) ?: '14.3' }}">
     @stack('head')
+    <link rel="stylesheet" href="{{ asset('assets/css/abs-theme-v1587.css') }}?v=15.8.8">
+    <link rel="stylesheet" href="{{ asset('assets/css/abs-auth-theme-v1588.css') }}?v=15.8.8">
+    <script src="{{ asset('assets/js/abs-theme-v1587.js') }}?v=15.8.9" defer></script>
+    <link rel="stylesheet" href="{{ asset('assets/css/abs-theme-v1589.css') }}?v=15.8.9">
+    <link rel="stylesheet" href="{{ asset('assets/css/abs-theme-v1590.css') }}?v=15.9.0">
+    <link rel="stylesheet" href="{{ asset('assets/css/abs-theme-v1591.css') }}?v=15.9.1">
 </head>
 <body class="abs-auth-page @yield('body-class')">
     <a class="auth-skip-link" href="#auth-form">@yield('auth-skip-label', 'Skip to account form')</a>
@@ -84,5 +91,6 @@
 
     <script src="{{ asset('assets/js/abs-auth.js') }}?v={{ @filemtime(public_path('assets/js/abs-auth.js')) ?: '14.3' }}" defer></script>
     @stack('scripts')
+<button type="button" class="abs-theme-toggle" data-abs-theme-toggle aria-label="Switch theme" aria-pressed="true">◐ <span data-abs-theme-label>Switch to Light</span></button>
 </body>
 </html>

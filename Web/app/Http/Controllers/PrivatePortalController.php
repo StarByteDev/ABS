@@ -27,7 +27,8 @@ class PrivatePortalController extends Controller
         $invested = max(0.0, (float) ($account?->net_contributions ?? 0));
         $current = (float) ($account?->current_value ?? 0);
         $profit = (float) ($account?->total_profit ?? 0);
-        $profitPaid = $account ? (float)$account->transactions()->where('status','posted')->where('type','profit')->sum('amount') : 0.0;
+        $profitPaid = $account ? (float)$account->transactions()->where('status','posted')->where('type','profit')->where(function($q){ $q->whereNull('entry_source')->orWhereNotIn('entry_source',['automatic_profit_reinvestment','admin_profit_reinvestment']); })->sum('amount') : 0.0;
+        $profitReinvested = $account ? (float)$account->transactions()->where('status','posted')->where('type','profit')->whereIn('entry_source',['automatic_profit_reinvestment','admin_profit_reinvestment'])->sum('amount') : 0.0;
         $overallReturn = $invested > 0 ? ($profit / $invested) * 100 : 0.0;
         $monthlyReturn = $latest && (float) $latest->opening_balance > 0
             ? ((float) $latest->profit_loss / (float) $latest->opening_balance) * 100
@@ -39,7 +40,7 @@ class PrivatePortalController extends Controller
             'recentTransactions' => $account?->transactions()->whereIn('status',['posted','voided'])->limit(8)->get() ?? collect(),
             'recentRequests' => $request->user()->portfolioRequests()->latest()->limit(6)->get(),
             'openRequests' => $request->user()->portfolioRequests()->whereIn('status', ['submitted','under_review'])->count(),
-            'metrics' => compact('invested', 'current', 'profit', 'profitPaid', 'overallReturn', 'monthlyReturn'),
+            'metrics' => compact('invested', 'current', 'profit', 'profitPaid', 'profitReinvested', 'overallReturn', 'monthlyReturn'),
             'chart' => $this->chart($statements),
             'performance' => $account ? $performance->snapshot($account) : null,
             'agreement' => $account ? $performance->agreementSummary($account) : null,
@@ -61,7 +62,8 @@ class PrivatePortalController extends Controller
                 'investment'=>(float)$posted->where('type','deposit')->sum(fn($r)=>(float)$r->amount),
                 'capital_withdrawal'=>(float)$posted->where('type','withdrawal')->sum(fn($r)=>(float)$r->amount),
                 'withdrawal'=>(float)$posted->where('type','withdrawal')->sum(fn($r)=>(float)$r->amount),
-                'profit_paid'=>(float)$posted->where('type','profit')->sum(fn($r)=>(float)$r->amount),
+                'profit_paid'=>(float)$posted->where('type','profit')->reject(fn($r)=>in_array((string)$r->entry_source,['automatic_profit_reinvestment','admin_profit_reinvestment'],true))->sum(fn($r)=>(float)$r->amount),
+                'profit_reinvested'=>(float)$posted->where('type','profit')->filter(fn($r)=>in_array((string)$r->entry_source,['automatic_profit_reinvestment','admin_profit_reinvestment'],true))->sum(fn($r)=>(float)$r->amount),
                 'profit'=>(float)$posted->where('type','profit')->sum(fn($r)=>(float)$r->amount),
                 'cost'=>(float)$posted->filter(fn($r)=>in_array($r->type,['loss','fee'],true))->sum(fn($r)=>(float)$r->amount),
             ],

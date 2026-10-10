@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\PulseSignalDailyMetric;
+use App\Models\PulseSignalValidation;
 use App\Models\PulseStrategyDailyMetric;
 use App\Models\PulseTrade;
 use Illuminate\Support\Carbon;
@@ -11,6 +12,74 @@ use Illuminate\Support\Facades\Schema;
 
 class PulseStrategyAnalyticsService
 {
+
+    public const VIRTUAL_NOTIONAL_USD = 100.0;
+
+    /**
+     * Research-only unleveraged P/L for one resolved paper validation.
+     * Each decisive TP/SL trade is treated as a fixed USD notional position.
+     * Ambiguous, open and expired outcomes intentionally return null.
+     */
+    public function virtualPnlForValidation(PulseSignalValidation $row, ?float $notionalUsd = null): ?float
+    {
+        $notional = $notionalUsd !== null && $notionalUsd > 0 ? $notionalUsd : self::VIRTUAL_NOTIONAL_USD;
+        $outcome = strtolower((string) $row->outcome);
+        if (! in_array($outcome, ['tp','sl'], true)) return null;
+
+        $entry = (float) $row->entry_price;
+        if ($entry <= 0) return null;
+
+        if ($outcome === 'sl') {
+            $exit = (float) $row->stop_loss;
+        } else {
+            $levels = array_values(array_filter(array_map('floatval', (array) $row->take_profit_levels), fn ($v) => $v > 0));
+            $exit = $levels !== [] ? (float) end($levels) : 0.0;
+        }
+        if ($exit <= 0) return null;
+
+        $direction = strtoupper((string) $row->direction);
+        $move = $direction === 'SHORT' ? (($entry - $exit) / $entry) : (($exit - $entry) / $entry);
+        $raw = $notional * $move;
+        // Outcome is authoritative for reporting sign: a final TP is a win and an SL is a loss.
+        // abs() also protects the report from a malformed legacy target/stop stored on the wrong side of entry.
+        return round($outcome === 'tp' ? abs($raw) : -abs($raw), 8);
+    }
+
+    public function virtualSummaryFromValidations(Collection $rows, ?float $notionalUsd = null): array
+    {
+        $notional = $notionalUsd !== null && $notionalUsd > 0 ? $notionalUsd : self::VIRTUAL_NOTIONAL_USD;
+        $resolved = 0;
+        $wins = 0;
+        $losses = 0;
+        $grossProfit = 0.0;
+        $grossLoss = 0.0;
+        $net = 0.0;
+
+        foreach ($rows as $row) {
+            if (! $row instanceof PulseSignalValidation) continue;
+            $pnl = $this->virtualPnlForValidation($row, $notional);
+            if ($pnl === null) continue;
+            $resolved++;
+            $net += $pnl;
+            if (strtolower((string) $row->outcome) === 'tp') { $wins++; $grossProfit += abs($pnl); }
+            else { $losses++; $grossLoss += abs($pnl); }
+        }
+
+        $tested = $resolved * $notional;
+        return [
+            'virtual_notional_usd' => $notional,
+            'virtual_resolved_trades' => $resolved,
+            'virtual_wins' => $wins,
+            'virtual_losses' => $losses,
+            'virtual_tested_notional_usd' => round($tested, 2),
+            'virtual_gross_profit_usd' => round($grossProfit, 8),
+            'virtual_gross_loss_usd' => round($grossLoss, 8),
+            'virtual_net_pnl_usd' => round($net, 8),
+            'virtual_roi_pct' => $tested > 0 ? round(($net / $tested) * 100, 6) : null,
+            'virtual_avg_pnl_usd' => $resolved > 0 ? round($net / $resolved, 8) : null,
+            'virtual_methodology' => 'Research-only: $'.number_format($notional, 2, '.', '').' unleveraged notional per resolved TP/SL trade; no fees, funding, slippage, leverage or compounding. Open, expired and ambiguous outcomes are excluded from realized virtual P/L.',
+        ];
+    }
     public function simulation(Carbon $from, Carbon $to, array $filters = [], ?int $userId = null): array
     {
         $strategy = trim((string) ($filters['strategy'] ?? ''));

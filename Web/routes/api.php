@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\WatchlistController;
 use App\Http\Controllers\Api\V1\PulseController;
 use App\Http\Controllers\Api\V1\PublicRewardedSignalController;
 use App\Http\Controllers\Api\V1\AdminPulseController;
+use App\Http\Controllers\Api\V1\PulsePushAdminController;
 use App\Http\Controllers\RecoveryController;
 use Illuminate\Support\Facades\Route;
 
@@ -28,6 +29,10 @@ Route::get('/recovery/build', [RecoveryController::class, 'buildRecovery']);
 Route::post('/recovery/build/restore', [RecoveryController::class, 'restoreBuild'])->middleware('throttle:5,1');
 
 Route::prefix('v1')->group(function () {
+    // Stable, unauthenticated API probe for mobile/network diagnostics. Existing
+    // endpoints and response shapes remain unchanged.
+    Route::get('/', [AppController::class, 'health']);
+    Route::get('/health', [AppController::class, 'health']);
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/login', [AuthController::class, 'login']);
     Route::post('/auth/activation/resend', [AuthController::class, 'resendActivation'])->middleware('throttle:6,1');
@@ -52,6 +57,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/learning', [ContentController::class, 'learning']);
     Route::get('/learning/{lesson:slug}', [ContentController::class, 'learningShow']);
     Route::get('/economic-calendar', [ContentController::class, 'calendar']);
+    Route::get('/economic-calendar/{event}', [ContentController::class, 'calendarEvent'])->whereNumber('event');
     Route::get('/content/settings', [ContentController::class, 'settings']);
     Route::get('/legal/{type}', [ContentController::class, 'legal'])->whereIn('type',['privacy','terms','risk','disclaimer']);
     Route::post('/newsletter', [NewsletterController::class, 'store']);
@@ -120,6 +126,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/reports', [PulseController::class, 'reports'])->middleware('pulse.capability:reports');
             Route::get('/reports/signals', [PulseController::class, 'signalPerformance'])->middleware('pulse.capability:reports');
             Route::get('/reports/strategies', [PulseController::class, 'strategyPerformance'])->middleware('pulse.capability:reports');
+            Route::get('/reports/strategy-health', [PulseController::class, 'strategyHealth'])->middleware('pulse.capability:reports');
             Route::get('/reports/simulation', [PulseController::class, 'simulationReport'])->middleware('pulse.capability:reports');
             Route::get('/reports/learning', [PulseController::class, 'learningInsights'])->middleware('pulse.capability:reports');
             Route::get('/market-data/health', [PulseController::class, 'marketDataHealth'])->middleware('pulse.capability:scanner');
@@ -136,6 +143,8 @@ Route::prefix('v1')->group(function () {
         });
 
         Route::middleware('role:admin')->prefix('admin/pulse')->group(function () {
+            Route::get('/push/status', [PulsePushAdminController::class, 'status']);
+            Route::post('/push/test', [PulsePushAdminController::class, 'test'])->middleware('throttle:3,1');
             Route::get('/dashboard', [AdminPulseController::class, 'dashboard']);
             Route::get('/access', [AdminPulseController::class, 'access']);
             Route::put('/access/{user}', [AdminPulseController::class, 'updateAccess']);

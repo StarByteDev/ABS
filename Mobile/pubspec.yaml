@@ -1,7 +1,7 @@
 name: abs_pulse
 publish_to: 'none'
-description: Pulse mobile client fully rebased on the supplied premium market-terminal template UI with live V15.7.4 integrations.
-version: 1.6.5+165
+description: Pulse 1.7.5 fixes Free Signal consent/ad timeout and improves daily BTC ETF flow availability diagnostics.
+version: 1.7.5+175
 
 environment:
   sdk: '>=3.5.0 <4.0.0'

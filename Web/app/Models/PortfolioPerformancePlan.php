@@ -10,7 +10,7 @@ class PortfolioPerformancePlan extends Model
 {
     protected $fillable = [
         'portfolio_account_id', 'investment_term_id', 'plan_month', 'accrual_start_date', 'accrual_end_date',
-        'base_amount', 'target_rate', 'target_amount', 'calculation_basis', 'status', 'created_by', 'notes',
+        'base_amount', 'base_amount_usd', 'target_rate', 'target_amount', 'target_amount_usd', 'calculation_basis', 'status', 'created_by', 'notes',
     ];
 
     protected function casts(): array
@@ -20,8 +20,10 @@ class PortfolioPerformancePlan extends Model
             'accrual_start_date' => 'date',
             'accrual_end_date' => 'date',
             'base_amount' => 'decimal:2',
+            'base_amount_usd' => 'decimal:2',
             'target_rate' => 'decimal:4',
             'target_amount' => 'decimal:2',
+            'target_amount_usd' => 'decimal:2',
         ];
     }
 

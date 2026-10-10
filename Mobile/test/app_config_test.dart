@@ -3,12 +3,12 @@ import 'package:abs_pulse/core/app_config.dart';
 import 'package:abs_pulse/core/ads/ad_config.dart';
 
 void main() {
-  test('Production defaults point to ABS V15.7.4 API contract', () {
+  test('New investor/trader build targets ABS V15.9.1', () {
     expect(AppConfig.apiBaseUrl, 'https://alphablocksolutions.com/api/v1');
-    expect(AppConfig.supportedBackendBuild, '15.7.4');
+    expect(AppConfig.supportedBackendBuild, '15.9.1');
     expect(AppConfig.minimumBackendBuild, '15.7.4');
-    expect(AppConfig.mobileVersion, '1.6.4');
-    expect(AppConfig.mobileBuild, 164);
+    expect(AppConfig.mobileVersion, '1.7.1');
+    expect(AppConfig.mobileBuild, 171);
   });
 
   test('Ads default to Google test units in every build mode', () {

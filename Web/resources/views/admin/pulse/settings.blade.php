@@ -62,6 +62,7 @@
         <label class="full">Title<input name="title" required maxlength="160"></label>
         <label class="full">Message<textarea name="message" rows="4" required></textarea></label>
         <label class="full check-label"><input type="checkbox" name="send_email" value="1"><span>Also send this alert by email when Pulse alert email delivery is enabled.</span></label>
+        <label class="full check-label"><input type="checkbox" name="send_push" value="1"><span>Also send a Firebase mobile push alert to opted-in Pulse Android/iOS devices (requires FCM configured).</span></label>
         <div class="full admin-page-actions"><button class="button button-primary">Send Alert</button></div>
     </form>
 </section>

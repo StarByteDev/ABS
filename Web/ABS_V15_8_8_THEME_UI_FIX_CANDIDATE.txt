@@ -1,0 +1,15 @@
+ABS V15.8.8 WEB THEME CANDIDATE
+
+Purpose: full light/dark contrast across shared public, Pulse member, login,
+and admin styles, including the LEFT SIDEBAR navigation readability fix.
+
+Source baseline: ABS V15.8.7 testing candidate (itself based on V15.8.6).
+No schema migrations, users/history modifications, strategy changes,
+or payment/execution changes in V15.8.8 itself.
+
+Do not consider this release live/production verified. The visual test is
+representative HTML/CSS, not authenticated full-app QA. Flutter native
+mobile source is not modified. Test all pages on a staging installation
+before production. Back up application and database first.
+
+See docs/ABS_V15_8_8_THEME_RELEASE_NOTES.md

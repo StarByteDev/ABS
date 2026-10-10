@@ -1,0 +1,49 @@
+/* ABS V15.8.8 — auth entrypoint joins the same persisted site-wide theme. */
+html[data-abs-theme="light"] .abs-auth-page {
+  --auth-text:#172f42;--auth-muted:#546e82;--auth-line:#cbdde8;
+  --auth-cyan:#087d9e;--auth-blue:#0d7799;--auth-gold:#9a630b;
+  --auth-gold-pale:#88580d;--auth-danger:#b42e44;--auth-success:#08794d;
+  background:linear-gradient(125deg,#f1f6fb,#eaf3f9)!important;color:var(--auth-text)!important;
+}
+html[data-abs-theme="dark"] .abs-auth-page {color:#f7f8fb!important;}
+html[data-abs-theme="light"] .auth-site-header,
+html[data-abs-theme="light"] .auth-site-footer,
+html[data-abs-theme="light"] .auth-panel-wrap {
+  background:#fff!important;color:#172f42!important;border-color:#cbdde8!important;
+}
+html[data-abs-theme="light"] .auth-intelligence {
+  background:linear-gradient(145deg,#e7f2f9,#f6faff)!important;color:#172f42!important;
+}
+html[data-abs-theme="light"] .auth-intelligence::before,
+html[data-abs-theme="light"] .auth-intelligence::after,
+html[data-abs-theme="light"] .auth-intelligence__shade,
+html[data-abs-theme="light"] .auth-market-canvas {opacity:.08!important;}
+html[data-abs-theme="light"] .auth-intelligence :is(h1,li),
+html[data-abs-theme="light"] .auth-card :is(h1,h2,h3,strong,b),
+html[data-abs-theme="light"] .auth-brand__name b {color:#172f42!important;}
+html[data-abs-theme="light"] .auth-intelligence :is(p,small),
+html[data-abs-theme="light"] .auth-card :is(p,small),
+html[data-abs-theme="light"] .auth-site-footer p {color:#546e82!important;}
+html[data-abs-theme="light"] .auth-card,
+html[data-abs-theme="light"] :is(.auth-registration-card,.auth-recovery-card,.auth-recovery-panel) {
+  color:#172f42!important;background:#fff!important;border-color:#cbdde8!important;
+  box-shadow:0 12px 34px rgba(27,55,77,.08)!important;
+}
+html[data-abs-theme="light"] :is(.auth-input-wrap,.auth-select-wrap,.auth-phone-group,.auth-country-code-wrap,.auth-phone-number-wrap,.auth-recovery-tab,.auth-divider) {
+  background:#f7fbfe!important;border-color:#cbdde8!important;color:#172f42!important;
+}
+html[data-abs-theme="light"] .abs-auth-page :is(input,select,textarea) {background:#fff!important;color:#172f42!important;border-color:#cbdde8!important;color-scheme:light!important;}
+html[data-abs-theme="light"] .abs-auth-page :is(input,textarea)::placeholder {color:#627b8b!important;opacity:1;}
+html[data-abs-theme="light"] .abs-auth-page :is(label,.auth-field-help,.auth-options,.auth-back-link,.auth-register) {color:#526b7b!important;}
+html[data-abs-theme="light"] .abs-auth-page a:not(.auth-submit):not(.auth-skip-link) {color:#086e91;}
+html[data-abs-theme="light"] .auth-site-footer nav a {color:#086e91!important;}
+html[data-abs-theme="light"] .auth-submit {background:linear-gradient(#ffd16c,#e5a733)!important;color:#18222c!important;}
+html[data-abs-theme="light"] .auth-benefit-icon {background:#edf7fc!important;border-color:#cbdde8!important;color:#087d9e!important;}
+html[data-abs-theme="light"] .auth-global-risk {background:#f7fafc!important;color:#526b7b!important;border-color:#cbdde8!important;}
+html[data-abs-theme] body.abs-auth-page .abs-theme-toggle {
+  position:fixed;right:18px;bottom:18px;z-index:10050;background:var(--abs7-panel,#fff)!important;
+  color:var(--abs7-text,#172f42)!important;border:1px solid var(--abs7-line,#cbdde8)!important;
+  border-radius:22px;min-height:42px;padding:10px 15px;display:flex;align-items:center;gap:6px;
+  font-size:12px;font-weight:700;box-shadow:0 10px 20px rgba(0,0,0,.14);cursor:pointer;
+}
+@media(max-width:760px){html[data-abs-theme] body.abs-auth-page .abs-theme-toggle {right:12px;bottom:max(12px,env(safe-area-inset-bottom));}}

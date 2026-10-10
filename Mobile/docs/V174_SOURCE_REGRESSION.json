@@ -1,0 +1,15 @@
+{
+  "version": "1.7.4+174",
+  "backend_target": "ABS V15.9.1",
+  "features": [
+    "Markets BTC chart renders at full card width and retries failed history fetch",
+    "BTC chart fetch requests only server-supported Binance intervals",
+    "Stablecoin supply capitalization change from existing ABS V15.9.1 insights path",
+    "Separate display of total stablecoin cap when daily change is unavailable",
+    "Home has no Live Opportunities and Watchlist panels",
+    "Home ETF netflow card is provider verified with no invented values",
+    "ETF upstream key stays in optional server patch"
+  ],
+  "security": "No DB migration, Firebase/AdMob configuration edits, or trading service changes",
+  "full_flutter_build": "Not executed (Flutter SDK unavailable in current environment)"
+}

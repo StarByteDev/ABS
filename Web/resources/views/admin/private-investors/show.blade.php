@@ -76,7 +76,7 @@
             <div class="pi-brief-row"><span>Capital withdrawn</span><b>{{ $account->currency }} {{ number_format($activityMetrics['withdrawals'],2) }}</b></div>
             <div class="pi-brief-row"><span>Profit paid</span><b class="pi-positive">{{ $account->currency }} {{ number_format($activityMetrics['profit_paid'],2) }}</b></div>
             <div class="pi-brief-row"><span>Admin USD principal basis</span><b>USD {{ number_format($activityMetrics['principal_usd'],2) }}</b></div>
-            <div class="pi-brief-row"><span>Admin USD profit paid / net P&amp;L</span><b>USD {{ number_format($activityMetrics['profit_paid_usd'],2) }}</b></div>
+            <div class="pi-brief-row"><span>Admin USD profit paid</span><b>USD {{ number_format($activityMetrics['profit_paid_usd'],2) }}</b></div>
             <div class="pi-brief-row"><span>Losses & fees</span><b class="pi-negative">{{ $account->currency }} {{ number_format($activityMetrics['losses'],2) }}</b></div>
             <div class="pi-brief-row"><span>Draft entries</span><b>{{ $activityMetrics['drafts'] }}</b></div>
             <div class="pi-brief-row"><span>Corrected entries</span><b>{{ $activityMetrics['voided'] }}</b></div>
@@ -86,7 +86,7 @@
     <div class="pi-task-grid">
         <a class="pi-task-card" href="{{ route('admin.private-investors.investment-setup',$account) }}"><span>◎</span><div><b>Investment Setup</b><small>Set capital start date and the agreed monthly percentage.</small></div></a>
         <a class="pi-task-card" href="{{ route('admin.private-investors.account-performance',$account) }}"><span>↗</span><div><b>Monthly Progress</b><small>Review automatic daily progress and month-end target.</small></div></a>
-        <a class="pi-task-card" href="{{ route('admin.private-investors.account-transactions',$account) }}"><span>⇄</span><div><b>Transactions</b><small>Record capital movements and exceptional manual financial corrections; monthly profit payout is automatic.</small></div></a>
+        <a class="pi-task-card" href="{{ route('admin.private-investors.account-transactions',$account) }}"><span>⇄</span><div><b>Transactions</b><small>Record capital movements and exceptional manual financial corrections; monthly profit settlement (payout or reinvestment) is automatic.</small></div></a>
         <a class="pi-task-card" href="{{ route('admin.private-investors.account-statements',$account) }}"><span>▥</span><div><b>Statements</b><small>Review automatically generated monthly investor statements and reconcile when required.</small></div></a>
         <a class="pi-task-card" href="{{ route('admin.private-investors.account-requests',$account) }}"><span>◌</span><div><b>Requests</b><small>Review investment, withdrawal and portfolio requests.</small></div></a>
         <a class="pi-task-card" href="{{ route('admin.private-investors.portfolio-values',$account) }}"><span>⚙</span><div><b>Account Controls</b><small>Reconcile account values only when correcting an identified financial-entry error.</small></div></a>
@@ -100,7 +100,7 @@
             @else
                 @foreach($transactions->take(6) as $tx)
                     <div class="pi-admin-investor {{ $tx->status==='voided'?'is-voided':'' }}">
-                        <div><b>{{ match($tx->type){'deposit'=>'Investment','withdrawal'=>'Capital Withdrawal','profit'=>'Profit Paid','loss'=>'Loss','fee'=>'Fee','adjustment'=>'Adjustment',default=>ucfirst($tx->type)} }}</b><small>{{ optional($tx->transaction_date)->format('d M Y') }} · {{ $tx->reference ?: 'No reference' }} · {{ ucfirst($tx->status) }}</small></div>
+                        @php($isReinvestedProfit=$tx->type==='profit' && in_array((string)$tx->entry_source,['automatic_profit_reinvestment','admin_profit_reinvestment'],true))<div><b>{{ $isReinvestedProfit ? 'Profit Reinvested' : match($tx->type){'deposit'=>'Investment','withdrawal'=>'Capital Withdrawal','profit'=>'Profit Paid','loss'=>'Loss','fee'=>'Fee','adjustment'=>'Adjustment',default=>ucfirst($tx->type)} }}</b><small>{{ optional($tx->transaction_date)->format('d M Y') }} · {{ $tx->reference ?: 'No reference' }} · {{ ucfirst($tx->status) }}</small></div>
                         <strong class="{{ in_array($tx->type,['profit','deposit'])?'pi-positive':(in_array($tx->type,['loss','fee','withdrawal'])?'pi-negative':'') }}">{{ $account->currency }} {{ number_format((float)$tx->amount,2) }}</strong>
                     </div>
                 @endforeach

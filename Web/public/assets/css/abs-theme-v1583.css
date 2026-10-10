@@ -1,0 +1,150 @@
+/* ABS V15.8.3 — premium institutional dark/light refinement.
+   Loaded after legacy page CSS so theme tokens win without rewriting page structure. */
+:root[data-abs-theme="dark"]{
+  color-scheme:dark;
+  --abs83-bg:#07121d;
+  --abs83-bg-deep:#050d16;
+  --abs83-surface:#0b1a28;
+  --abs83-surface-2:#0f2233;
+  --abs83-surface-3:#132a3d;
+  --abs83-line:#24445a;
+  --abs83-line-soft:#19364a;
+  --abs83-text:#eef6fb;
+  --abs83-muted:#91a8b8;
+  --abs83-dim:#6f899b;
+  --abs83-cyan:#67d7f2;
+  --abs83-cyan-2:#2ab7df;
+  --abs83-gold:#d8ad55;
+  --abs83-gold-2:#f0c86f;
+  --abs83-green:#63d8a2;
+  --abs83-red:#ff7e89;
+  --abs83-amber:#e7bb63;
+  --abs83-shadow:0 18px 50px rgba(0,0,0,.24);
+}
+[data-abs-theme="dark"] body,
+[data-abs-theme="dark"] body.admin-body,
+[data-abs-theme="dark"] .pulse-app-shell,
+[data-abs-theme="dark"] .abs-body{
+  background:
+    radial-gradient(circle at 78% 0%,rgba(42,183,223,.08),transparent 28%),
+    radial-gradient(circle at 8% 76%,rgba(216,173,85,.05),transparent 30%),
+    linear-gradient(180deg,var(--abs83-bg-deep),var(--abs83-bg) 52%,#081623)!important;
+  color:var(--abs83-text)!important;
+}
+[data-abs-theme="dark"] .admin-main,
+[data-abs-theme="dark"] .pulse-main,
+[data-abs-theme="dark"] .pulse-content{background:transparent!important;color:var(--abs83-text)!important}
+[data-abs-theme="dark"] .admin-sidebar,
+[data-abs-theme="dark"] .abs-exec-sidebar,
+[data-abs-theme="dark"] .pulse-sidebar{
+  background:linear-gradient(180deg,#081621 0%,#07131e 100%)!important;
+  border-color:var(--abs83-line-soft)!important;
+  box-shadow:18px 0 45px rgba(0,0,0,.13)!important;
+}
+[data-abs-theme="dark"] .pulse-global-header,
+[data-abs-theme="dark"] .enterprise-command-bar,
+[data-abs-theme="dark"] .abs-exec-topbar{
+  background:rgba(7,20,31,.94)!important;
+  border-color:var(--abs83-line-soft)!important;
+  backdrop-filter:blur(14px);
+}
+[data-abs-theme="dark"] .enterprise-surface,
+[data-abs-theme="dark"] .wf-panel,
+[data-abs-theme="dark"] .wf-result-hero article,
+[data-abs-theme="dark"] .wf-mini-kpis article,
+[data-abs-theme="dark"] .wf-inline-note,
+[data-abs-theme="dark"] .pulse-card,
+[data-abs-theme="dark"] .pulse-panel,
+[data-abs-theme="dark"] .card,
+[data-abs-theme="dark"] .pi71-panel,
+[data-abs-theme="dark"] .pi71-card{
+  background:linear-gradient(145deg,rgba(15,34,51,.97),rgba(9,25,38,.97))!important;
+  border-color:var(--abs83-line)!important;
+  color:var(--abs83-text)!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.025),var(--abs83-shadow)!important;
+}
+[data-abs-theme="dark"] .wf-result-hero article.good{background:linear-gradient(145deg,rgba(20,53,49,.92),rgba(10,32,34,.96))!important}
+[data-abs-theme="dark"] .wf-result-hero article.bad{background:linear-gradient(145deg,rgba(57,31,38,.88),rgba(29,23,31,.96))!important}
+[data-abs-theme="dark"] .wf-panel-head,
+[data-abs-theme="dark"] .panel-title{border-color:var(--abs83-line-soft)!important}
+[data-abs-theme="dark"] h1,[data-abs-theme="dark"] h2,[data-abs-theme="dark"] h3,
+[data-abs-theme="dark"] strong,[data-abs-theme="dark"] b{color:var(--abs83-text)}
+[data-abs-theme="dark"] p,[data-abs-theme="dark"] small,[data-abs-theme="dark"] .muted{color:var(--abs83-muted)}
+[data-abs-theme="dark"] .wf-kicker,
+[data-abs-theme="dark"] .abs-nav-group-title,
+[data-abs-theme="dark"] .pi71-kicker{color:var(--abs83-gold-2)!important}
+[data-abs-theme="dark"] a,.wf-row-link{--link:var(--abs83-cyan)}
+[data-abs-theme="dark"] .wf-row-link,
+[data-abs-theme="dark"] .wf-panel-head a,
+[data-abs-theme="dark"] .pulse-content a:not(.button):not(.pulse-btn){color:var(--abs83-cyan)!important}
+[data-abs-theme="dark"] .abs-nav-group-links a,
+[data-abs-theme="dark"] .pulse-nav a{color:#b7c8d5!important;border-color:transparent!important}
+[data-abs-theme="dark"] .abs-nav-group-links a:hover,
+[data-abs-theme="dark"] .pulse-nav a:hover{background:#0f2638!important;color:#fff!important}
+[data-abs-theme="dark"] .abs-nav-group-links a.active,
+[data-abs-theme="dark"] .pulse-nav a.active{
+  background:linear-gradient(90deg,rgba(42,183,223,.16),rgba(42,183,223,.055))!important;
+  border-color:rgba(103,215,242,.64)!important;
+  color:#eefdff!important;
+  box-shadow:inset 3px 0 var(--abs83-cyan-2)!important;
+}
+[data-abs-theme="dark"] .abs-sidebar-tool,
+[data-abs-theme="dark"] .pulse-sidebar-toggle,
+[data-abs-theme="dark"] .pulse-header-icon{
+  background:#0b1d2b!important;border-color:var(--abs83-line)!important;color:#cfe5f1!important
+}
+[data-abs-theme="dark"] table,
+[data-abs-theme="dark"] .wf-table,
+[data-abs-theme="dark"] .enterprise-table{background:#0a1825!important;color:var(--abs83-text)!important}
+[data-abs-theme="dark"] .wf-table thead th,
+[data-abs-theme="dark"] .enterprise-table thead th,
+[data-abs-theme="dark"] th{
+  background:#102436!important;
+  color:#a9c1d0!important;
+  border-color:#29495d!important;
+  letter-spacing:.055em;
+}
+[data-abs-theme="dark"] .wf-table tbody tr,
+[data-abs-theme="dark"] .enterprise-table tbody tr{background:#0b1b29!important}
+[data-abs-theme="dark"] .wf-table tbody tr:nth-child(even),
+[data-abs-theme="dark"] .enterprise-table tbody tr:nth-child(even){background:#0c1e2d!important}
+[data-abs-theme="dark"] .wf-table tbody tr:hover,
+[data-abs-theme="dark"] .enterprise-table tbody tr:hover{background:#10283a!important}
+[data-abs-theme="dark"] td{border-color:#1f3d50!important;color:#dbe8ef!important}
+[data-abs-theme="dark"] td small{color:#7893a4!important}
+[data-abs-theme="dark"] .good,[data-abs-theme="dark"] .positive{color:var(--abs83-green)!important}
+[data-abs-theme="dark"] .bad,[data-abs-theme="dark"] .negative{color:var(--abs83-red)!important}
+[data-abs-theme="dark"] .wf-pill.is-good{background:rgba(99,216,162,.10)!important;border-color:rgba(99,216,162,.33)!important;color:#90ebbd!important}
+[data-abs-theme="dark"] .wf-pill.is-warn{background:rgba(216,173,85,.10)!important;border-color:rgba(216,173,85,.36)!important;color:#efcb7f!important}
+[data-abs-theme="dark"] .wf-pill.is-neutral{background:rgba(124,159,181,.10)!important;border-color:rgba(124,159,181,.28)!important;color:#a8bdca!important}
+[data-abs-theme="dark"] input,[data-abs-theme="dark"] select,[data-abs-theme="dark"] textarea{
+  background:#081824!important;color:var(--abs83-text)!important;border-color:#2a4b60!important
+}
+[data-abs-theme="dark"] input:focus,[data-abs-theme="dark"] select:focus,[data-abs-theme="dark"] textarea:focus{
+  border-color:var(--abs83-cyan-2)!important;box-shadow:0 0 0 3px rgba(42,183,223,.10)!important
+}
+[data-abs-theme="dark"] .button-primary,[data-abs-theme="dark"] .pulse-btn-primary{
+  background:linear-gradient(135deg,#28a9cf,#6fd5ef)!important;color:#06131b!important;border-color:#79ddf3!important;box-shadow:0 8px 22px rgba(42,183,223,.16)!important
+}
+[data-abs-theme="dark"] .wf-inline-note{box-shadow:none!important}
+[data-abs-theme="dark"] .wf-adaptive-note{border-color:rgba(103,215,242,.30)!important;background:linear-gradient(135deg,rgba(42,183,223,.08),rgba(216,173,85,.045))!important}
+[data-abs-theme="dark"] .wf-rank{background:#0d2739!important;border-color:#315a70!important;color:#d9edf6!important}
+[data-abs-theme="dark"] .abs-theme-toggle{
+  background:#0e2433!important;color:#e9f6fb!important;border-color:#42667a!important;box-shadow:0 10px 28px rgba(0,0,0,.24)!important
+}
+
+/* Light remains institutional rather than stark white. */
+:root[data-abs-theme="light"]{color-scheme:light}
+[data-abs-theme="light"] body,[data-abs-theme="light"] body.admin-body,[data-abs-theme="light"] .pulse-app-shell{
+  background:linear-gradient(180deg,#eef4f7,#f7fafc)!important;color:#173246!important
+}
+[data-abs-theme="light"] .wf-panel,[data-abs-theme="light"] .wf-result-hero article,[data-abs-theme="light"] .wf-mini-kpis article,[data-abs-theme="light"] .wf-inline-note{
+  border-color:#cfdee7!important;box-shadow:0 8px 26px rgba(24,54,78,.055)!important
+}
+[data-abs-theme="light"] .wf-table tbody tr:hover{background:#edf7fb!important}
+[data-abs-theme="light"] .wf-adaptive-note{background:#f0f9fb!important;border-color:#bcdfe8!important}
+
+@media(max-width:900px){
+  .abs-theme-toggle{right:12px!important;bottom:12px!important}
+  [data-abs-theme="dark"] .wf-table{font-size:11px}
+}

@@ -1,0 +1,9 @@
+ABS V15.8.4 — NO DATABASE SCHEMA CHANGES
+
+This release adds a shared-hosting-safe Admin workflow for strategy analytics backfills.
+It reuses the existing pulse_system_settings table for job/progress state and the existing
+abs:pulse-maintenance scheduler cycle for bounded background processing.
+
+No table is dropped, truncated, recreated, or reset.
+No customer, investor, payment, signal, trade, strategy, learning, or mobile API data is deleted.
+The user's existing cPanel cron entry does not need to be edited, replaced, or duplicated.

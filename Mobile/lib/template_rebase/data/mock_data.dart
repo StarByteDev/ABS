@@ -209,7 +209,15 @@ class MockData {
   static double volume24h = double.nan;
   static double btcDominance = double.nan;
   static double fearGreed = double.nan;
+  // Estimated change in stablecoin market capitalization, not exchange deposits.
   static double stablecoinFlow = double.nan;
+  static double stablecoinMarketCap = double.nan;
+  static double stablecoinCapChange24h = double.nan;
+  // Provider-key-gated, server-reported spot Bitcoin ETF flows.
+  static double btcEtfFlow = double.nan;
+  static String btcEtfDate = '';
+  static String btcEtfSource = '';
+  static String btcEtfStatus = 'unavailable';
   static double volatilityScore = double.nan;
 
   static List<Sector> sectors = <Sector>[];
@@ -398,9 +406,20 @@ class MockData {
     fearGreed = _maybeNestedNumber(global, <String>[
       'fear_greed_score', 'fear_greed', 'fear_greed_index', 'fear_and_greed', 'fearGreed',
     ]);
-    stablecoinFlow = _maybeNumber(global, <String>[
-      'stablecoin_flow', 'stablecoin_netflow', 'stablecoin_net_flow', 'stablecoin_flow_usd',
-    ]);
+    // V15.9.1 exposes the derived supply/market-cap change in `insights`,
+    // not `global`. Do not label it exchange inflow/outflow.
+    stablecoinFlow = _maybeNumber(insights, <String>['stablecoin_flow_24h_usd']);
+    if (!stablecoinFlow.isFinite) {
+      stablecoinFlow = _maybeNumber(global, <String>['stablecoin_flow_24h_usd']);
+    }
+    stablecoinMarketCap = _maybeNumber(global, <String>['stablecoin_market_cap']);
+    stablecoinCapChange24h = _maybeNumber(global, <String>['stablecoin_market_cap_change_24h']);
+    if (!stablecoinFlow.isFinite && stablecoinMarketCap.isFinite &&
+        stablecoinCapChange24h.isFinite && stablecoinCapChange24h > -99.99) {
+      // Same documented estimate the ABS web backend computes.
+      final previous = stablecoinMarketCap / (1 + stablecoinCapChange24h / 100);
+      stablecoinFlow = stablecoinMarketCap - previous;
+    }
     volatilityScore = _maybeNumber(global, <String>[
       'volatility_score', 'volatility', 'market_volatility_score',
     ]);
@@ -410,6 +429,18 @@ class MockData {
       final name = JsonTools.text(row['name'] ?? row['sector'], 'Market');
       return Sector(name, _sectorIcon(name), JsonTools.number(row['change_percent'] ?? row['change']));
     }).toList();
+  }
+
+  static void applyEtfFlows(dynamic response) {
+    // Public v15.9.1 has no ETF feed. An optional server-only CoinGlass
+    // integration normalizes the licensed result into this structure.
+    final root = JsonTools.map(JsonTools.at(response, 'data', response));
+    final flow = _maybeNumber(root, <String>['net_flow_usd', 'flow_usd']);
+    btcEtfFlow = flow.isFinite && JsonTools.text(root['status'], 'unavailable') == 'available'
+        ? flow : double.nan;
+    btcEtfDate = JsonTools.text(root['flow_date'], '');
+    btcEtfSource = JsonTools.text(root['source'], '');
+    btcEtfStatus = JsonTools.text(root['status'], 'endpoint_not_installed');
   }
 
   static void applyMovers(Map<String, dynamic> data) {

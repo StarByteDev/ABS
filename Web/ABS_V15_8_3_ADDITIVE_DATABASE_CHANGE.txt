@@ -1,0 +1,15 @@
+ABS V15.8.3 uses additive, non-destructive production changes only.
+
+Database behavior:
+- No user/customer/investor/payment/membership/signal/trade/statement/history table is dropped or recreated.
+- The V15.8.3 migration only fills missing Pulse strategy settings and creates the three previously defined confluence strategies if they are absent.
+- Existing Admin-customized strategy settings are preserved.
+- Newly created strategies are attached to active plans without removing existing plan assignments.
+- Rollback is intentionally non-destructive because production strategy evidence may already reference these settings/rows.
+
+Runtime behavior:
+- Raw research remains enabled for evidence collection.
+- Adaptive strategy throttling affects member-facing signal contribution only when enough evidence exists.
+- Existing 75% technical + 25% learned-reliability scoring remains the confidence architecture.
+- Existing mobile API fields/routes remain compatible; adaptive API data is additive.
+- TLS certificate repair is a hosting/SSL task and is not represented as a database change.

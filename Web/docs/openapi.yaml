@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
   title: Alpha Block Solutions API
-  version: 15.7.4
+  version: 15.8.4
   description: >-
-    Production API contract for Alpha Block Solutions V15.7.3. Pulse package access
+    Production API contract for Alpha Block Solutions V15.8.4. Pulse package access
     uses direct USDT payment requests verified by an administrator, with normalized
     package benefits, payment status and verification-flow data shared by web and mobile.
     Pulse Support now provides one authenticated conversation shared by web and mobile,
@@ -19,6 +19,20 @@ servers:
   - url: http://127.0.0.1:8000/api/v1
     description: Local development
 paths:
+  /:
+    get:
+      operationId: get_api_health_root
+      summary: GET /
+      responses:
+        '200':
+          description: API health and mobile compatibility probe
+  /health:
+    get:
+      operationId: get_api_health
+      summary: GET /health
+      responses:
+        '200':
+          description: API health and mobile compatibility probe
   /auth/register:
     post:
       operationId: post_auth_register

@@ -1,0 +1,31 @@
+# ABS V15.8.6 — Adaptive Safety / Pulse FCM / Theme (TEST CANDIDATE)
+
+**Source chain:** V15.8.4 confirmed working production -> V15.8.5 macro/calendar push candidate -> V15.8.6 testing candidate. Do **not** call V15.8.6 deployed/production until verified on a staging copy. This ZIP contains Laravel application source, not Composer vendor dependencies or the separate Pulse Flutter project.
+
+## Changes
+1. Preserve all 15 configured trading strategies. Their existing 15M + 4H entry evaluators and historical snapshots are unchanged. Adaptive member-scanner scoring is now more conservative: research-only strategies cannot contribute directional score; rolling 14-day negative evidence can only reduce weight; an actual negative historical expectancy overrides optimistic R:R counterfactuals. This does not guarantee winning trades and never changes historic executions or costs.
+2. Signal validation calls refresh learned state **after each batch of newly resolved results**, once per set of affected dates. No daily wait is required when validation is running. Daily scheduled reconciliation remains for historical correction.
+3. Admin Strategy Performance includes one-click CSV export of per-strategy simulated $100 P/L, R, wins/losses, and adaptive weights. Never add strategy P/L rows to calculate total: a trade has multiple contributors.
+4. Automatic adjustment is rule-based/Bayesian and uses resolved TP/SL evidence. It is NOT model-trained AI, nor a guarantee of profit. A fresh loss changes the learning state after the next validation cycle, with bounded weight changes and guards against single-result overfitting. Existing production live-order execution permission and all stop-loss checks remain unchanged.
+5. Mobile reporting API: `GET /api/v1/pulse/reports/strategy-health?days=30` (auth:sanctum + active Pulse mobile/report capability; days 1,7,30,90). Response contains separate **overall** unique paper-trade summary and strategy-attributed rows. It is not a live Binance ledger.
+6. Generic Firebase push queue added to existing V15.8.5 macro-event FCM HTTP v1 integration. Alerts are opt-out by category via user settings; device must be registered with FCM token. Enqueued trade alerts and new best-signal alerts, admin API and Admin Panel manual broadcasts. Readable one-time outbox index prevents sending the same alert twice to the same device. Cron sends up to 40 queued pushes per minute.
+7. Admin API `GET /api/v1/admin/pulse/push/status`, `POST /api/v1/admin/pulse/push/test` (both `auth:sanctum`, active, admin; test rate 3/min). Existing `POST /api/v1/admin/pulse/alerts/broadcast` now accepts `push_enabled=true` to queue a mobile push. Web admin settings broadcast includes `send_push` opt-in.
+8. New `abs-theme-v1586.css` loaded *after* legacy page CSS on admin, member and public shells. Light mode now overrides main table rows, dashboard surfaces, sidebar, headers, dialogs, forms, buttons, navigation; dark mode untouched. Theme preference persists as `abs.theme` in browser localStorage.
+
+## Production-safe deployment
+- Take a complete backup of database, application source and `.env`. Do not delete or recreate database/tables. Keep users, investor accruals, trades and historic outcomes.
+- Staging: unzip over a COPY of V15.8.4, restore staging DB, compare critical admin pages in light/dark and strategy dashboard metrics before deployment. Keep live automation off in staging.
+- Composer deps are not bundled in this ZIP. Use existing matching Composer vendor dir; run `composer install --no-dev --optimize-autoloader` if hosting permits.
+- Run **only** normal additive `php artisan migrate --force` and normal `php artisan optimize:clear`. New `pulse_push_deliveries` table is additive. Migration `down()` intentionally does not drop this table to protect historical records.
+- Run existing 1-minute `php artisan schedule:run` cron; no extra cron entry needed. Check `php artisan abs:send-pulse-push` runs safely. No direct automatic trading is turned on. Preserve `PULSE_ALLOW_AUTOMATIC_TRADING` server kill switch.
+- Store Firebase service account JSON OUTSIDE the web/public root and make readable only to PHP service user. Configure `FIREBASE_SERVICE_ACCOUNT_JSON_PATH` and `FIREBASE_PROJECT_ID` as provided in `.env.example`.
+- Flutter client: integrate Firebase Messaging SDK, request notification permission, register/refresh FCM token with POST `/api/v1/devices`, handle `pulse_alert` data payload and `macro_release` data payload, honor notifications preference, handle background and foreground notification behavior on Android/iOS. The Flutter source was not available in this working environment. **These mobile changes are NOT included or tested in this ZIP.**
+- For a new registered admin device, call `GET /api/v1/admin/pulse/push/status`, then `POST /api/v1/admin/pulse/push/test` with optional `device_uuid`; check the device's foreground/background display.
+- In admin System Settings, create a broadcast and check *Send Firebase mobile push*. Device preference category and opt-in apply. Validate no duplicate push after retry. Do not blast test pushes to all users.
+- Historical strategy/backfill and full market scanning can be expensive on HostGator; verify scheduler duration/response times with 1m shared cron. Re-run `abs:pulse-analytics-backfill --days=30` only if missing historical evidence.
+
+## Known constraints / risks
+- No real Firebase service account, device token, staging database, live OHLC feed or Flutter source were accessible for end-to-end verification. PHP syntax and archive checks are not end-to-end tests.
+- The 15 strategies **cannot** all be made profitable by automatically changing weights after each outcome. Adaptive results require out-of-sample validation, costs, slippage, execution latency and regime-based backtesting. Avoid permitting the optimizer to loosen live risk automatically. Reporting explicitly labels simulated P/L.
+- In-flight `sending` entries can be retried using the safe maintenance procedure only after checking FCM delivery logs; never blindly reset all outbox entries because that could duplicate pushes.
+- The V15.8.5 macro release alert work is retained. Missing macro forecasts/actuals require real provider data; never fabricate values.

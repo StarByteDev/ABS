@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Services\Push\PushNotificationService;
 use App\Http\Controllers\Controller;
 use App\Models\PulseAlert;
 use App\Models\PulseAuditLog;
@@ -339,7 +338,7 @@ class AdminPulseController extends Controller
         $data = $this->validateStrategy($request);
         $data['slug'] = Str::slug($data['slug'] ?: $data['name']);
         validator(['slug' => $data['slug']], ['slug' => [Rule::unique('pulse_strategies', 'slug')]])->validate();
-        $data['settings'] = $this->decodeJson($data['settings_json'] ?? null);
+        $data['settings'] = $this->strategySettingsFromRequest($request, $data['settings_json'] ?? null);
         unset($data['settings_json']);
         $data['is_enabled'] = $request->boolean('is_enabled');
         $strategy = PulseStrategy::create($data);
@@ -353,7 +352,7 @@ class AdminPulseController extends Controller
         $data = $this->validateStrategy($request, $strategy);
         $data['slug'] = Str::slug($data['slug'] ?: $data['name']);
         validator(['slug' => $data['slug']], ['slug' => [Rule::unique('pulse_strategies', 'slug')->ignore($strategy->id)]])->validate();
-        $data['settings'] = $this->decodeJson($data['settings_json'] ?? null);
+        $data['settings'] = $this->strategySettingsFromRequest($request, $data['settings_json'] ?? null);
         unset($data['settings_json']);
         $data['is_enabled'] = $request->boolean('is_enabled');
         $strategy->update($data);
@@ -830,12 +829,12 @@ class AdminPulseController extends Controller
         return back()->with('success', 'Pulse system settings updated. Server-level .env trading gates still take priority.');
     }
 
-    public function broadcastAlert(Request $request, PulseAuditService $audit, BrandedMailService $mail)
+    public function broadcastAlert(Request $request, PulseAuditService $audit, BrandedMailService $mail, \App\Services\PulseMobilePushDispatcher $pushDispatcher)
     {
         $data = $request->validate([
             'audience' => ['required', 'in:all,active,plan'], 'pulse_plan_id' => ['nullable', 'required_if:audience,plan', 'exists:pulse_plans,id'], 'type' => ['required', 'in:system,market,risk,trade,plan'],
             'title' => ['required', 'string', 'max:160'], 'message' => ['required', 'string', 'max:3000'],
-            'severity' => ['required', 'in:info,success,warning,danger'], 'action_url' => ['nullable', 'string', 'max:255'], 'send_email' => ['nullable', 'boolean'],
+            'severity' => ['required', 'in:info,success,warning,danger'], 'action_url' => ['nullable', 'string', 'max:255'], 'send_email' => ['nullable', 'boolean'], 'send_push' => ['nullable', 'boolean'],
         ]);
         $users = User::query()->whereHas('pulseAccess', function ($q) use ($data): void {
             $q->where('service', 'pulse');
@@ -848,13 +847,14 @@ class AdminPulseController extends Controller
                 'severity' => $data['severity'], 'is_read' => false, 'action_url' => $data['action_url'] ?: null,
                 'data' => json_encode(['admin_broadcast' => true]), 'created_at' => now(), 'updated_at' => now(),
             ])->all();
+            $lastAlertId=(int)(PulseAlert::query()->max('id')??0);
             PulseAlert::query()->insert($rows);
-            $broadcastKey = sha1($data['type'].'|'.$data['title'].'|'.now()->timestamp);
-            PushNotificationService::safely(function (PushNotificationService $push) use ($chunk, $data, $broadcastKey): void {
-                foreach ($chunk as $userId) {
-                    $push->queueAlert((int) $userId, $data['type'], $data['title'], $data['message'], ['admin_broadcast' => 1], "broadcast:{$broadcastKey}:{$userId}");
-                }
-            });
+            if ($request->boolean('send_push')) {
+                PulseAlert::query()->where('id','>',$lastAlertId)->whereIn('user_id',$chunk->all())
+                    ->where('title',$data['title'])->orderBy('id')->chunkById(200,function($newAlerts) use ($pushDispatcher) {
+                        foreach($newAlerts as $alert) $pushDispatcher->queueForAlert($alert);
+                    });
+            }
 
             if ($request->boolean('send_email')) {
                 $emailUsers = User::query()->whereIn('id', $chunk->all())->get();
@@ -867,7 +867,7 @@ class AdminPulseController extends Controller
                 }
             }
         }
-        $audit->record('admin.alert_broadcast', $request->user(), null, null, null, ['recipients' => $users->count(), 'title' => $data['title'], 'audience' => $data['audience'], 'plan_id' => $data['pulse_plan_id'] ?? null, 'email_requested' => $request->boolean('send_email')], $request);
+        $audit->record('admin.alert_broadcast', $request->user(), null, null, null, ['recipients' => $users->count(), 'title' => $data['title'], 'audience' => $data['audience'], 'plan_id' => $data['pulse_plan_id'] ?? null, 'email_requested' => $request->boolean('send_email'), 'push_requested'=>$request->boolean('send_push')], $request);
         return back()->with('success', "Pulse alert sent to {$users->count()} users.");
     }
 
@@ -1010,6 +1010,9 @@ class AdminPulseController extends Controller
             'description' => ['nullable', 'string', 'max:3000'], 'timeframe' => ['required', 'in:5m,15m,30m,1h,4h,1d'],
             'weight' => ['required', 'numeric', 'min:0', 'max:10'], 'minimum_score' => ['required', 'numeric', 'min:0', 'max:100'],
             'settings_json' => ['nullable', 'string', 'max:10000'], 'sort_order' => ['required', 'integer', 'min:0'],
+            'strategy_category' => ['nullable','string','max:50'], 'risk_reward_target' => ['nullable','numeric','min:1','max:5'],
+            'tp1_r' => ['nullable','numeric','min:0.5','max:5'], 'tp2_r' => ['nullable','numeric','min:0.5','max:5'], 'tp3_r' => ['nullable','numeric','min:0.5','max:5'],
+            'stop_atr_multiplier' => ['nullable','numeric','min:0.5','max:5'], 'learning_enabled' => ['nullable'],
         ]);
     }
 
@@ -1023,6 +1026,20 @@ class AdminPulseController extends Controller
             'step_size' => ['nullable', 'numeric', 'gte:0'], 'minimum_quantity' => ['nullable', 'numeric', 'gte:0'],
             'minimum_notional' => ['nullable', 'numeric', 'gte:0'],
         ]);
+    }
+
+
+    private function strategySettingsFromRequest(Request $request, ?string $json): array
+    {
+        $settings = $this->decodeJson($json);
+        $settings['category'] = trim((string)$request->input('strategy_category', data_get($settings,'category','Confirmation')));
+        $settings['risk_reward_target'] = (float)$request->input('risk_reward_target', data_get($settings,'risk_reward_target',2.0));
+        $settings['tp1_r'] = (float)$request->input('tp1_r', data_get($settings,'tp1_r',1.0));
+        $settings['tp2_r'] = (float)$request->input('tp2_r', data_get($settings,'tp2_r',1.5));
+        $settings['tp3_r'] = (float)$request->input('tp3_r', data_get($settings,'tp3_r',$settings['risk_reward_target']));
+        $settings['stop_atr_multiplier'] = (float)$request->input('stop_atr_multiplier', data_get($settings,'stop_atr_multiplier',1.25));
+        $settings['learning_enabled'] = $request->boolean('learning_enabled', (bool)data_get($settings,'learning_enabled',true));
+        return $settings;
     }
 
     private function decodeJson(?string $json): array

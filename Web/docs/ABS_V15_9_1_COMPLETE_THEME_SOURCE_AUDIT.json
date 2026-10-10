@@ -1,0 +1,1122 @@
+{
+  "candidate": "15.9.1",
+  "type": "source/view inventory + component fixture validation",
+  "note": "Every listed Blade template was statically inventoried. This is NOT a claim that every rendered route/conditional state was visually tested. The Laravel vendor directory and staging users are unavailable. Use the supplied staging route crawler with each user role.",
+  "total_blade_files": 131,
+  "categories": {
+    "admin": 68,
+    "auth": 4,
+    "other": 18,
+    "public": 7,
+    "member": 34
+  },
+  "stylesheets_count": 46,
+  "layouts_updated": [
+    "resources/views/layouts/auth.blade.php",
+    "resources/views/layouts/app.blade.php",
+    "resources/views/pulse/layout.blade.php",
+    "resources/views/admin/layout.blade.php"
+  ],
+  "templates_with_inline_styles": [
+    "resources/views/admin/enterprise/backups.blade.php",
+    "resources/views/admin/enterprise/contact-show.blade.php",
+    "resources/views/admin/enterprise/maintenance.blade.php",
+    "resources/views/admin/private-investors/investment-setup.blade.php",
+    "resources/views/admin/private-investors/monthly-performance.blade.php",
+    "resources/views/admin/private-investors/overview.blade.php",
+    "resources/views/admin/private-investors/performance.blade.php",
+    "resources/views/admin/private-investors/reports.blade.php",
+    "resources/views/admin/private-investors/requests.blade.php",
+    "resources/views/admin/private-investors/show.blade.php",
+    "resources/views/admin/private-investors/trading-ledger.blade.php",
+    "resources/views/admin/pulse/signals.blade.php",
+    "resources/views/admin/pulse/workflow/strategy-performance.blade.php",
+    "resources/views/admin/pulse/workflow/trade-results.blade.php",
+    "resources/views/dashboard.blade.php",
+    "resources/views/emails/branded.blade.php",
+    "resources/views/errors/500.blade.php",
+    "resources/views/errors/503.blade.php",
+    "resources/views/errors/build-recovery.blade.php",
+    "resources/views/errors/recovery.blade.php",
+    "resources/views/errors/setup-required.blade.php",
+    "resources/views/home.blade.php",
+    "resources/views/pages/about.blade.php",
+    "resources/views/pages/markets.blade.php",
+    "resources/views/private/index.blade.php",
+    "resources/views/private/transactions.blade.php",
+    "resources/views/pulse/access.blade.php",
+    "resources/views/pulse/dashboard.blade.php",
+    "resources/views/pulse/orders.blade.php",
+    "resources/views/pulse/partials/scanner-bottom.blade.php",
+    "resources/views/pulse/reports.blade.php",
+    "resources/views/pulse/risk.blade.php",
+    "resources/views/pulse/settings.blade.php",
+    "resources/views/pulse/signals/index.blade.php",
+    "resources/views/pulse/signals/show.blade.php",
+    "resources/views/pulse/trades/show.blade.php"
+  ],
+  "components_tested": [
+    "Pulse KPI cards",
+    "Pulse Open Positions",
+    "Pulse Trade History",
+    "Pulse table headings/cells",
+    "Pulse forms and filters",
+    "Member sidebar",
+    "Shared signals/alerts/strategy panels",
+    "Public market cards",
+    "Admin panels"
+  ],
+  "component_browser_tests": 144,
+  "browser_contrast_failures": 0,
+  "routes_visual_verified": false,
+  "templates": [
+    {
+      "file": "resources/views/admin/ads/index.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 28,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/content/index.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 42,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/content/news-form.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 25,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/dashboard.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 19,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/enterprise/backups.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 26,
+      "inline_style_occurrences": 3,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/enterprise/contact-show.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 10,
+      "inline_style_occurrences": 1,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/enterprise/contacts.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 32,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/enterprise/content-form.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 19,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/enterprise/content-index.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 41,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/enterprise/emails.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 35,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/enterprise/maintenance.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 18,
+      "inline_style_occurrences": 4,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/enterprise/newsletters.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 31,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/enterprise/settings.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 9,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/enterprise/updates.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 25,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/layout.blade.php",
+      "area": "admin",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 54,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/market-data.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 17,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/portfolios.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 10,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/private-investors/_account-tabs.blade.php",
+      "area": "admin",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 2,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/private-investors/account-requests.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 12,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/private-investors/account-statements.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 18,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/private-investors/account-transactions.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 46,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/private-investors/activity.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 25,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/private-investors/investment-setup.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 36,
+      "inline_style_occurrences": 1,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/private-investors/investors.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 18,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/private-investors/monthly-performance.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 22,
+      "inline_style_occurrences": 1,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/private-investors/overview.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 46,
+      "inline_style_occurrences": 5,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/private-investors/performance.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 29,
+      "inline_style_occurrences": 2,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/private-investors/portfolio-values.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 26,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/private-investors/reports.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 14,
+      "inline_style_occurrences": 1,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/private-investors/requests.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 14,
+      "inline_style_occurrences": 2,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/private-investors/show.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 33,
+      "inline_style_occurrences": 4,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/private-investors/statements.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 13,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/private-investors/trading-ledger.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 15,
+      "inline_style_occurrences": 4,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/pulse/access.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 19,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/pulse/dashboard.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 20,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/pulse/intelligence.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 53,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/pulse/logs.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 33,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/pulse/memberships.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 16,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/pulse/pairs.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 22,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/pulse/partials/pair-fields.blade.php",
+      "area": "admin",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 2,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/pulse/partials/plan-fields.blade.php",
+      "area": "admin",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 24,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/pulse/partials/promotion-fields.blade.php",
+      "area": "admin",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 3,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/pulse/partials/strategy-fields.blade.php",
+      "area": "admin",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 3,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/pulse/partials/strategy-lab-nav.blade.php",
+      "area": "admin",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 2,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/pulse/plans.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 16,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/pulse/rewarded-signals.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 31,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/pulse/scan-audit-show.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 31,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/pulse/scan-audit.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 31,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/pulse/settings.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 24,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/pulse/signals.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 60,
+      "inline_style_occurrences": 1,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/pulse/strategies.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 33,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/pulse/strategy-dashboard.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 53,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/pulse/trades.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 55,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/pulse/workflow/latest-prices.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 12,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/pulse/workflow/overview.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 20,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/pulse/workflow/paper-trades.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 17,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/pulse/workflow/price-history-show.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 12,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/pulse/workflow/price-history.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 13,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/pulse/workflow/price-source.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 16,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/pulse/workflow/scan-signals.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 26,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/pulse/workflow/step-head.blade.php",
+      "area": "admin",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 5,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/pulse/workflow/strategy-performance.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 30,
+      "inline_style_occurrences": 1,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/pulse/workflow/trade-results.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 24,
+      "inline_style_occurrences": 4,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/admin/support/index.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 13,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/support/show.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 7,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/user-create.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 25,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/user-show.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 41,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/admin/users.blade.php",
+      "area": "admin",
+      "extends": "admin.layout",
+      "distinct_class_tokens": 30,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/auth/forgot-password.blade.php",
+      "area": "auth",
+      "extends": "layouts.auth",
+      "distinct_class_tokens": 22,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/auth/login.blade.php",
+      "area": "auth",
+      "extends": "layouts.auth",
+      "distinct_class_tokens": 20,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/auth/register.blade.php",
+      "area": "auth",
+      "extends": "layouts.auth",
+      "distinct_class_tokens": 27,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/auth/reset-password.blade.php",
+      "area": "auth",
+      "extends": "layouts.auth",
+      "distinct_class_tokens": 15,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/dashboard.blade.php",
+      "area": "other",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 5,
+      "inline_style_occurrences": 3,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/emails/branded.blade.php",
+      "area": "other",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 0,
+      "inline_style_occurrences": 35,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/errors/500.blade.php",
+      "area": "other",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 4,
+      "inline_style_occurrences": 1,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/errors/503.blade.php",
+      "area": "other",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 4,
+      "inline_style_occurrences": 1,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/errors/build-recovery.blade.php",
+      "area": "other",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 17,
+      "inline_style_occurrences": 1,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/errors/recovery.blade.php",
+      "area": "other",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 20,
+      "inline_style_occurrences": 3,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/errors/setup-required.blade.php",
+      "area": "other",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 23,
+      "inline_style_occurrences": 2,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/home.blade.php",
+      "area": "other",
+      "extends": "layouts.app",
+      "distinct_class_tokens": 90,
+      "inline_style_occurrences": 4,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/layouts/app.blade.php",
+      "area": "other",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 9,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/layouts/auth.blade.php",
+      "area": "other",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 19,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/legal/page.blade.php",
+      "area": "other",
+      "extends": "layouts.app",
+      "distinct_class_tokens": 9,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/news/index.blade.php",
+      "area": "public",
+      "extends": "layouts.app",
+      "distinct_class_tokens": 45,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/news/live-show.blade.php",
+      "area": "public",
+      "extends": "layouts.app",
+      "distinct_class_tokens": 22,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/news/show.blade.php",
+      "area": "public",
+      "extends": "layouts.app",
+      "distinct_class_tokens": 6,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/pages/about.blade.php",
+      "area": "public",
+      "extends": "layouts.app",
+      "distinct_class_tokens": 15,
+      "inline_style_occurrences": 1,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/pages/markets.blade.php",
+      "area": "public",
+      "extends": "layouts.app",
+      "distinct_class_tokens": 26,
+      "inline_style_occurrences": 1,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/pages/products.blade.php",
+      "area": "public",
+      "extends": "layouts.app",
+      "distinct_class_tokens": 12,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/pages/tools.blade.php",
+      "area": "public",
+      "extends": "layouts.app",
+      "distinct_class_tokens": 18,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/partials/footer.blade.php",
+      "area": "other",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 8,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/partials/header.blade.php",
+      "area": "other",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 13,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/partials/logo.blade.php",
+      "area": "other",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 4,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/partials/market-disclaimer.blade.php",
+      "area": "other",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 1,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/private/_tabs.blade.php",
+      "area": "member",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 1,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/private/index.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 59,
+      "inline_style_occurrences": 8,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/private/requests.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 22,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/private/statement.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 14,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/private/statements.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 8,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/private/transactions.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 24,
+      "inline_style_occurrences": 3,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/profile.blade.php",
+      "area": "other",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 43,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/pulse/access.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 11,
+      "inline_style_occurrences": 1,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/pulse/alerts.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 23,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/pulse/binance.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 35,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/pulse/dashboard.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 64,
+      "inline_style_occurrences": 4,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/pulse/execution.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 58,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/pulse/gateway.blade.php",
+      "area": "member",
+      "extends": "layouts.app",
+      "distinct_class_tokens": 27,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/pulse/layout.blade.php",
+      "area": "member",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 39,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/pulse/membership/checkout.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 27,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/pulse/membership/index.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 34,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/pulse/orders.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 19,
+      "inline_style_occurrences": 1,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/pulse/partials/icon.blade.php",
+      "area": "member",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 1,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/pulse/partials/membership-plan-card.blade.php",
+      "area": "member",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 8,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/pulse/partials/scanner-bottom.blade.php",
+      "area": "member",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 17,
+      "inline_style_occurrences": 3,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/pulse/partials/scanner-metrics.blade.php",
+      "area": "member",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 7,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/pulse/partials/scanner-results.blade.php",
+      "area": "member",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 14,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/pulse/plans.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 11,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/pulse/positions.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 21,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/pulse/public-signal.blade.php",
+      "area": "member",
+      "extends": "layouts.app",
+      "distinct_class_tokens": 69,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/pulse/reports.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 20,
+      "inline_style_occurrences": 1,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/pulse/risk.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 22,
+      "inline_style_occurrences": 2,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/pulse/scanner.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 18,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/pulse/settings.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 22,
+      "inline_style_occurrences": 1,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/pulse/signals/index.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 85,
+      "inline_style_occurrences": 2,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/pulse/signals/show.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 16,
+      "inline_style_occurrences": 8,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/pulse/strategies.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 8,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/pulse/support/index.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 27,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/pulse/trades/index.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 19,
+      "inline_style_occurrences": 0,
+      "high_relevance": true
+    },
+    {
+      "file": "resources/views/pulse/trades/show.blade.php",
+      "area": "member",
+      "extends": "pulse.layout",
+      "distinct_class_tokens": 17,
+      "inline_style_occurrences": 6,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/search.blade.php",
+      "area": "other",
+      "extends": "layouts.app",
+      "distinct_class_tokens": 14,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    },
+    {
+      "file": "resources/views/vendor/pagination/abs-admin.blade.php",
+      "area": "other",
+      "extends": "partial/standalone",
+      "distinct_class_tokens": 4,
+      "inline_style_occurrences": 0,
+      "high_relevance": false
+    }
+  ]
+}

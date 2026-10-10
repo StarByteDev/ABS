@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "718896233501",
+    "project_id": "alphablocksolutions-a54df",
+    "storage_bucket": "alphablocksolutions-a54df.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:718896233501:android:f1a4bde7bd6c94e0ffdaf4",
+        "android_client_info": {
+          "package_name": "com.alphablocksolutions.abs"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCG9knjBrLJHEntFYyHVgOJD0X65l_ug3E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -102,6 +102,7 @@ class _PrivateInvestorHubScreenState extends State<PrivateInvestorHubScreen> {
       'currency',
     ], 'USD'));
     final principal = _first([
+      'net_contributions',
       'principal.amount',
       'investment.principal_amount',
       'original_principal_amount',
@@ -207,11 +208,11 @@ class _PrivateInvestorHubScreenState extends State<PrivateInvestorHubScreen> {
   List<Widget> _overview() {
     final currency = JsonTools.text(_first(['principal.currency', 'investment.currency', 'original_currency', 'currency'], 'USD'));
     final principal = _first(['principal.amount', 'investment.principal_amount', 'original_principal_amount', 'principal_amount', 'net_contributions', 'current_value']);
-    final rate = JsonTools.number(_first(['agreement.monthly_rate', 'agreement.monthly_performance_rate', 'monthly_rate', 'monthly_performance_rate']));
+    final rate = JsonTools.number(_first(['investment_agreement.monthly_target_rate', 'agreement.monthly_rate', 'agreement.monthly_performance_rate', 'monthly_rate', 'monthly_performance_rate']));
     final ratePct = rate > 0 && rate <= 1 ? rate * 100 : rate;
-    final start = _first(['agreement.effective_date', 'investment.effective_date', 'performance_start_date', 'start_date']);
-    final payoutDay = JsonTools.integer(_first(['agreement.payout_day', 'settings.payout_day', 'payout_day'], 0));
-    final totalPaid = _first(['summary.profit_paid', 'performance.total_profit_paid', 'profit_paid', 'total_profit_paid', 'total_profit']);
+    final start = _first(['investment_agreement.effective_from', 'agreement.effective_date', 'investment.effective_date', 'performance_start_date', 'start_date']);
+    final payoutDay = JsonTools.integer(_first(['investment_agreement.payout_day', 'agreement.payout_day', 'settings.payout_day', 'payout_day'], 0));
+    final totalPaid = _first(['profit_paid', 'summary.profit_paid', 'performance.total_profit_paid', 'profit_paid', 'total_profit_paid', 'total_profit']);
     final withdrawn = _first(['summary.capital_withdrawn', 'capital_withdrawn', 'capital_withdrawals'], 0);
 
     return [
@@ -449,10 +450,10 @@ class _PrivateInvestorHubScreenState extends State<PrivateInvestorHubScreen> {
 
     final api = SessionScope.of(context).api;
     final body = <String, dynamic>{
-      'type': type == 'investment' ? 'additional_investment' : 'capital_withdrawal',
+      'type': type == 'investment' ? 'add_investment' : 'withdrawal',
       'amount': parsed,
       'currency': currency,
-      'notes': notes.text.trim(),
+      'message': notes.text.trim(),
     };
     try {
       await _postFirst(api, const ['/private/requests', '/private/account/requests'], body);

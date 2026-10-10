@@ -1,0 +1,1 @@
+No schema or data migrations. Adds a read-only impact filter to NewsController, news Blade links and theme CSS. No investor, trading or signal modifications.

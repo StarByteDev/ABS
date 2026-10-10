@@ -12,6 +12,7 @@
 @php
     $fmtPct = fn($v) => $v === null ? '—' : number_format((float)$v,1).'%';
     $fmtR = fn($v) => (($v ?? 0) > 0 ? '+' : '').number_format((float)($v ?? 0),2).'R';
+    $fmtMoney = fn($v) => (($v ?? 0) >= 0 ? '+' : '-').'$'.number_format(abs((float)($v ?? 0)),2);
     $feedStatus = strtolower((string)($marketHealth['feed_status'] ?? 'offline'));
     $engineStatus = strtolower((string)($research['last_status'] ?? 'never'));
     $lastCycleStatus = strtolower((string)($lastCycle['status'] ?? 'never'));
@@ -89,7 +90,7 @@
     <article class="good"><small>Wins · TP</small><strong>{{ number_format($outcomes['tp']) }}</strong><span>resolved winners</span></article>
     <article class="bad"><small>Losses · SL</small><strong>{{ number_format($outcomes['sl']) }}</strong><span>resolved losses</span></article>
     <article><small>Win rate</small><strong>{{ $fmtPct($outcomes['win_rate']) }}</strong><span>TP ÷ (TP + SL)</span></article>
-    <article class="{{ ($simulation['model_return_pct'] ?? 0)>=0?'good':'bad' }}"><small>Paper model return</small><strong>{{ (($simulation['model_return_pct'] ?? 0) >= 0 ? '+' : '').number_format((float)($simulation['model_return_pct'] ?? 0),2) }}%</strong><span>Net {{ $fmtR($outcomes['net_r']) }} · {{ number_format($outcomes['void']) }} void</span></article>
+    <article class="{{ ($outcomes['virtual_net_pnl_usd'] ?? 0)>=0?'good':'bad' }}"><small>$100 virtual net P/L</small><strong>{{ $fmtMoney($outcomes['virtual_net_pnl_usd']) }}</strong><span>{{ $outcomes['virtual_roi_pct']===null?'—':(($outcomes['virtual_roi_pct']>=0?'+':'').number_format($outcomes['virtual_roi_pct'],2).'% ROI') }} · Net {{ $fmtR($outcomes['net_r']) }}</span></article>
 </section>
 
 <section class="lab-overview-grid">
@@ -112,20 +113,23 @@
 </section>
 
 <section class="enterprise-surface lab-table-card" id="strategy-performance">
-    <div class="lab-section-head lab-table-title"><div><span class="lab-eyebrow">STRATEGY PERFORMANCE</span><h2>Which strategies are winning?</h2><p>Ranked from current paper-trade evidence. “Collecting” means there are not enough decisive results yet.</p></div><a class="lab-text-link" href="{{ route('admin.pulse.strategies') }}">Engine setup →</a></div>
-    <div class="lab-table-wrap"><table class="lab-table strategy-leaderboard"><thead><tr><th>#</th><th>Strategy</th><th>Win / Loss</th><th>Win rate</th><th>Net R</th><th>Model return</th><th>Reliability</th><th>Assessment</th></tr></thead><tbody>
+    <div class="lab-section-head lab-table-title"><div><span class="lab-eyebrow">STRATEGY PERFORMANCE</span><h2>Which strategies are making or losing virtual money?</h2><p>Every resolved TP/SL is replayed as the same unleveraged $100 position. Strategy rows are attribution views and can overlap when several strategies contributed to one signal.</p></div><a class="lab-text-link" href="{{ route('admin.pulse.strategy-performance') }}">Full Strategy Intelligence →</a></div>
+    <div class="lab-table-wrap"><table class="lab-table strategy-leaderboard"><thead><tr><th>#</th><th>Strategy</th><th>Signals / Entries</th><th>TP1 / TP2 / TP3</th><th>Final TP / SL</th><th>Success</th><th>$100 virtual P/L</th><th>Virtual ROI</th><th>Net R</th><th>Learning</th><th></th></tr></thead><tbody>
     @forelse($strategyRows as $row)
         <tr>
             <td><span class="lab-rank">{{ $loop->iteration }}</span></td>
-            <td><b>{{ $row['name'] }}</b><small>{{ number_format($row['decisive_trades']) }} decisive trades · {{ number_format($row['signals']) }} signals · {{ $row['evidence_level'] }}</small></td>
+            <td><b>{{ $row['name'] }}</b><small>{{ number_format($row['decisive_trades']) }} resolved · {{ $row['evidence_level'] }}</small></td>
+            <td><b>{{ number_format($row['signals']) }} / {{ number_format($row['entries']) }}</b></td>
+            <td><span class="lab-win">{{ number_format($row['tp1']) }}</span> / <span class="lab-win">{{ number_format($row['tp2']) }}</span> / <span class="lab-win">{{ number_format($row['tp3']) }}</span></td>
             <td><span class="lab-win">{{ $row['tp'] }}</span> / <span class="lab-loss">{{ $row['sl'] }}</span></td>
             <td><b>{{ $fmtPct($row['win_rate']) }}</b></td>
+            <td><b class="{{ ($row['virtual_net_pnl_usd'] ?? 0)>=0?'lab-win':'lab-loss' }}">{{ $fmtMoney($row['virtual_net_pnl_usd']) }}</b><small>+${{ number_format($row['virtual_gross_profit_usd'],2) }} / -${{ number_format($row['virtual_gross_loss_usd'],2) }}</small></td>
+            <td><b class="{{ ($row['virtual_roi_pct'] ?? 0)>=0?'lab-win':'lab-loss' }}">{{ $row['virtual_roi_pct']===null?'—':(($row['virtual_roi_pct']>=0?'+':'').number_format($row['virtual_roi_pct'],2).'%') }}</b><small>${{ number_format($row['virtual_tested_notional_usd'],0) }} tested</small></td>
             <td><b class="{{ $row['net_r']>=0?'lab-win':'lab-loss' }}">{{ $fmtR($row['net_r']) }}</b></td>
-            <td><b class="{{ ($row['model_return_pct'] ?? 0)>=0?'lab-win':'lab-loss' }}">{{ $row['model_return_pct']===null?'—':(($row['model_return_pct']>=0?'+':'').number_format($row['model_return_pct'],2).'%') }}</b></td>
-            <td>{{ $row['reliability']===null?'—':number_format($row['reliability'],1).'%' }}</td>
-            <td><span class="lab-verdict is-{{ $row['verdict_key'] }}">{{ $row['verdict'] }}</span><small><a class="lab-row-link" href="{{ route('admin.pulse.intelligence',['strategy'=>$row['slug'],'from'=>$from->toDateString(),'to'=>$to->toDateString()]) }}">Details →</a></small></td>
+            <td>{{ $row['reliability']===null?'—':number_format($row['reliability'],1).'%' }}<small>{{ $row['learning_samples'] }} samples</small></td>
+            <td><a class="lab-row-link" href="{{ route('admin.pulse.trade-results',['range'=>$range,'strategy'=>$row['slug']]) }}">Trades →</a></td>
         </tr>
-    @empty<tr><td colspan="8"><div class="lab-empty-row">No strategy evidence yet. Run the engine and allow paper trades to resolve.</div></td></tr>@endforelse
+    @empty<tr><td colspan="11"><div class="lab-empty-row">No strategy evidence yet. Run the engine and allow paper trades to resolve.</div></td></tr>@endforelse
     </tbody></table></div>
 </section>
 

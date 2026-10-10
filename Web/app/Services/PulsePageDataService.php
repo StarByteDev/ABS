@@ -116,28 +116,42 @@ class PulsePageDataService
             ->latest('completed_at')
             ->first();
 
-        $allowedPairs = app(PulsePairAccessService::class)->allowedPairs($user)->values();
+        // V15.8.1 scanner metrics reflect the actual full enabled Binance USD-M universe,
+        // not legacy package pair assignments.
+        $allowedPairs = PulsePair::query()->where('is_enabled', true)->orderBy('sort_order')->orderBy('symbol')->get();
         $scanSymbols = $allowedPairs->pluck('symbol')->map(fn ($symbol) => strtoupper((string) $symbol))->values()->all();
         $liveTickers = $this->liveTickerMap($scanSymbols);
         $effectiveThreshold = app(PulseSignalThresholdService::class)->resolve($user, $settings);
         $rows = collect();
         $winner = null;
+        $signalSet = null;
 
         if ($latestRun?->best_signal_id) {
             $winner = PulseSignal::query()->where('user_id', $user->id)->whereKey((int) $latestRun->best_signal_id)->first();
         }
 
-        if ($winner) {
-            $ticker = $liveTickers->get(strtoupper((string) $winner->symbol), []);
-            $currentPrice = is_numeric($ticker['price'] ?? null) ? (float) $ticker['price'] : null;
-            $row = $this->signalRow($winner, $currentPrice);
-            if (is_numeric($ticker['change_percent'] ?? null)) $row['change_percent'] = (float) $ticker['change_percent'];
+        if ($latestRun) {
+            $signalSet = collect((array) $latestRun->summary)
+                ->first(fn ($item) => is_array($item) && ($item['type'] ?? '') === 'qualified_signal_set');
+            $ids = collect((array) data_get($signalSet, 'signals', []))->pluck('signal_id')->filter()->map(fn ($id)=>(int)$id)->values();
+            if ($winner && ! $ids->contains((int)$winner->id)) $ids->prepend((int)$winner->id);
+            $signals = $ids->isNotEmpty()
+                ? PulseSignal::query()->where('user_id', $user->id)->whereIn('id', $ids)->get()->keyBy('id')
+                : collect();
             $capabilities = $this->capabilities($user);
             $connectionReady = $this->connectionReady($connection);
-            $activeTrade = PulseTrade::query()->where('user_id', $user->id)->where('signal_id', $winner->id)
-                ->whereIn('status', self::OPEN_STATUSES)->latest('created_at')->first();
-            $row['trade_action'] = $this->signalTradeAction($user, $winner, $settings, $connectionReady, $capabilities, $activeTrade, $currentPrice);
-            $rows = collect([$row]);
+            $rows = $ids->map(function ($id) use ($signals, $liveTickers, $user, $settings, $connectionReady, $capabilities) {
+                $signal = $signals->get((int)$id);
+                if (! $signal) return null;
+                $ticker = $liveTickers->get(strtoupper((string) $signal->symbol), []);
+                $currentPrice = is_numeric($ticker['price'] ?? null) ? (float) $ticker['price'] : null;
+                $row = $this->signalRow($signal, $currentPrice);
+                if (is_numeric($ticker['change_percent'] ?? null)) $row['change_percent'] = (float) $ticker['change_percent'];
+                $activeTrade = PulseTrade::query()->where('user_id', $user->id)->where('signal_id', $signal->id)
+                    ->whereIn('status', self::OPEN_STATUSES)->latest('created_at')->first();
+                $row['trade_action'] = $this->signalTradeAction($user, $signal, $settings, $connectionReady, $capabilities, $activeTrade, $currentPrice);
+                return $row;
+            })->filter()->values();
         }
 
         $plan = $user->pulsePlan();
@@ -162,9 +176,10 @@ class PulsePageDataService
             'package_pair_limit' => $packageAvailable,
             'effective_minimum_score' => (float) $effectiveThreshold['score'],
             'minimum_score_source' => (string) $effectiveThreshold['source'],
-            'setups_identified' => $winner ? 1 : 0,
-            'setup_pairs' => $winner ? 1 : 0,
-            'high_conviction' => $winner && (float) $winner->score >= 80 ? 1 : 0,
+            'setups_identified' => (int) data_get($signalSet, 'qualified_count', $rows->count()),
+            'setups_displayed' => (int) data_get($signalSet, 'displayed_count', $rows->count()),
+            'setup_pairs' => $rows->pluck('pair')->unique()->count(),
+            'high_conviction' => $rows->filter(fn (array $row) => (float)($row['score'] ?? 0) >= 80)->count(),
             'scan_coverage' => $packageAvailable > 0 ? min(100, ($assessed / max(1, $packageAvailable)) * 100) : 0,
             'pairs_assessed' => $assessed,
             'results' => $rows,

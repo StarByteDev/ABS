@@ -11,7 +11,10 @@ use App\Models\PulseScannerRun;
 use App\Models\PulseSignalValidation;
 use App\Models\PulseStrategy;
 use App\Models\PulseStrategyLearningState;
+use App\Services\PulseAnalyticsBackfillService;
+use App\Services\PulseAuditService;
 use App\Services\PulseMarketDataService;
+use App\Services\PulseAdaptiveStrategyService;
 use App\Services\PulseRuntimeCadenceService;
 use App\Services\PulseStrategyAnalyticsService;
 use App\Services\PulseStrategyCycleService;
@@ -241,23 +244,125 @@ class AdminStrategyWorkflowController extends Controller
     public function tradeResults(Request $request, PulseStrategyAnalyticsService $analytics)
     {
         [$range,$from,$to] = $this->range($request, '30d');
+        $filter = strtolower(trim((string)$request->query('result','')));
+        $allowed = ['', 'tp', 'tp1', 'tp2', 'tp3', 'sl', 'expired_after_entry', 'expired_no_entry', 'ambiguous', 'open'];
+        if (!in_array($filter, $allowed, true)) $filter = '';
+
+        $strategy = strtolower(trim((string)$request->query('strategy','')));
+        if ($strategy !== '' && !preg_match('/^[a-z0-9-]{1,100}$/', $strategy)) $strategy = '';
+
         $validations = $this->validations($from,$to);
+        if ($strategy !== '') {
+            $validations = $validations->filter(fn($row) => $this->validationUsesStrategy($row, $strategy))->values();
+        }
+
         $outcomes = $this->outcomeSummary($validations);
         $trend = $this->dailyTrend($validations,$from,$to);
-        $simulation = $analytics->simulation($from,$to,[]);
-        $recent = $validations->whereNotNull('resolved_at')->sortByDesc('resolved_at')->take(20)->values();
-        return view('admin.pulse.workflow.trade-results', compact('range','from','to','outcomes','trend','simulation','recent'));
+        $simulation = $analytics->simulation($from,$to,$strategy !== '' ? ['strategy'=>$strategy] : []);
+        $strategies = Schema::hasTable('pulse_strategies')
+            ? PulseStrategy::query()->orderBy('sort_order')->orderBy('name')->get(['slug','name'])
+            : collect();
+
+        $resultRows = $validations->filter(function ($row) use ($filter) {
+            if ($filter === '') return $row->resolved_at || $row->entry_hit_at;
+            if ($filter === 'open') return $row->entry_hit_at && !$row->resolved_at;
+            if (preg_match('/^tp([123])$/', $filter, $m)) return (int)$row->highest_tp_level_hit >= (int)$m[1];
+            return (string)$row->outcome === $filter;
+        })->sortByDesc(fn($row)=>$row->resolved_at ?: $row->entry_hit_at ?: $row->generated_at)->values();
+
+        $recent = $resultRows->take(100)->map(function ($row) use ($analytics) {
+            $row->setAttribute('virtual_pnl_usd', $analytics->virtualPnlForValidation($row));
+            return $row;
+        });
+
+        return view('admin.pulse.workflow.trade-results', compact('range','from','to','outcomes','trend','simulation','recent','filter','strategy','strategies'));
     }
 
-    public function strategyPerformance(Request $request, PulseStrategyAnalyticsService $analytics)
-    {
+    public function strategyPerformance(
+        Request $request,
+        PulseStrategyAnalyticsService $analytics,
+        PulseAnalyticsBackfillService $backfill,
+    ) {
         [$range,$from,$to] = $this->range($request, '30d');
         $validations = $this->validations($from,$to);
         $rows = $this->strategyRows($validations,$from,$to,$analytics);
+        $portfolio = $analytics->virtualSummaryFromValidations($validations);
         $top = $rows->first();
-        $positive = $rows->filter(fn($r)=>(int)$r['decisive']>=5 && (float)$r['net_r']>0)->count();
-        $review = $rows->filter(fn($r)=>(int)$r['decisive']>=5 && (float)$r['net_r']<=0)->count();
-        return view('admin.pulse.workflow.strategy-performance', compact('range','from','to','rows','top','positive','review'));
+        $positive = $rows->filter(fn($r)=>(int)$r['decisive']>=5 && (float)$r['virtual_net_pnl_usd']>0)->count();
+        $review = $rows->filter(fn($r)=>(int)$r['decisive']>=5 && (float)$r['virtual_net_pnl_usd']<=0)->count();
+        $backfillState = $backfill->state();
+        return view('admin.pulse.workflow.strategy-performance', compact('range','from','to','rows','top','positive','review','portfolio','backfillState'));
+    }
+
+    public function exportStrategyPerformance(Request $request, PulseStrategyAnalyticsService $analytics)
+    {
+        [$range,$from,$to]=$this->range($request,'30d');
+        $rows=$this->strategyRows($this->validations($from,$to),$from,$to,$analytics);
+        $columns=['Strategy','Enabled','Signals','Entries','TP','SL','TP1','TP2','TP3','Win Rate (%)',
+            'Virtual Gross Profit (USD)','Virtual Gross Loss (USD)','Virtual Net P/L (USD)',
+            'Virtual Tested (USD)','Virtual ROI (%)','Net R','Adaptive R:R','Adaptive Weight (%)',
+            'Learning Reliability (%)','Adaptive Status','14-Day Expectancy (R)','Observed Expectancy (R)'];
+        return response()->streamDownload(function() use($rows,$columns) {
+            $out=fopen('php://output','w'); fputcsv($out,$columns);
+            foreach($rows as $r) {
+                fputcsv($out,[$r['name'],(int)$r['enabled'],$r['signals'],$r['entries'],$r['tp'],$r['sl'],
+                  $r['tp1'],$r['tp2'],$r['tp3'],$r['win_rate'],
+                  $r['virtual_gross_profit_usd'],$r['virtual_gross_loss_usd'],$r['virtual_net_pnl_usd'],
+                  $r['virtual_tested_notional_usd'],$r['virtual_roi_pct'],$r['net_r'],
+                  $r['adaptive_rr']??null,100*($r['adaptive_weight_multiplier']??1),
+                  $r['reliability']??null,$r['adaptive_status']??'collecting',
+                  data_get($r,'adaptive.recent_expectancy_r'),data_get($r,'adaptive.observed_expectancy_r')]);
+            }
+            fclose($out);
+        },'ABS_Pulse_Strategy_PnL_'.now()->format('Ymd_His').'.csv',['Content-Type'=>'text/csv']);
+    }
+
+    public function queueStrategyAnalyticsBackfill(
+        Request $request,
+        PulseAnalyticsBackfillService $backfill,
+        PulseAuditService $audit,
+    ) {
+        $data = $request->validate([
+            'days' => ['required','integer', Rule::in([7,30,90])],
+        ]);
+
+        try {
+            $state = $backfill->queue((int) $data['days'], $request->user()?->id);
+            if (Schema::hasTable('pulse_audit_logs')) {
+                $audit->record('admin.strategy_analytics_backfill_queued', $request->user(), null, null, null, [
+                    'days'=>(int)$data['days'],
+                    'total_dates'=>(int)($state['total_dates'] ?? 0),
+                    'status'=>(string)($state['status'] ?? 'queued'),
+                ], $request);
+            }
+
+            $message = ($state['status'] ?? '') === 'completed'
+                ? (string) ($state['message'] ?? 'No retained dates needed rebuilding.')
+                : 'Strategy analytics backfill queued. Your existing scheduler will process it automatically in small batches; no cron changes are required.';
+            return back()->with('success', $message);
+        } catch (\Throwable $e) {
+            return back()->withErrors(['analytics_backfill' => $e->getMessage()]);
+        }
+    }
+
+    public function cancelStrategyAnalyticsBackfill(
+        Request $request,
+        PulseAnalyticsBackfillService $backfill,
+        PulseAuditService $audit,
+    ) {
+        $state = $backfill->cancel();
+        if (Schema::hasTable('pulse_audit_logs')) {
+            $audit->record('admin.strategy_analytics_backfill_cancelled', $request->user(), null, null, null, [
+                'processed_dates'=>(int)($state['processed_dates'] ?? 0),
+                'total_dates'=>(int)($state['total_dates'] ?? 0),
+            ], $request);
+        }
+        return back()->with('success', 'Analytics backfill cancelled safely. Any dates already rebuilt remain intact.');
+    }
+
+    public function strategyAnalyticsBackfillStatus(PulseAnalyticsBackfillService $backfill)
+    {
+        return response()->json(['ok'=>true, 'job'=>$backfill->state()]);
     }
 
     private function range(Request $request, string $default='7d'): array
@@ -280,21 +385,79 @@ class AdminStrategyWorkflowController extends Controller
         $amb=$rows->where('outcome','ambiguous')->count(); $expNo=$rows->where('outcome','expired_no_entry')->count(); $expAfter=$rows->where('outcome','expired_after_entry')->count();
         $entries=$rows->whereNotNull('entry_hit_at')->count(); $openAfter=$rows->whereNotNull('entry_hit_at')->whereNull('resolved_at')->count();
         $waiting=$rows->whereNull('entry_hit_at')->whereNull('resolved_at')->count(); $decisive=$tp+$sl;
+        $tp1=$rows->filter(fn($r)=>(int)$r->highest_tp_level_hit>=1)->count();
+        $tp2=$rows->filter(fn($r)=>(int)$r->highest_tp_level_hit>=2)->count();
+        $tp3=$rows->filter(fn($r)=>(int)$r->highest_tp_level_hit>=3)->count();
         $gross=0.0; foreach($rows->where('outcome','tp') as $row) $gross += $this->tpR($row); $net=$gross-(float)$sl;
-        return ['signals'=>$rows->count(),'entries'=>$entries,'waiting'=>$waiting,'open_after_entry'=>$openAfter,'tp'=>$tp,'sl'=>$sl,'ambiguous'=>$amb,'expired_no_entry'=>$expNo,'expired_after_entry'=>$expAfter,'void'=>$amb+$expNo+$expAfter,'win_rate'=>$decisive?($tp/$decisive)*100:null,'net_r'=>$net,'profit_factor'=>$sl>0?$gross/$sl:($gross>0?INF:null),'expectancy_r'=>$decisive?$net/$decisive:null];
+        $virtual = app(PulseStrategyAnalyticsService::class)->virtualSummaryFromValidations($rows);
+        return ['signals'=>$rows->count(),'entries'=>$entries,'waiting'=>$waiting,'open_after_entry'=>$openAfter,'tp'=>$tp,'tp1'=>$tp1,'tp2'=>$tp2,'tp3'=>$tp3,'sl'=>$sl,'ambiguous'=>$amb,'expired_no_entry'=>$expNo,'expired_after_entry'=>$expAfter,'void'=>$amb+$expNo+$expAfter,'win_rate'=>$decisive?($tp/$decisive)*100:null,'net_r'=>$net,'profit_factor'=>$sl>0?$gross/$sl:($gross>0?INF:null),'expectancy_r'=>$decisive?$net/$decisive:null] + $virtual;
     }
 
     private function strategyRows(Collection $validations, Carbon $from, Carbon $to, PulseStrategyAnalyticsService $analytics): Collection
     {
         $catalog=Schema::hasTable('pulse_strategies')?PulseStrategy::query()->orderBy('sort_order')->get():collect(); $rows=[];
-        foreach($catalog as $s) $rows[$s->slug]=['slug'=>$s->slug,'name'=>$s->name,'enabled'=>(bool)$s->is_enabled,'signals'=>0,'entries'=>0,'tp'=>0,'sl'=>0,'void'=>0,'gross'=>0.0];
+        $adaptive=app(PulseAdaptiveStrategyService::class);
+        foreach($catalog as $s) $rows[$s->slug]=[
+            'slug'=>$s->slug,'name'=>$s->name,'enabled'=>(bool)$s->is_enabled,
+            'category'=>$this->strategyCategory((string)$s->slug,(array)($s->settings??[])),
+            'configured_rr'=>(float)data_get($s->settings,'risk_reward_target',2.0),
+            'adaptive'=>$adaptive->summaryForStrategy($s),
+            'signals'=>0,'entries'=>0,'tp'=>0,'tp1'=>0,'tp2'=>0,'tp3'=>0,'sl'=>0,'void'=>0,'gross'=>0.0,
+            'virtual_gross_profit_usd'=>0.0,'virtual_gross_loss_usd'=>0.0,'virtual_net_pnl_usd'=>0.0
+        ];
         foreach($validations as $v){
             $contributors=collect((array)$v->strategy_snapshot)->filter(function($item) use($v){if(!is_array($item)||isset($item['_meta'])||(float)($item['points']??0)<=0)return false;$bias=strtoupper((string)($item['bias']??'NEUTRAL'));return in_array($bias,[strtoupper((string)$v->direction),'NEUTRAL'],true);})->pluck('slug')->filter()->unique();
-            foreach($contributors as $slug){ if(!isset($rows[$slug]))$rows[$slug]=['slug'=>$slug,'name'=>str($slug)->replace('-',' ')->title()->toString(),'enabled'=>true,'signals'=>0,'entries'=>0,'tp'=>0,'sl'=>0,'void'=>0,'gross'=>0.0]; $rows[$slug]['signals']++; if($v->entry_hit_at)$rows[$slug]['entries']++; if($v->outcome==='tp'){ $rows[$slug]['tp']++; $rows[$slug]['gross']+=$this->tpR($v);} elseif($v->outcome==='sl')$rows[$slug]['sl']++; elseif(in_array($v->outcome,['ambiguous','expired_no_entry','expired_after_entry'],true))$rows[$slug]['void']++; }
+            $virtualPnl=$analytics->virtualPnlForValidation($v);
+            foreach($contributors as $slug){
+                if(!isset($rows[$slug]))$rows[$slug]=['slug'=>$slug,'name'=>str($slug)->replace('-',' ')->title()->toString(),'enabled'=>true,'category'=>'Legacy / Unclassified','configured_rr'=>2.0,'adaptive'=>['status'=>'collecting','samples'=>0,'effective_rr'=>2.0,'weight_multiplier'=>1.0,'expected_r'=>null,'member_eligible'=>true],'signals'=>0,'entries'=>0,'tp'=>0,'tp1'=>0,'tp2'=>0,'tp3'=>0,'sl'=>0,'void'=>0,'gross'=>0.0,'virtual_gross_profit_usd'=>0.0,'virtual_gross_loss_usd'=>0.0,'virtual_net_pnl_usd'=>0.0];
+                $rows[$slug]['signals']++;
+                if($v->entry_hit_at)$rows[$slug]['entries']++;
+                if((int)$v->highest_tp_level_hit>=1)$rows[$slug]['tp1']++;
+                if((int)$v->highest_tp_level_hit>=2)$rows[$slug]['tp2']++;
+                if((int)$v->highest_tp_level_hit>=3)$rows[$slug]['tp3']++;
+                if($v->outcome==='tp'){ $rows[$slug]['tp']++; $rows[$slug]['gross']+=$this->tpR($v);}
+                elseif($v->outcome==='sl')$rows[$slug]['sl']++;
+                elseif(in_array($v->outcome,['ambiguous','expired_no_entry','expired_after_entry'],true))$rows[$slug]['void']++;
+                if($virtualPnl!==null){
+                    $rows[$slug]['virtual_net_pnl_usd'] += $virtualPnl;
+                    if($virtualPnl>=0)$rows[$slug]['virtual_gross_profit_usd'] += $virtualPnl;
+                    else $rows[$slug]['virtual_gross_loss_usd'] += abs($virtualPnl);
+                }
+            }
         }
         $profit=$analytics->strategyProfitability($from,$to,[])->keyBy('strategy_slug');
         $learning=Schema::hasTable('pulse_strategy_learning_states')?PulseStrategyLearningState::query()->where('market_regime','ALL')->get()->groupBy('strategy_slug'):collect();
-        return collect(array_values($rows))->map(function($r) use($profit,$learning){$d=$r['tp']+$r['sl'];$net=$r['gross']-$r['sl'];$states=$learning->get($r['slug'],collect());$samples=(int)$states->sum('sample_size');$den=max(1,$states->sum(fn($s)=>max(1,(int)$s->sample_size)));$rel=$states->isEmpty()?null:$states->sum(fn($s)=>(float)$s->reliability_score*max(1,(int)$s->sample_size))/$den;$p=$profit->get($r['slug'],[]);return $r+['decisive'=>$d,'win_rate'=>$d?($r['tp']/$d)*100:null,'net_r'=>$net,'reliability'=>$rel,'samples'=>$samples,'model_return_pct'=>isset($p['model_return_pct'])?(float)$p['model_return_pct']:null,'expectancy_r'=>isset($p['model_expectancy_r'])?(float)$p['model_expectancy_r']:($d?$net/$d:null)];})->sortByDesc(fn($r)=>((float)$r['net_r']*100000)+(float)($r['win_rate']??0))->values();
+        return collect(array_values($rows))->map(function($r) use($profit,$learning){
+            $d=$r['tp']+$r['sl'];$net=$r['gross']-$r['sl'];$states=$learning->get($r['slug'],collect());$samples=(int)$states->sum('sample_size');$den=max(1,$states->sum(fn($s)=>max(1,(int)$s->sample_size)));$rel=$states->isEmpty()?null:$states->sum(fn($s)=>(float)$s->reliability_score*max(1,(int)$s->sample_size))/$den;$p=$profit->get($r['slug'],[]);
+            $tested=$d*PulseStrategyAnalyticsService::VIRTUAL_NOTIONAL_USD;
+            return $r+[
+                'decisive'=>$d,
+                'win_rate'=>$d?($r['tp']/$d)*100:null,
+                'net_r'=>$net,
+                'reliability'=>$rel,
+                'samples'=>$samples,
+                'model_return_pct'=>isset($p['model_return_pct'])?(float)$p['model_return_pct']:null,
+                'expectancy_r'=>isset($p['model_expectancy_r'])?(float)$p['model_expectancy_r']:($d?$net/$d:null),
+                'virtual_tested_notional_usd'=>$tested,
+                'virtual_roi_pct'=>$tested>0?((float)$r['virtual_net_pnl_usd']/$tested)*100:null,
+                'virtual_avg_pnl_usd'=>$d>0?(float)$r['virtual_net_pnl_usd']/$d:null,
+                'adaptive_status'=>(string)data_get($r,'adaptive.status','collecting'),
+                'adaptive_rr'=>(float)data_get($r,'adaptive.effective_rr',$r['configured_rr']??2.0),
+                'adaptive_weight_multiplier'=>(float)data_get($r,'adaptive.weight_multiplier',1.0),
+                'adaptive_expected_r'=>data_get($r,'adaptive.expected_r'),
+                'member_eligible'=>(bool)data_get($r,'adaptive.member_eligible',true),
+            ];
+        })->sortByDesc(fn($r)=>((float)$r['virtual_net_pnl_usd']*100000)+(float)($r['win_rate']??0))->values();
+    }
+
+    private function validationUsesStrategy(PulseSignalValidation $validation, string $strategy): bool
+    {
+        return collect((array)$validation->strategy_snapshot)->contains(function($item) use($validation,$strategy){
+            if(!is_array($item)||isset($item['_meta'])||(float)($item['points']??0)<=0)return false;
+            if((string)($item['slug']??'')!==$strategy)return false;
+            $bias=strtoupper((string)($item['bias']??'NEUTRAL'));
+            return in_array($bias,[strtoupper((string)$validation->direction),'NEUTRAL'],true);
+        });
     }
 
     private function dailyTrend(Collection $validations, Carbon $from, Carbon $to): Collection
@@ -307,6 +470,19 @@ class AdminStrategyWorkflowController extends Controller
     private function tpR(PulseSignalValidation $row): float
     {
         $entry=(float)$row->entry_price;$stop=(float)$row->stop_loss;$risk=abs($entry-$stop);if($risk<=0)return 0.0;$levels=array_values(array_filter(array_map('floatval',(array)$row->take_profit_levels),fn($v)=>$v>0));$target=$levels!==[]?(float)end($levels):0.0;return $target>0?abs($target-$entry)/$risk:0.0;
+    }
+
+    private function strategyCategory(string $slug, array $settings): string
+    {
+        $configured=trim((string)($settings['category']??''));
+        if($configured!=='') return $configured;
+        return match($slug){
+            'ema-crossover'=>'Entry Trigger',
+            'rsi-recovery','macd-momentum','volume-expansion','candle-strength','swing-sequence','macd-rsi-confluence'=>'Confirmation',
+            'atr-volatility','range-compression'=>'Market Regime Filter',
+            'risk-reward-quality'=>'Risk Filter',
+            default=>'Core Strategy',
+        };
     }
 
     private function formatR(float $r): string { return ($r>=0?'+':'').number_format($r,2).'R'; }

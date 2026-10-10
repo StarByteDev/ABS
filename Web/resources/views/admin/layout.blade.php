@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>try{document.documentElement.dataset.absTheme=(localStorage.getItem('abs.theme')==='light'?'light':'dark')}catch(e){document.documentElement.dataset.absTheme='dark'}</script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -27,7 +28,16 @@
     <link rel="stylesheet" href="{{ asset('assets/css/private-investor-v1569.css') }}?v={{ @filemtime(public_path('assets/css/private-investor-v1569.css')) ?: '15.6.9' }}">
     <link rel="stylesheet" href="{{ asset('assets/css/private-investor-v1573.css') }}?v={{ @filemtime(public_path('assets/css/private-investor-v1573.css')) ?: '15.7.3' }}">
     <script>try{document.documentElement.dataset.absAdminSidebar=localStorage.getItem('abs.admin.sidebar.state')||'expanded';}catch(e){document.documentElement.dataset.absAdminSidebar='expanded';}</script>
+    <link rel="stylesheet" href="{{ asset('assets/css/abs-theme-v1580.css') }}?v=15.8.5">
+    <link rel="stylesheet" href="{{ asset('assets/css/abs-theme-v1583.css') }}?v=15.8.5">
+    <script src="{{ asset('assets/js/abs-theme-v1587.js') }}?v=15.8.9" defer></script>
     @stack('head')
+    <link rel="stylesheet" href="{{ asset('assets/css/abs-theme-v1586.css') }}?v=15.8.6">
+    <link rel="stylesheet" href="{{ asset('assets/css/abs-theme-v1587.css') }}?v=15.8.7">
+    <link rel="stylesheet" href="{{ asset('assets/css/abs-theme-v1588.css') }}?v=15.8.8">
+    <link rel="stylesheet" href="{{ asset('assets/css/abs-theme-v1589.css') }}?v=15.8.9">
+    <link rel="stylesheet" href="{{ asset('assets/css/abs-theme-v1590.css') }}?v=15.9.0">
+    <link rel="stylesheet" href="{{ asset('assets/css/abs-theme-v1591.css') }}?v=15.9.1">
 </head>
 @php
     $routeName = request()->route()?->getName() ?? '';
@@ -104,6 +114,7 @@
                 <a class="{{ $is('admin.private-investors.investors')||$is('admin.private-investors.show')||$is('admin.private-investors.investment-setup')||$is('admin.private-investors.portfolio-values')||$is('admin.private-investors.account-*')?'active':'' }}" href="{{ route('admin.private-investors.investors') }}" title="Investor Accounts"><i>♙</i><span>Investor Accounts</span></a>
                 <a class="{{ $is('admin.private-investors.activity')?'active':'' }}" href="{{ route('admin.private-investors.activity') }}" title="Transactions"><i>⇄</i><span>Transactions</span></a>
                 <a class="{{ $is('admin.private-investors.monthly-performance')?'active':'' }}" href="{{ route('admin.private-investors.monthly-performance') }}" title="Monthly Progress"><i>◉</i><span>Monthly Progress</span></a>
+                <a class="{{ $is('admin.private-investors.trading-ledger*')?'active':'' }}" href="{{ route('admin.private-investors.trading-ledger') }}" title="Exchange Ledger & Performance"><i>▦</i><span>Exchange Ledger</span></a>
                 <a class="{{ $is('admin.private-investors.statements')?'active':'' }}" href="{{ route('admin.private-investors.statements') }}" title="Monthly Statements"><i>▥</i><span>Statements</span></a>
                 <a class="{{ $is('admin.private-investors.requests')?'active':'' }}" href="{{ route('admin.private-investors.requests') }}" title="Investment & Withdrawal Requests"><i>↗</i><span>Requests</span>@if($investorRequestCount)<b class="abs-nav-count">{{ min($investorRequestCount,99) }}</b>@endif</a>
                 <a class="{{ $is('admin.private-investors.reports*')?'active':'' }}" href="{{ route('admin.private-investors.reports') }}" title="Portfolio Reports"><i>▤</i><span>Reports</span></a>
@@ -151,7 +162,7 @@
             <small>A product of Alpha Block Solutions</small>
         </div>
         <div class="abs-exec-system"><i></i><span><b>Platform online</b><small>Production administration</small></span></div>
-        <div class="abs-exec-signature">BUILDING A SMARTER<br>TRADING TOMORROW <em>v15.7.3</em></div>
+        <div class="abs-exec-signature">BUILDING A SMARTER<br>TRADING TOMORROW <em>v15.8.5</em></div>
     </div>
 </aside>
 <button type="button" class="abs-sidebar-show-tab" data-sidebar-show aria-label="Show administration menu"><span>›</span><b>Show menu</b></button>
@@ -186,5 +197,6 @@
 <script src="{{ asset('assets/js/admin-analytics-v1505.js') }}?v={{ @filemtime(public_path('assets/js/admin-analytics-v1505.js')) ?: '15.0.9' }}" defer></script>
 <script src="{{ asset('assets/js/admin-navigation-v1521.js') }}?v={{ @filemtime(public_path('assets/js/admin-navigation-v1521.js')) ?: '15.2.1' }}" defer></script>
 @stack('scripts')
+<button type="button" class="abs-theme-toggle" data-abs-theme-toggle aria-label="Switch theme" aria-pressed="true">◐ <span data-abs-theme-label>Switch to Light</span></button>
 </body>
 </html>

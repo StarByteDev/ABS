@@ -41,6 +41,8 @@ class AppState extends ChangeNotifier {
   String? homeError;
   String? pulseError;
   String? newsError;
+  final Map<String, String> chartErrors = <String, String>{};
+  final Set<String> loadingCharts = <String>{};
   Map<String, dynamic> membership = <String, dynamic>{};
 
   final Set<String> watchlist = <String>{};
@@ -145,6 +147,7 @@ class AppState extends ChangeNotifier {
         _safeGet('/market/movers'),
         _safeGet('/market/chart/BTCUSDT', query: const <String, dynamic>{'interval': '1h', 'limit': 96}),
         _safeGet('/news'),
+        _safeGet('/market/etf-flows'),
       ]);
       final overview = JsonTools.map(JsonTools.at(results[0], 'data', results[0]));
       if (overview.isNotEmpty) MockData.applyMarketOverview(overview);
@@ -152,6 +155,7 @@ class AppState extends ChangeNotifier {
       if (movers.isNotEmpty) MockData.applyMovers(movers);
       _applyChartPayload('1D', results[2]);
       if (results[3] != null) MockData.applyNews(results[3]);
+      MockData.applyEtfFlows(results[4]);
       if (session.authenticated) await refreshAccount(notify: false);
     } on ApiException catch (e) {
       homeError = e.message;
@@ -165,28 +169,40 @@ class AppState extends ChangeNotifier {
 
   Future<void> loadBtcSeries(String tf) async {
     const config = <String, Map<String, dynamic>>{
-      '1H': <String, dynamic>{'interval': '1m', 'limit': 60},
+      '1H': <String, dynamic>{'interval': '5m', 'limit': 12},
       '1D': <String, dynamic>{'interval': '15m', 'limit': 96},
       '1W': <String, dynamic>{'interval': '4h', 'limit': 42},
       '1M': <String, dynamic>{'interval': '1d', 'limit': 31},
       '1Y': <String, dynamic>{'interval': '1d', 'limit': 365},
-      'ALL': <String, dynamic>{'interval': '1w', 'limit': 260},
+      'ALL': <String, dynamic>{'interval': '1d', 'limit': 500},
     };
     final cfg = config[tf] ?? config['1D']!;
+    loadingCharts.add(tf);
+    chartErrors.remove(tf);
+    notifyListeners();
     try {
       final response = await session.api.get('/market/chart/BTCUSDT', query: cfg);
-      _applyChartPayload(tf, response);
+      final ok = _applyChartPayload(tf, response);
+      if (!ok) chartErrors[tf] = 'Price history is temporarily unavailable from ABS.';
+    } on ApiException catch (e) {
+      chartErrors[tf] = e.message;
+    } catch (_) {
+      chartErrors[tf] = 'Unable to load BTC price history.';
+    } finally {
+      loadingCharts.remove(tf);
       notifyListeners();
-    } on ApiException {
-      // Keep the last successful server series instead of fabricating prices.
     }
   }
 
-  void _applyChartPayload(String tf, dynamic payload) {
+  bool _applyChartPayload(String tf, dynamic payload) {
     final root = JsonTools.map(JsonTools.at(payload, 'data', payload));
     final candles = JsonTools.mapList(root['candles']);
-    final values = candles.map((r) => JsonTools.number(r['close'])).where((v) => v > 0).toList();
-    if (values.length >= 2) MockData.setBtcSeries(tf, values);
+    final values = candles.map((r) => JsonTools.number(r['close']))
+        .where((v) => v.isFinite && v > 0).toList();
+    if (values.length < 2) return false;
+    MockData.setBtcSeries(tf, values);
+    chartErrors.remove(tf);
+    return true;
   }
 
   Future<void> refreshPulse() async {

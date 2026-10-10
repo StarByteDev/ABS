@@ -1,0 +1,54 @@
+{
+  "version": "1.7.1+171",
+  "backend_target": "ABS V15.9.1",
+  "base": "PULSE_FLUTTER_V1_7_0_ABS_V15_9_1_KOTLIN_2_2_20_BUILD_FIX_SOURCE.zip",
+  "source_changed_or_added_files": [
+    "BUILD_VERSION.txt",
+    "CHANGELOG.md",
+    "README.md",
+    "docs/PULSE_V1_7_1_LOCAL_TEST_AND_DESIGN.md",
+    "docs/approved_mockups/01_onboarding.png",
+    "docs/approved_mockups/02_investor_home.png",
+    "docs/approved_mockups/03_investor_portfolio.png",
+    "docs/approved_mockups/04_trader_home.png",
+    "docs/approved_mockups/05_trade_detail.png",
+    "docs/static_source_check.py",
+    "lib/core/app_config.dart",
+    "lib/investor/investor_home.dart",
+    "lib/investor/investor_portfolio.dart",
+    "lib/investor/investor_ui.dart",
+    "lib/investor/investor_welcome.dart",
+    "lib/investor/premium_ui.dart",
+    "lib/investor/trader_home.dart",
+    "lib/template_rebase/screens/account_screen.dart",
+    "lib/template_rebase/screens/free_signal_screen.dart",
+    "lib/template_rebase/screens/shell.dart",
+    "lib/template_rebase/screens/signal_detail_screen.dart",
+    "pubspec.yaml",
+    "test/app_config_test.dart",
+    "test/premium_redesign_test.dart"
+  ],
+  "removed_files": [],
+  "flutter_sdk_available": false,
+  "tests_executed": [
+    "lightweight local import/delimiter/source integration checks"
+  ],
+  "tests_not_executed": [
+    "flutter analyze",
+    "flutter test",
+    "flutter run",
+    "Gradle assembleDebug",
+    "FCM delivery",
+    "rewarded-ad real-device flow"
+  ],
+  "integrations_preserved": [
+    "package ID",
+    "iOS project",
+    "Android project",
+    "Firebase",
+    "FCM",
+    "Google AdMob",
+    "rewarded Free Signal",
+    "ABS V15.9.1 client"
+  ]
+}

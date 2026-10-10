@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>try{document.documentElement.dataset.absTheme=(localStorage.getItem('abs.theme')==='light'?'light':'dark')}catch(e){document.documentElement.dataset.absTheme='dark'}</script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -16,7 +17,16 @@
     <link rel="stylesheet" href="{{ asset('assets/css/private-investor-v1566.css') }}?v={{ @filemtime(public_path('assets/css/private-investor-v1566.css')) ?: '15.6.6' }}">
     <link rel="stylesheet" href="{{ asset('assets/css/private-investor-v1569.css') }}?v={{ @filemtime(public_path('assets/css/private-investor-v1569.css')) ?: '15.6.9' }}">
     <link rel="stylesheet" href="{{ asset('assets/css/private-investor-v1573.css') }}?v={{ @filemtime(public_path('assets/css/private-investor-v1573.css')) ?: '15.7.3' }}">
+    <link rel="stylesheet" href="{{ asset('assets/css/abs-theme-v1580.css') }}?v=15.8.5">
+    <link rel="stylesheet" href="{{ asset('assets/css/abs-theme-v1583.css') }}?v=15.8.5">
+    <script src="{{ asset('assets/js/abs-theme-v1587.js') }}?v=15.8.9" defer></script>
     @stack('head')
+    <link rel="stylesheet" href="{{ asset('assets/css/abs-theme-v1586.css') }}?v=15.8.6">
+    <link rel="stylesheet" href="{{ asset('assets/css/abs-theme-v1587.css') }}?v=15.8.7">
+    <link rel="stylesheet" href="{{ asset('assets/css/abs-theme-v1588.css') }}?v=15.8.8">
+    <link rel="stylesheet" href="{{ asset('assets/css/abs-theme-v1589.css') }}?v=15.8.9">
+    <link rel="stylesheet" href="{{ asset('assets/css/abs-theme-v1590.css') }}?v=15.9.0">
+    <link rel="stylesheet" href="{{ asset('assets/css/abs-theme-v1591.css') }}?v=15.9.1">
 </head>
 <body class="pulse-body" data-pulse-route="{{ request()->route()?->getName() }}">
 <script>try{if(window.localStorage.getItem('abs.pulse.sidebar.collapsed.v1')==='1')document.body.classList.add('pulse-sidebar-collapsed')}catch(error){}</script>
@@ -221,5 +231,6 @@
 <script src="{{ asset('assets/js/pulse-app.js') }}?v={{ @filemtime(public_path('assets/js/pulse-app.js')) ?: '14.8.11' }}" defer></script>
 <script src="{{ asset('assets/js/pulse-premium.js') }}?v={{ @filemtime(public_path('assets/js/pulse-premium.js')) ?: '14.8.11' }}" defer></script>
 @stack('scripts')
+<button type="button" class="abs-theme-toggle" data-abs-theme-toggle aria-label="Switch theme" aria-pressed="true">◐ <span data-abs-theme-label>Switch to Light</span></button>
 </body>
 </html>

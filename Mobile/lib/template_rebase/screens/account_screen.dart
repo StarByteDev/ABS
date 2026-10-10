@@ -1,3 +1,7 @@
+import 'free_signal_screen.dart';
+import '../../investor/investor_ui.dart';
+import '../../investor/pulse_experience.dart';
+import '../../investor/investor_portfolio.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/api_client.dart';
@@ -154,7 +158,17 @@ class _AccountScreenState extends State<AccountScreen> {
               const SizedBox(height: 12),
               _membershipCard(app),
             ],
+            if (InvestorScope.of(context).eligible && app.emailVerified)
+              _group('Investment management', <Widget>[
+                _menu(Icons.account_balance_wallet_outlined, 'Investor portfolio',
+                  'Account value, statements, performance and requests',
+                  () => push(context, const InvestorPortfolioScreen())),
+                _menu(Icons.account_balance_outlined, 'Investor records',
+                  'Detailed historical investment records and legacy reporting',
+                  () => push(context, const PrivateInvestorHubScreen())),
+              ]),
             _group('Pulse trading', <Widget>[
+              _menu(Icons.play_circle_outline_rounded, 'Free Signal', 'Rewarded ad access to a qualified signal or BTC context', () => push(context, const FreeSignalScreen())),
               _menu(Icons.radar_rounded, 'Market scanner', 'Scan selected markets with ABS strategy rules', () => _openProtected(app, const ScannerScreen())),
               _menu(Icons.bolt_rounded, 'Trade signals', 'Qualified setups and Entry Watch', () => _openProtected(app, const SignalsScreen())),
               _menu(Icons.candlestick_chart_rounded, 'Positions', 'Open and recently reconciled positions', () => _openProtected(app, const PositionsScreen())),
@@ -187,10 +201,6 @@ class _AccountScreenState extends State<AccountScreen> {
                 _menu(Icons.devices_rounded, 'Registered devices', 'Review devices linked to your account', () => _openProtected(app, const RegisteredDevicesScreen())),
                 _menu(Icons.security_rounded, 'Sessions', 'Review and revoke active sessions', () => _openProtected(app, const SessionsScreen())),
                 _menu(Icons.password_rounded, 'Change password', 'Update your account password', () => _openProtected(app, const ChangePasswordScreen())),
-              ]),
-            if (app.signedIn && app.emailVerified)
-              _group('Private Investor', <Widget>[
-                _menu(Icons.account_balance_wallet_outlined, 'Private Investor portal', 'Principal, monthly progress, statements and requests', () => push(context, const PrivateInvestorHubScreen())),
               ]),
             _group('Legal & risk', <Widget>[
               _menu(Icons.description_outlined, 'Privacy, terms & disclosures', 'ABS policies and market-risk documents', () => push(context, const LegalHubScreen())),

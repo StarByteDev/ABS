@@ -58,7 +58,7 @@
                 <div class="pi-v1570-agreement-inline" id="investmentAgreementFields">
                     <div class="pi-v1570-inline-head"><div><b>Monthly Performance Agreement</b><span>For investments, define the agreed monthly percentage and the date performance begins.</span></div><a href="{{ route('admin.private-investors.investment-setup',$account) }}">Full setup</a></div>
                     <div class="pi71-form-grid">
-                        <label><span>Agreed monthly profit %</span><div class="pi-input-suffix"><input type="number" name="monthly_target_rate" id="transactionRate" step="0.01" min="0" max="50" value="{{ $term?->monthly_target_rate }}" placeholder="e.g. 5.00"><b>%</b></div><small>Used by the automatic daily accrual and monthly payout schedule.</small></label>
+                        <label><span>Agreed monthly profit %</span><div class="pi-input-suffix"><input type="number" name="monthly_target_rate" id="transactionRate" step="0.01" min="0" max="50" value="{{ $term?->monthly_target_rate }}" placeholder="e.g. 5.00" @disabled((bool)$term)><b>%</b></div><small>{{ $term ? 'Rate is locked here. Change it from Investment Setup with a new effective date so historical months are preserved.' : 'Set the initial agreement rate with the first investment.' }}</small></label>
                         <label><span>Performance starts</span><input type="date" name="performance_start_date" id="performanceStart" value="{{ $term?->effective_from?->toDateString() ?: today()->toDateString() }}"><small>For a mid-month investment, the first month is prorated automatically.</small></label>
                     </div>
                     <div class="pi-v1570-inline-preview" id="investmentPreview">Enter amount and monthly % to preview the target.</div>
@@ -92,7 +92,7 @@
                 @forelse($transactions as $tx)
                     <tr class="{{ $tx->status === 'voided' ? 'is-voided' : '' }}">
                         <td>{{ optional($tx->transaction_date)->format('d M Y') }}</td>
-                        <td><b>{{ match($tx->type) {'deposit'=>'Investment','withdrawal'=>'Capital Withdrawal','profit'=>'Profit Paid','loss'=>'Loss','fee'=>'Fee',default=>'Adjustment'} }}</b>@if($tx->description)<small>{{ $tx->description }}</small>@endif</td>
+                        @php($isReinvestedProfit=$tx->type==='profit' && in_array((string)$tx->entry_source,['automatic_profit_reinvestment','admin_profit_reinvestment'],true))<td><b>{{ $isReinvestedProfit ? 'Profit Reinvested' : match($tx->type) {'deposit'=>'Investment','withdrawal'=>'Capital Withdrawal','profit'=>'Profit Paid','loss'=>'Loss','fee'=>'Fee',default=>'Adjustment'} }}</b>@if($tx->description)<small>{{ $tx->description }}</small>@endif</td>
                         <td class="{{ in_array($tx->type,['deposit','profit']) ? 'pi-positive' : (in_array($tx->type,['withdrawal','loss','fee']) ? 'pi-negative' : '') }}">{{ $currency }} {{ number_format((float)$tx->amount,2) }}</td>
                         <td>
                             @if($tx->usd_amount !== null)

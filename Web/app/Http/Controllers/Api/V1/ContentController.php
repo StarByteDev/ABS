@@ -102,12 +102,20 @@ class ContentController extends Controller
             'data' => $query->orderBy('event_at')->limit(500)->get(),
             'meta' => [
                 'timezone' => (string) config('app.timezone'),
-                'values' => ['previous' => 'Previous published reading', 'forecast' => 'Market/provider consensus estimate', 'actual' => 'Current released reading when available'],
+                'values' => ['previous' => 'Previous published reading', 'forecast' => 'Provider estimate/consensus when published; null means unavailable', 'actual' => 'Verified provider reading after publication; null means not yet available'],
                 'crypto_impact_note' => 'Crypto impact notes are simplified market context, not predictions or financial advice. Actual market reaction can differ or reverse quickly.',
                 'disclaimer_url' => route('legal.disclaimer'),
                 'risk_url' => route('legal.risk'),
             ],
-        ]);
+        ])->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+    }
+
+    public function calendarEvent(EconomicEvent $event)
+    {
+        return response()->json(['data' => $event,
+            'meta' => ['timezone' => config('app.timezone'),
+                'disclaimer_url' => route('legal.disclaimer')]])
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
     }
 
     public function settings(Request $request)

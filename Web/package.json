@@ -45,7 +45,9 @@
     "audit:v1572:blade": "node tests/Release/verify-v1572-blade-stability.mjs",
     "audit:v1573": "node tests/Release/verify-v1573-currency-controls.mjs",
     "audit:v1573:blade": "node tests/Release/verify-v1573-blade-stability.mjs",
-    "audit:v1574": "node tests/Release/verify-v1574-investor-settlement-reporting.mjs"
+    "audit:v1574": "node tests/Release/verify-v1574-investor-settlement-reporting.mjs",
+    "audit:v1583": "node tests/Release/verify-v1583-mobile-adaptive-theme.mjs",
+    "audit:v1584": "node tests/Release/verify-v1584-admin-backfill.mjs"
   },
   "devDependencies": {
     "axios": "^1.11.0",

@@ -6,7 +6,7 @@
     <header class="pp-page-head">
         <div class="pp-title">
             <h1>Find Best Signal</h1>
-            <p>ABS automatically evaluates your Admin-defined market universe across 15M and 4H using the existing Pulse strategy engine, then unlocks only the strongest qualifying setup.</p>
+            <p>ABS automatically evaluates the enabled Binance USD-M Futures universe across 15M and 4H using the Pulse strategy engine, ranks every qualifying setup and highlights the strongest Best Signal, while also showing the leading qualified opportunities.</p>
         </div>
         <div class="pp-head-actions">
             <a class="pp-button muted" href="{{ route('pulse.membership.index') }}">Package Access</a>
@@ -25,7 +25,7 @@
             <span data-scan-progress-copy>Preparing the market universe and strategy engine.</span>
             <div class="pp-scan-progress-track-v1560"><i data-scan-progress-bar></i></div>
             <div class="pp-scan-progress-steps-v1560" data-scan-progress-steps>
-                <span>Market data</span><span>Strategy evaluation</span><span>Qualification</span><span>Best Signal</span>
+                <span>Market data</span><span>Strategy evaluation</span><span>Qualification</span><span>Ranked signals</span>
             </div>
         </div>
     </section>

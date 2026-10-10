@@ -9,8 +9,8 @@ void main() {
   test('every historical type maps to its destination', () {
     expect(go('market_move').tab, PulseTab.home);
     expect(go('daily_brief').tab, PulseTab.home);
-    expect(go('qualified_signal').tab, PulseTab.pulse);
-    expect(go('entry_watch').tab, PulseTab.pulse);
+    expect(go('qualified_signal').tab, PulseTab.signals);
+    expect(go('entry_watch').tab, PulseTab.signals);
     expect(go('macro_event').tab, PulseTab.news);
     expect(go('breaking_news').tab, PulseTab.news);
     expect(go('package_expiry'),
@@ -23,11 +23,12 @@ void main() {
       'trade',
       'risk',
       'system',
-      'support',
-      'private_investor'
+      'support'
     ]) {
       expect(go(type).tab, PulseTab.account, reason: type);
     }
+    expect(go('private_investor').tab, PulseTab.portfolio);
+    expect(go('private_investor', authenticated:false).tab, PulseTab.account);
     expect(go('market_notice').tab, PulseTab.home);
   });
 

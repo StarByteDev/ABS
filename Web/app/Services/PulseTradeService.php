@@ -689,6 +689,9 @@ class PulseTradeService
             'severity' => $severity, 'action_url' => route('pulse.trades.show', $trade),
             'data' => ['trade_id' => $trade->id, 'environment' => $trade->environment],
         ]);
+        // Push is asynchronous; a Firebase outage cannot affect order execution.
+        try { app(PulseMobilePushDispatcher::class)->queueForAlert($alert); }
+        catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('Trade push enqueue failed', ['trade_id'=>$trade->id]); }
         $user = $trade->relationLoaded('user') ? $trade->user : User::query()->with('pulseSettings')->find($trade->user_id);
         if ($user) {
             if ($type === 'risk') $this->mail->pulseAlert($user, $alert);

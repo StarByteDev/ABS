@@ -186,7 +186,7 @@ class PrivatePortalController extends Controller
         return [
             'id'=>$account->id,'account_name'=>$account->account_name,'currency'=>$account->currency,
             'opening_value'=>(float)$account->opening_value,'current_value'=>(float)$account->current_value,
-            'net_contributions'=>$invested,'investor_principal'=>$invested,'total_profit'=>$profit,'profit_paid'=>(float)$posted->where('type','profit')->sum(fn($r)=>(float)$r->amount),'monthly_profit'=>(float)$account->monthly_profit,
+            'net_contributions'=>$invested,'investor_principal'=>$invested,'total_profit'=>$profit,'profit_paid'=>(float)$posted->where('type','profit')->reject(fn($r)=>in_array((string)$r->entry_source,['automatic_profit_reinvestment','admin_profit_reinvestment'],true))->sum(fn($r)=>(float)$r->amount),'profit_reinvested'=>(float)$posted->where('type','profit')->filter(fn($r)=>in_array((string)$r->entry_source,['automatic_profit_reinvestment','admin_profit_reinvestment'],true))->sum(fn($r)=>(float)$r->amount),'monthly_profit'=>(float)$account->monthly_profit,
             'valuation_date'=>$account->valuation_date?->toDateString(),'is_active'=>(bool)$account->is_active,'notes'=>$account->notes,
             'overall_return_percent'=>$invested>0?round(($profit/$invested)*100,2):0,
             'latest_monthly_return_percent'=>$latest && (float)$latest->opening_balance>0?round(((float)$latest->profit_loss/(float)$latest->opening_balance)*100,2):0,
@@ -195,7 +195,8 @@ class PrivatePortalController extends Controller
                 'investment'=>(float)$posted->where('type','deposit')->sum(fn($r)=>(float)$r->amount),
                 'capital_withdrawal'=>(float)$posted->where('type','withdrawal')->sum(fn($r)=>(float)$r->amount),
                 'withdrawal'=>(float)$posted->where('type','withdrawal')->sum(fn($r)=>(float)$r->amount),
-                'profit_paid'=>(float)$posted->where('type','profit')->sum(fn($r)=>(float)$r->amount),
+                'profit_paid'=>(float)$posted->where('type','profit')->reject(fn($r)=>in_array((string)$r->entry_source,['automatic_profit_reinvestment','admin_profit_reinvestment'],true))->sum(fn($r)=>(float)$r->amount),
+                'profit_reinvested'=>(float)$posted->where('type','profit')->filter(fn($r)=>in_array((string)$r->entry_source,['automatic_profit_reinvestment','admin_profit_reinvestment'],true))->sum(fn($r)=>(float)$r->amount),
                 'profit'=>(float)$posted->where('type','profit')->sum(fn($r)=>(float)$r->amount),
                 'losses_and_fees'=>(float)$posted->filter(fn($r)=>in_array($r->type,['loss','fee'],true))->sum(fn($r)=>(float)$r->amount),
             ],

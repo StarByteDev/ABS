@@ -18,11 +18,21 @@
     </div>
 
     <nav class="macro-v1512-tabs" aria-label="Economic calendar period">
-        <a class="{{ $macroMode==='today' ? 'active' : '' }}" href="{{ route('news.index',['calendar'=>'today']) }}"><span>Today</span><b>{{ number_format($macroCounts['today']) }}</b></a>
-        <a class="{{ $macroMode==='upcoming' ? 'active' : '' }}" href="{{ route('news.index',['calendar'=>'upcoming']) }}"><span>Upcoming</span><b>{{ number_format($macroCounts['upcoming']) }}</b></a>
-        <a class="{{ $macroMode==='history' ? 'active' : '' }}" href="{{ route('news.index',['calendar'=>'history']) }}"><span>Previous Releases</span><b>{{ number_format($macroCounts['history']) }}</b></a>
-        <a class="{{ $macroMode==='all' ? 'active' : '' }}" href="{{ route('news.index',['calendar'=>'all']) }}"><span>All</span><b>{{ number_format($macroCounts['all'] ?? 0) }}</b></a>
+        <a class="{{ $macroMode==='today' ? 'active' : '' }}" href="{{ route('news.index',['calendar'=>'today', 'impact'=>$macroImpact]) }}"><span>Today</span><b>{{ number_format($macroCounts['today']) }}</b></a>
+        <a class="{{ $macroMode==='upcoming' ? 'active' : '' }}" href="{{ route('news.index',['calendar'=>'upcoming', 'impact'=>$macroImpact]) }}"><span>Upcoming</span><b>{{ number_format($macroCounts['upcoming']) }}</b></a>
+        <a class="{{ $macroMode==='history' ? 'active' : '' }}" href="{{ route('news.index',['calendar'=>'history', 'impact'=>$macroImpact]) }}"><span>Previous Releases</span><b>{{ number_format($macroCounts['history']) }}</b></a>
+        <a class="{{ $macroMode==='all' ? 'active' : '' }}" href="{{ route('news.index',['calendar'=>'all', 'impact'=>$macroImpact]) }}"><span>All</span><b>{{ number_format($macroCounts['all'] ?? 0) }}</b></a>
     </nav>
+
+    <div class="macro-impact-filter" role="group" aria-label="Filter economic calendar by event impact">
+        <span>Filter calendar by impact</span>
+        <div class="macro-impact-options">
+            @foreach(['all'=>'All impacts','high'=>'High','medium'=>'Medium','low'=>'Low'] as $impactKey => $impactLabel)
+                <a href="{{ route('news.index', ['calendar'=>$macroMode,'impact'=>$impactKey]) }}#economic-calendar" aria-current="{{ $macroImpact === $impactKey ? 'true' : 'false' }}">{{ $impactLabel }}</a>
+            @endforeach
+        </div>
+        <small>{{ $macroImpact === 'all' ? 'Showing all relevant impacts' : 'Showing '.ucfirst($macroImpact).' impact events' }}</small>
+    </div>
 
     <div class="macro-status-v1561">
         <span class="{{ ($calendarLastSyncStatus ?? null) === 'success' ? 'good' : 'pending' }}">{{ ($calendarLastSyncStatus ?? null) === 'success' ? 'Calendar active' : 'Calendar refresh pending' }}</span>
@@ -36,19 +46,19 @@
                 $impactClass = strtolower($event->impact ?: 'medium');
                 $cryptoClass = strtolower($event->crypto_impact ?: 'mixed');
             @endphp
-            <article class="macro-v1512-event {{ $impactClass }}">
+            <article id="macro-event-{{ $event->id }}" class="macro-v1512-event {{ $impactClass }}" data-macro-event-id="{{ $event->id }}" data-macro-event-at="{{ $event->event_at?->toIso8601String() }}">
                 <div class="macro-v1512-time"><b>{{ $event->event_at?->format('H:i') ?: '—' }}</b><span>{{ $event->event_at?->format('d M') ?: 'Unscheduled' }}</span></div>
                 <div class="macro-v1512-event-main">
                     <div class="macro-v1512-title"><span class="macro-impact {{ $impactClass }}">{{ strtoupper($event->impact ?: 'MEDIUM') }}</span><small>{{ $event->country ?: 'Global' }}{{ $event->currency ? ' · '.$event->currency : '' }}</small><h3>{{ $event->title }}</h3></div>
-                    <div class="macro-v1512-values"><span><small>Previous</small><b>{{ $event->previous_value ?: '—' }}</b></span><span><small>Forecast</small><b>{{ $event->forecast_value ?: '—' }}</b></span><span class="actual"><small>Actual</small><b>{{ $event->actual_value ?: 'Pending' }}</b></span></div>
+                    <div class="macro-v1512-values"><span><small>Previous</small><b data-macro-value="previous">{{ $event->previous_value ?: 'Not available' }}</b></span><span><small>Forecast</small><b data-macro-value="forecast">{{ $event->forecast_value ?: 'Not published' }}</b></span><span class="actual"><small>Actual</small><b data-macro-value="actual">{{ $event->actual_value ?: ($event->event_at?->isFuture() ? 'Awaiting release' : 'Awaiting result') }}</b></span></div>
                 </div>
                 <div class="macro-v1512-context {{ $cryptoClass }}">
-                    <span>{{ $released ? 'Released' : ($event->event_at?->isFuture() ? 'Upcoming' : 'Awaiting actual') }} · {{ ucfirst($event->crypto_impact ?: 'mixed') }} crypto context</span>
+                    <span data-macro-state>{{ $released ? 'Released' : ($event->event_at?->isFuture() ? 'Upcoming' : 'Awaiting actual') }} · {{ ucfirst($event->crypto_impact ?: 'mixed') }} crypto context</span>
                     @if($event->easy_explanation)
                         <p><b>In simple words:</b> {{ $event->easy_explanation }}</p>
                     @endif
                     @if($event->crypto_impact_summary)
-                        <p><b>Possible crypto effect:</b> {{ $event->crypto_impact_summary }}</p>
+                        <p><b>Possible crypto effect:</b> <span data-macro-impact-analysis>{{ $event->crypto_impact_summary }}</span></p>
                     @endif
                     <div>
                         @if($event->source)
@@ -59,7 +69,7 @@
             </article>
         @empty
             <div class="macro-v1512-empty">
-                <span>◷</span><h3>{{ $macroMode==='history' ? 'No previous releases are stored yet.' : 'No events are available in this period yet.' }}</h3>
+                <span>◷</span><h3>{{ $macroMode==='history' ? 'No previous releases are stored yet.' : ($macroImpact !== 'all' ? 'No '.strtolower($macroImpact).' impact events in this period.' : 'No events are available in this period yet.') }}</h3>
                 <p>{{ $calendarConfigured ? 'Calendar data is refreshing. Try another period or check again shortly.' : 'Economic calendar data is temporarily unavailable.' }}</p>
             </div>
         @endforelse
@@ -98,3 +108,57 @@
     <div class="pagination-wrap">{{ $articles->links() }}</div>
 </section>
 @endsection
+
+@push('scripts')
+<script>
+// Poll released values while the calendar remains open; the scheduler performs
+// authoritative provider updates. This endpoint reads the same database as mobile.
+(() => {
+    const cards = document.querySelectorAll('[data-macro-event-id]');
+    if (!cards.length) return;
+    let active = false;
+    async function refreshMacro() {
+        if (document.hidden || active) return;
+        active = true;
+        try {
+            const start = new Date(), end = new Date();
+            start.setDate(start.getDate() - 31); end.setDate(end.getDate() + 46);
+            const url = new URL(@json(url('/api/v1/economic-calendar')), location.origin);
+            url.searchParams.set('from', start.toISOString().slice(0,10));
+            url.searchParams.set('to', end.toISOString().slice(0,10));
+            const response = await fetch(url.toString(), {cache: 'no-store'});
+            if (!response.ok) return;
+            const payload = await response.json();
+            const events = new Map((payload.data || []).map(event => [String(event.id), event]));
+            cards.forEach(card => {
+                const event = events.get(card.dataset.macroEventId);
+                if (!event) return;
+                for (const [key, field, fallback] of [
+                    ['previous','previous_value','Not available'],
+                    ['forecast','forecast_value','Not published'],
+                    ['actual','actual_value','Awaiting result']
+                ]) {
+                    const target = card.querySelector('[data-macro-value="' + key + '"]');
+                    if (!target) continue;
+                    let value = event[field] || fallback;
+                    if (key === 'actual' && !event[field]) {
+                        value = new Date(card.dataset.macroEventAt).getTime() > Date.now()
+                            ? 'Awaiting release' : 'Awaiting result';
+                    }
+                    if (target.textContent !== value) target.textContent = value;
+                }
+                const state = card.querySelector('[data-macro-state]');
+                if (state) state.textContent = (event.actual_value ? 'Released' :
+                    (new Date(card.dataset.macroEventAt).getTime() > Date.now() ? 'Upcoming' : 'Awaiting actual'))
+                    + ' · ' + ((event.crypto_impact || 'mixed').replace(/^./, c => c.toUpperCase())) + ' crypto context';
+                const analysis = card.querySelector('[data-macro-impact-analysis]');
+                if (analysis && event.crypto_impact_summary) analysis.textContent = event.crypto_impact_summary;
+            });
+        } catch (_) { /* A temporary network failure must not hide existing calendar values. */ }
+        finally { active = false; }
+    }
+    setInterval(refreshMacro, 60000);
+    window.addEventListener('focus', refreshMacro);
+})();
+</script>
+@endpush

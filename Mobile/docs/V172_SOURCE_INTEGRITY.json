@@ -1,0 +1,63 @@
+{
+  "based_on": "PULSE_FLUTTER_V1_7_1_PREMIUM_INVESTOR_TRADER_FREE_SIGNAL_ABS_V15_9_1_COMPLETE_SOURCE.zip",
+  "version": "1.7.2+172",
+  "backend": "15.9.1",
+  "preserved_files": [
+    {
+      "file": "lib/core/api_client.dart",
+      "unchanged": true,
+      "sha256": "9cdc46e1ad7dca332c1e4e79e90298d1a631bae3b7edf913a1d5a23d49ec85d2"
+    },
+    {
+      "file": "lib/core/session.dart",
+      "unchanged": true,
+      "sha256": "426d47bb4b501f7a467f9c2fdb8da99c20c60715288e3822320542dea42ce872"
+    },
+    {
+      "file": "lib/firebase_options.dart",
+      "unchanged": true,
+      "sha256": "0ff58535b3c5ca28ee04c2a23dd87867ae1eacc96b37886582f918e9dd381e09"
+    },
+    {
+      "file": "lib/core/ads/ad_config.dart",
+      "unchanged": true,
+      "sha256": "5670bf177af46a87ee9df4e581f77b55a63502d24965db8e740b6629f547ab5c"
+    },
+    {
+      "file": "lib/core/ads/ad_service.dart",
+      "unchanged": true,
+      "sha256": "a54a06d08c5349dffb656fcde1343759bf144c9776a23a3ce3a337abd5377bc6"
+    },
+    {
+      "file": "lib/core/notifications/notification_service.dart",
+      "unchanged": true,
+      "sha256": "d2fa1f73b6b6f2d6c79c78502620b33f519ce68fc81497e9fe53352bd7b99d93"
+    },
+    {
+      "file": "android/app/google-services.json",
+      "unchanged": true,
+      "sha256": "030807c1595f8316c96336d539166c33a10ee58682ca97d348f662697616926b"
+    },
+    {
+      "file": "ios/Runner/GoogleService-Info.plist",
+      "unchanged": true,
+      "sha256": "adf01c6402aee70b04feaa0fd0df968987a8d7db74033f5e4b9748719921e924"
+    },
+    {
+      "file": "android/app/build.gradle.kts",
+      "unchanged": true,
+      "sha256": "589126513172e1e890d5b0084b3033a81c4c52b858a5c9ba2a9b578eb3822d6e"
+    },
+    {
+      "file": "android/settings.gradle.kts",
+      "unchanged": true,
+      "sha256": "b03e5bbf7d9157529932f5e55dce912cff35aff5a4a4085e00f58e2833af6830"
+    },
+    {
+      "file": "android/gradle/wrapper/gradle-wrapper.properties",
+      "unchanged": true,
+      "sha256": "3d668f5f8e5960dcade719b50264b88b08db5adb8e46bb4199f13aa375365fad"
+    }
+  ],
+  "flutter_build": "not_run_no_sdk"
+}

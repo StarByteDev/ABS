@@ -21,6 +21,7 @@ class _NewsScreenState extends State<NewsScreen> {
   int _view = 0; // Calendar is intentionally first/default.
   String _cat = 'All';
   String _period = 'Upcoming';
+  String _impact = 'all';
   bool _requested = false;
 
   @override
@@ -120,6 +121,7 @@ class _NewsScreenState extends State<NewsScreen> {
     final start = DateTime(now.year, now.month, now.day);
     final end = start.add(const Duration(days: 1));
     final events = MockData.calendar.where((e) {
+      if (_impact != 'all' && e.impact.toLowerCase() != _impact) return false;
       final at = e.at?.toLocal();
       if (_period == 'All') return true;
       if (at == null) return _period == 'Upcoming';
@@ -170,6 +172,17 @@ class _NewsScreenState extends State<NewsScreen> {
             },
           ),
         ),
+        const SizedBox(height: 11),
+        Wrap(spacing: 7, runSpacing: 6, children: const ['all','high','medium','low'].map((level) =>
+          ChoiceChip(
+            label: Text(level == 'all' ? 'All impact' : '${level[0].toUpperCase()}${level.substring(1)}'),
+            selected: _impact == level,
+            selectedColor: fade(AppColors.accent,.22),
+            backgroundColor: AppColors.surface,
+            side: BorderSide(color: _impact == level ? AppColors.accent : AppColors.line),
+            labelStyle: TextStyle(color: _impact == level ? AppColors.text : AppColors.muted),
+            onSelected: (_) => setState(() => _impact = level),
+          )).toList()),
         const SizedBox(height: 14),
         if (events.isEmpty)
           const EmptyState(
@@ -191,6 +204,7 @@ class _NewsScreenState extends State<NewsScreen> {
   int _countForPeriod(
       String value, DateTime now, DateTime start, DateTime end) {
     return MockData.calendar.where((e) {
+      if (_impact != 'all' && e.impact.toLowerCase() != _impact) return false;
       final at = e.at?.toLocal();
       if (value == 'All') return true;
       if (at == null) return value == 'Upcoming';

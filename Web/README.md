@@ -1,3 +1,130 @@
+> **V15.9.1 CANDIDATE — Cross-route premium light/dark theme normalization:** A single final theme stylesheet shared across public, auth, member and admin layouts. Fixes Pulse Open Positions/Trade History KPI, headings, tables, filters and mobile alignment. All 131 Blade templates source-inventoried; 144 fixture-based contrast checks passed across two themes and three widths. **Not authenticated end-to-end verified**; see `docs/ABS_V15_9_1_DEPLOY_AND_AUDIT.md`. No database or trading changes.
+
+> **V15.9.0 CANDIDATE — UI theme and economic-calendar impact filter:** Web style patches for profile services, Free Signal and macro calendar, grid-aligned sidebar and period-preserving High/Medium/Low impact filter. Read `docs/ABS_V15_9_0_THEME_CALENDAR_FILTER_QA.md`. No DB change. Full authenticated route QA still needed.
+
+> **V15.9.0 CANDIDATE — UI theme and economic-calendar impact filter:** Web style patches for profile services, Free Signal and macro calendar, grid-aligned sidebar and period-preserving High/Medium/Low impact filter. Read `docs/ABS_V15_9_0_THEME_CALENDAR_FILTER_QA.md`. No DB change. Full authenticated route QA still needed.
+
+> **V15.8.7 UI theme hotfix candidate:** Fixes broken/mixed Light/Dark themes for member pp-* dashboard/components and improves the shared theme switcher. No DB/business logic changes. See `docs/ABS_V15_8_7_THEME_HOTFIX_DEPLOY.md`. Not production-verified.
+
+> **V15.8.6 testing candidate:** Evidence-based strategy safety, admin reporting CSV + mobile API, generic FCM queued alerts, consistent light theme. Deployment: `docs/ABS_V15_8_6_ADAPTIVE_PUSH_THEME_DEPLOY.md`. NOT PRODUCTION-VERIFIED.
+
+> **V15.8.5 candidate:** Economic Calendar + Pulse Push. See `docs/ABS_V15_8_5_MACRO_PUSH_DEPLOY.md`. Not yet deployed; mobile-side FCM setup required. Original working base: V15.8.4.
+
+## ABS V15.8.4 — Admin Analytics Backfill & Shared-Hosting Maintenance
+
+V15.8.4 is a production-safe follow-up to V15.8.3 for HostGator/shared-hosting deployments. It removes the need to run the one-time strategy analytics backfill from SSH/Terminal. Admin can now queue a 7, 30 or 90-day rebuild directly from **Admin → Strategy Engine & Evaluation → Strategy Performance**. The existing scheduler processes the job automatically in small bounded batches; the existing cPanel cron entry must remain unchanged.
+
+### Shared-hosting backfill workflow
+
+1. Open **Admin → Strategy Engine & Evaluation → Strategy Performance**.
+2. In **Shared-Hosting Maintenance**, choose 7, 30 or 90 days.
+3. Click **Queue Analytics Backfill**.
+4. Leave the existing production cron exactly as it is. ABS `schedule:run` will reach the already-scheduled `abs:pulse-maintenance` task and process up to three retained dates per cycle within an approximately 20-second work budget.
+5. The page shows queued/running/completed/failed status, processed dates and progress percentage.
+6. At completion, Pulse refreshes learning-state and adaptive R:R evidence once.
+
+This rebuild updates derived analytics only. It does not delete or rewrite customer, investor, signal, validation or trade history. A safe Cancel action stops future chunks while preserving dates already rebuilt.
+
+### Compatibility
+
+- No database schema change.
+- No change to the user's existing cPanel cron configuration.
+- Existing mobile API routes and fields remain compatible.
+- V15.8.3 adaptive strategy, dynamic R:R and premium theme behavior is preserved.
+
+## ABS V15.8.3 — Mobile API Compatibility, Adaptive Strategy Optimizer & Premium Theme
+
+V15.8.3 is a production-safe follow-up to V15.8.2. It preserves the existing mobile API contract, adds a health probe for connectivity diagnostics, introduces evidence-driven strategy throttling and bounded R:R optimization, corrects neutral strategy filters that were creating misleading directional attribution, and refreshes the Dark theme with a premium navy/graphite palette.
+
+### Mobile/API recovery
+- V15.7.4 → V15.8.2 source comparison found no removal/renaming of the existing Pulse mobile API routes/controller contract.
+- The supplied production error `NET::ERR_CERT_COMMON_NAME_INVALID` is an HTTPS certificate hostname problem that occurs before Laravel; it must be corrected at HostGator/cPanel/SSL level.
+- Added `GET /api/v1` and `GET /api/v1/health` as unauthenticated diagnostics. Existing Bootstrap/auth/scanner/signals/trades/reports/private-investor API routes remain intact.
+- Strategy-report API fields are preserved and an optional `adaptive` object is added for newer clients; signal strategy-evidence rows also receive optional adaptive/eligibility keys without removing legacy keys.
+
+### Adaptive strategy optimization
+- Raw research continues for all enabled strategies so the system keeps learning rather than hiding weak evidence.
+- Member-facing scans dynamically reduce the contribution of mature negative-expectancy strategies and can mark persistently weak contributors Research Only.
+- Adaptive R:R is selected from recorded MFE/MAE evidence and is bounded to ±0.50R from the configured strategy target to avoid overreaction.
+- Member signals require directional confluence and at least one Core Strategy/Entry Trigger.
+- ATR Volatility, Range Compression and Risk/Reward Quality are now neutral filters/gates and cannot manufacture LONG/SHORT direction.
+- Added a non-directional high-impact macro-event risk gate using the existing economic calendar, so member signals can be paused around configured event windows without pretending that fundamentals predict direction.
+- The existing 75% technical + 25% learned-reliability confidence architecture is retained. Historical losses are not rewritten and no profitability guarantee is implied.
+
+### Theme
+- Added a V15.8.3 premium theme layer: navy/graphite surfaces, softer hierarchy/borders, cyan interactions, restrained gold highlights and clearer success/loss colors.
+- Light/Dark preference remains persistent across Admin, Pulse and public layouts.
+
+### Production/data safety
+- No customer, investor, payment, membership, signal, trade, statement or learning history is deleted/reset.
+- Strategy migration is additive/idempotent and preserves Admin-customized settings.
+- The published mobile app receives the backend strategy improvements automatically once valid HTTPS is restored. No Flutter binary/source is bundled in this web/backend release.
+
+---
+
+## ABS V15.8.2 — Scan Audit Stability & $100 Virtual Strategy Performance
+
+V15.8.2 is a production-safe reporting/stability update on top of V15.8.1. It fixes the live shared-hosting `HY001 / 1038 Out of sort memory` failure on **Admin → Audit & History** and makes strategy performance easier to understand by replaying each resolved paper trade with the same **$100 unleveraged virtual position size**.
+
+### Scan Audit stability
+- Replaced full-row `ORDER BY started_at` pagination with a two-stage primary-key-first paginator. Only IDs are paginated/sorted first; the 30 full rows and their large JSON summaries are hydrated afterward.
+- Aggregate scan evidence now reads large JSON summaries in bounded 100-run chunks instead of loading the complete date range into PHP memory at once.
+- Added a best-effort `started_at + id` scanner-run index for normal migrations and shared-hosting Schema Repair.
+- This removes the MySQL filesort pattern that caused the production `Out of sort memory` error without requiring HostGator/MySQL server configuration changes.
+
+### $100 virtual strategy performance
+- Every resolved paper TP/SL is replayed as a **$100 unleveraged position** using its actual Entry → final TP/SL price move.
+- Reports now show gross virtual profit, gross virtual loss, net virtual P/L, tested notional, virtual ROI and average P/L per resolved trade.
+- Strategy Intelligence shows Signals/Entries, TP1/TP2/TP3, final TP/SL, success rate, virtual P/L, virtual ROI, Net R and Learning Score in one register.
+- Trade Results now displays the $100 virtual P/L for each individual resolved trade and can be filtered by strategy as well as TP/SL/milestone outcome.
+- Strategy P/L is explicitly marked as attribution: one signal can contain several contributing strategies, so strategy rows can overlap. The overall Net Virtual P/L is calculated once per unique trade and is the figure to use for total system performance.
+
+### Production/data safety
+- No users, memberships, payments, investors, statements, signals, trades or historical strategy evidence are deleted or rewritten.
+- The only schema change is an additive performance index; rollback intentionally leaves it in place.
+- Existing web/mobile API routes and response fields remain compatible. The $100 simulation is Admin reporting only and does not change real exchange execution, signal scoring or investor accounting.
+
+---
+
+## ABS V15.8.1 — Qualified Signal Shortlist, Effective-Dated Investor Rates, Reinvestment & Exchange Performance Ledger
+
+V15.8.1 is a production-safe follow-up to V15.8.0. It keeps the live mobile/API contract intact while making the web scanner more transparent and strengthening Private Investor accounting and Admin performance tracking.
+
+### Find Best Signal
+- Scans the full enabled Binance USD-M Futures universe synchronized into Pulse, regardless of package pair assignments.
+- Keeps one canonical **Best Signal** for existing mobile/API compatibility, but the web page now shows the ranked top qualified shortlist (default up to 12) instead of hiding every qualifier except the winner.
+- Metrics distinguish total qualified setups from the number displayed and keep the strongest candidate ranked first.
+
+### Effective-dated investor agreements
+- Monthly percentage changes are stored as immutable effective-dated rate periods. A later 2% agreement does not rewrite earlier 5% months.
+- Rate changes can start on the first day of a month or mid-month; the target is calculated day-by-day using invested capital and the rate effective on each date.
+- Published monthly statements are finalized history and are not automatically rewritten by a later agreement change.
+
+### Profit payout vs reinvestment
+- Each effective-dated agreement can settle monthly profit as **Pay to investor** or **Retain & reinvest into capital**.
+- Paid profit remains an external distribution and has zero capital effect.
+- Reinvested profit remains visible as profit, is separately reported as **Profit Reinvested**, and also increases invested capital from its settlement date so later targets compound from the higher capital base.
+- Partial capital withdrawals reduce invested capital from their posted date; future daily/monthly targets automatically use the reduced balance.
+- Statements separately show Profit Paid and Profit Reinvested. Transaction labels and schema-repair logic preserve the same distinction.
+
+### Admin Exchange Ledger & Performance
+- New **Private Investors → Exchange Ledger** page records opening balance, exchange deposits, exchange withdrawals, trading P/L, fees and auditable adjustments.
+- Admin can set a monthly own-performance target and compare realized trading P/L with that target and with the combined investor monthly profit target.
+- Shows opening/closing exchange balance, net exchange cash flow, monthly P/L, target progress and a rolling 12-month statement.
+- Incorrect ledger rows are voided with a reason rather than deleted, preserving audit history.
+
+### Production/data safety
+- Additive migration only. Existing users, investors, payments, memberships, transactions, statements, signals, trades and mobile API fields are retained.
+- Existing V15.8.0 Best Signal API behavior is preserved; the multiple-qualified-signals experience is an additive web/reporting enhancement.
+- Shared-hosting Schema Repair is V15.8.1-aware and will not convert reinvested profits back into external payouts.
+
+### Release QA
+- PHP/Blade syntax validation completed across the application source.
+- The source package contains no production dummy financial records.
+- Runtime Laravel integration tests require the deployment/vendor dependencies and production-like database environment; use the normal staged migration/backup procedure before production deployment.
+
+---
+
 ## ABS V15.7.4 — Automatic Investor Profit Payouts, Statements & USD Consolidation
 
 V15.7.4 is the production Private Investor settlement and reporting release built on V15.7.3. It fixes the gaps visible in the live investor screens: completed months no longer leave Statements blank, monthly profit is treated as an external investor payout rather than capital retained in the portfolio, capital withdrawals remain separate from profit distributions, and Admin can see every investor in their own principal currency while also managing all investor funds in consolidated USD.

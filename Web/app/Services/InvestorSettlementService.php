@@ -16,9 +16,9 @@ use Throwable;
  * Finalizes due Private Investor months.
  *
  * Daily performance accruals are provisional. At the agreed payout date the
- * month's performance is converted into a posted Profit transaction (money paid
- * outside the portfolio) and a reconciled MonthlyStatement. Paid profit does not
- * increase investor capital. Capital withdrawals remain a separate principal flow.
+ * month's performance is converted into a posted Profit transaction and a reconciled
+ * MonthlyStatement. The agreement decides whether the profit is paid outside the
+ * portfolio or retained/reinvested into capital. Capital withdrawals remain separate.
  */
 class InvestorSettlementService
 {
@@ -59,7 +59,8 @@ class InvestorSettlementService
         $summary = ['months'=>0,'payouts_created'=>0,'statements_created'=>0,'statements_updated'=>0,'skipped'=>0];
         if (! $term || $term->status !== 'active' || ! $term->effective_from) return $summary;
 
-        $firstMonth = $term->effective_from->copy()->startOfMonth();
+        $oldestRate = $account->investmentRatePeriods()->min('effective_from');
+        $firstMonth = ($oldestRate ? Carbon::parse($oldestRate) : $term->effective_from)->copy()->startOfMonth();
         $lastCandidate = $asOf->copy()->startOfMonth();
         if ($firstMonth->gt($lastCandidate)) return $summary;
 
@@ -111,9 +112,10 @@ class InvestorSettlementService
                 })->orderBy('transaction_date')->orderBy('id')->get();
 
             $plan = $this->performance->syncAgreementMonth($locked, $term, $month, $term->created_by);
+            $disposition = $this->performance->profitDispositionForDate($locked, $month->copy()->endOfMonth(), (string)($term->profit_disposition ?? 'payout'));
             $payoutCreated = false;
 
-            if ($existingPayouts->isEmpty() && (bool)($term->auto_payout ?? true) && $plan) {
+            if ($existingPayouts->isEmpty() && $plan) {
                 // A due historical month is fully accrued before settlement. postDue() is idempotent.
                 $this->performance->ensureSchedule($plan);
                 $this->performance->rebalanceFuture($plan);
@@ -133,9 +135,9 @@ class InvestorSettlementService
                             'fx_source'=>$quote['source'],
                             'transaction_date'=>$settlementDate->toDateString(),
                             'performance_month'=>$month->toDateString(),
-                            'entry_source'=>'automatic_monthly_payout',
-                            'reference'=>'Monthly profit payout · '.$month->format('M Y'),
-                            'description'=>'Monthly profit paid under the agreed '.number_format((float)$term->monthly_target_rate,2).'% performance agreement.',
+                            'entry_source'=>$disposition === 'reinvest' ? 'automatic_profit_reinvestment' : 'automatic_monthly_payout',
+                            'reference'=>($disposition === 'reinvest' ? 'Monthly profit reinvestment · ' : 'Monthly profit payout · ').$month->format('M Y'),
+                            'description'=>($disposition === 'reinvest' ? 'Monthly profit retained and added to invested capital under the effective-dated performance agreement.' : 'Monthly profit paid under the effective-dated performance agreement.'),
                         ], $term->created_by, true);
                         $existingPayouts = collect([$payout]);
                         $payoutCreated = true;
@@ -162,8 +164,10 @@ class InvestorSettlementService
                 PulseAlert::create([
                     'user_id'=>$freshAccount->user_id,
                     'type'=>'private_investor',
-                    'title'=>'Monthly profit paid',
-                    'message'=>$freshAccount->currency.' '.number_format((float)$statement->profit_paid,2).' for '.$month->format('F Y').' has been recorded as paid. Your monthly statement is available.',
+                    'title'=>$disposition === 'reinvest' ? 'Monthly profit reinvested' : 'Monthly profit paid',
+                    'message'=>$disposition === 'reinvest'
+                        ? $freshAccount->currency.' '.number_format((float)$statement->profit_reinvested,2).' for '.$month->format('F Y').' has been retained and added to invested capital. Your monthly statement is available.'
+                        : $freshAccount->currency.' '.number_format((float)$statement->profit_paid,2).' for '.$month->format('F Y').' has been recorded as paid. Your monthly statement is available.',
                     'severity'=>'info','is_read'=>false,'action_url'=>route('private.statement',$statement),
                     'data'=>['portfolio_account_id'=>$freshAccount->id,'monthly_statement_id'=>$statement->id,'performance_month'=>$month->format('Y-m')],
                 ]);
@@ -174,7 +178,7 @@ class InvestorSettlementService
                 'payout_created'=>$payoutCreated,
                 'statement_created'=>! $existing,
                 'statement_updated'=>(bool)$existing,
-                'skipped'=>!$payoutCreated && !$existing && (float)$statement->profit_paid <= 0,
+                'skipped'=>!$payoutCreated && !$existing && ((float)$statement->profit_paid + (float)($statement->profit_reinvested ?? 0)) <= 0,
             ];
         });
     }
@@ -197,11 +201,15 @@ class InvestorSettlementService
         $contributionsUsd = round((float)$during->where('type','deposit')->sum(fn($tx)=>(float)($tx->principal_usd_basis ?? $tx->usd_amount ?? 0)),2);
         $withdrawalsUsd = round(abs((float)$during->where('type','withdrawal')->sum(fn($tx)=>(float)($tx->usd_net_contributions_effect ?? 0))),2);
 
-        $profitPaid = round((float)$payouts->sum(fn($tx)=>(float)$tx->amount),2);
-        $profitPaidUsd = round((float)$payouts->sum(fn($tx)=>(float)($tx->usd_amount ?? 0)),2);
+        $profitReinvestedRows = $payouts->filter(fn($tx)=>(string)($tx->entry_source ?? '') === 'automatic_profit_reinvestment' || (string)($tx->entry_source ?? '') === 'admin_profit_reinvestment');
+        $profitPaidRows = $payouts->reject(fn($tx)=>$profitReinvestedRows->contains('id',$tx->id));
+        $profitPaid = round((float)$profitPaidRows->sum(fn($tx)=>(float)$tx->amount),2);
+        $profitPaidUsd = round((float)$profitPaidRows->sum(fn($tx)=>(float)($tx->usd_amount ?? 0)),2);
+        $profitReinvested = round((float)$profitReinvestedRows->sum(fn($tx)=>(float)$tx->amount),2);
+        $profitReinvestedUsd = round((float)$profitReinvestedRows->sum(fn($tx)=>(float)($tx->usd_amount ?? 0)),2);
         $otherPerformance = $during->filter(fn($tx)=>in_array($tx->type,['loss','fee'],true));
-        $profitLoss = round($profitPaid + (float)$otherPerformance->sum(fn($tx)=>(float)$tx->profit_effect),2);
-        $profitLossUsd = round($profitPaidUsd + (float)$otherPerformance->sum(fn($tx)=>(float)($tx->usd_profit_effect ?? 0)),2);
+        $profitLoss = round($profitPaid + $profitReinvested + (float)$otherPerformance->sum(fn($tx)=>(float)$tx->profit_effect),2);
+        $profitLossUsd = round($profitPaidUsd + $profitReinvestedUsd + (float)$otherPerformance->sum(fn($tx)=>(float)($tx->usd_profit_effect ?? 0)),2);
 
         // Closing values are ledger-derived. Paid profit has a zero capital effect.
         $closing = max(0, round($opening + (float)$during->sum(fn($tx)=>(float)$tx->current_value_effect),2));
@@ -219,12 +227,14 @@ class InvestorSettlementService
             'withdrawals'=>$withdrawals,
             'profit_loss'=>$profitLoss,
             'profit_paid'=>$profitPaid,
+            'profit_reinvested'=>$profitReinvested,
             'closing_balance'=>$closing,
             'opening_balance_usd'=>$openingUsd,
             'contributions_usd'=>$contributionsUsd,
             'withdrawals_usd'=>$withdrawalsUsd,
             'profit_loss_usd'=>$profitLossUsd,
             'profit_paid_usd'=>$profitPaidUsd,
+            'profit_reinvested_usd'=>$profitReinvestedUsd,
             'closing_balance_usd'=>$closingUsd,
             'payment_date'=>$paymentDate,
         ];

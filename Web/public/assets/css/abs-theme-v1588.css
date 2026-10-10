@@ -1,0 +1,262 @@
+/* ABS 15.8.8 — full-shell dual-theme integration. Always last stylesheet.
+   Explicitly addresses final-* public marketplace, news, auth and legacy content islands.
+   Avoid the V15.8.6 global p/small/strong rule by restoring foreground within each surface. */
+:root[data-abs-theme="dark"]{
+  --abs8-bg:#07121d;--abs8-panel:#0c2030;--abs8-inset:#081827;
+  --abs8-panel2:#10283b;--abs8-ink:#edf6fb;--abs8-muted:#adc0ce;
+  --abs8-line:#294b60;--abs8-link:#79dff5;--abs8-accent:#ffd16d;
+  --abs8-pos:#70e7a4;--abs8-neg:#ff8995;--abs8-shadow:0 14px 38px rgba(0,0,0,.19);
+}
+:root[data-abs-theme="light"]{
+  --abs8-bg:#f3f7fb;--abs8-panel:#ffffff;--abs8-inset:#f4f8fb;
+  --abs8-panel2:#f8fbfe;--abs8-ink:#152f44;--abs8-muted:#536d80;
+  --abs8-line:#c9dce7;--abs8-link:#076f94;--abs8-accent:#a66c0c;
+  --abs8-pos:#087b4d;--abs8-neg:#b6273c;--abs8-shadow:0 8px 28px rgba(21,58,84,.07);
+}
+:root[data-abs-theme] {color-scheme:light dark;}
+:root[data-abs-theme="light"] {color-scheme:light;}
+:root[data-abs-theme="dark"] {color-scheme:dark;}
+/* All three web shells inherit the SAME tokens; no partial light shells. */
+html[data-abs-theme] body.abs-body,
+html[data-abs-theme] body.pulse-body,
+html[data-abs-theme] body.admin-body {
+  background:var(--abs8-bg)!important;color:var(--abs8-ink)!important;
+}
+html[data-abs-theme] body.abs-body main {color:var(--abs8-ink)!important;}
+html[data-abs-theme] :is(.abs-theme-toggle,[data-abs-theme-toggle]) {z-index:10050!important;}
+html[data-abs-theme] :is(input,select,textarea,button) {color-scheme:inherit;}
+/* Public home: old CSS hardcodes dark market terminal, feature cards and headlines;
+   the previous patch inverted text globally while leaving dark backgrounds. */
+html[data-abs-theme] body.abs-body[data-home-page="1"] :is(
+  .final-market-board,.final-market-primary,.final-market-side,.final-market-side .final-side-card,
+  .final-trust-grid article,.final-headline-card,.final-advantage-grid article,
+  .final-clarity,.final-market-snapshot,.final-overview-kpis article,
+  .final-overview-charts>article,.final-futures-card,.final-market-intelligence,
+  .final-sector-performance,.final-industries article,.final-mover-row,
+  .final-market-movers,.final-plan-grid>article,.final-plan-grid-four>article,
+  .final-cta,.final-snapshot-insights>article,.final-side-card,.final-split-metric,
+  .final-futures-metrics-grid>article,.final-industry-grid>article
+){
+  background:var(--abs8-panel)!important;color:var(--abs8-ink)!important;
+  border-color:var(--abs8-line)!important;
+  box-shadow:var(--abs8-shadow)!important;
+}
+html[data-abs-theme] body.abs-body[data-home-page="1"] :is(
+  .final-market-side,.final-coin-strip,.final-chart-tabs,.final-futures-extra,
+  .final-market-side .final-split-metric,.final-market-snapshot .final-split-metric
+){background:var(--abs8-inset)!important;border-color:var(--abs8-line)!important;}
+html[data-abs-theme] body.abs-body[data-home-page="1"] :is(
+  .final-hero-copy h1,.final-market-title b,.final-market-price-row strong,
+  .final-market-meta b,.final-market-side strong,.final-market-side b,.final-market-side li b,
+  .final-sentiment .gauge b,.final-coin-strip strong,.final-coin-strip b,
+  .final-trust-grid b,.final-headline-card h3,.final-advantage-grid h3,
+  .final-advantages h2,.final-clarity-copy h2,.final-section-heading h2,
+  .final-overview-kpis strong,.final-overview-charts strong,.final-futures-card strong,
+  .final-cta h2,.final-plan-grid b,.final-plan-grid strong,
+  .final-plan-grid-four b,.final-plan-grid-four strong,.final-market-snapshot strong
+){color:var(--abs8-ink)!important;}
+html[data-abs-theme] body.abs-body[data-home-page="1"] :is(
+  .final-hero-copy>p,.final-market-meta,.final-market-side small,.final-market-side>small,
+  .final-market-side li,.final-market-side li span,.final-pulse-score,
+  .final-pulse-score i,.final-coin-strip small,.final-trust-grid small,
+  .final-trusted-by small,.final-trusted-by span,.final-headline-card small,
+  .final-headline-card p,.final-advantage-grid p,.final-clarity-copy p,
+  .final-market-snapshot p,.final-overview-kpis small,.final-overview-charts small,
+  .final-plan-grid p,.final-plan-grid li,.final-plan-grid-four p,
+  .final-plan-grid-four li,.final-cta p,.final-split-metric small,
+  .final-section-heading a,.final-futures-extra small,.final-mover-row small,
+  .final-futures-card small,.final-trusted-by
+){color:var(--abs8-muted)!important;}
+html[data-abs-theme] body.abs-body[data-home-page="1"] .final-trust-grid .final-line-icon {color:var(--abs8-accent)!important;}
+html[data-abs-theme] body.abs-body[data-home-page="1"] .final-market-title span {
+  background:var(--abs8-panel2)!important;color:var(--abs8-link)!important;border:1px solid var(--abs8-line)!important;
+}
+html[data-abs-theme] body.abs-body[data-home-page="1"] .final-chart-tabs button,
+html[data-abs-theme] body.abs-body[data-home-page="1"] .final-market-board :is(input,select) {
+  color:var(--abs8-muted)!important;background:var(--abs8-panel)!important;border-color:var(--abs8-line)!important;
+}
+html[data-abs-theme] body.abs-body[data-home-page="1"] .final-chart-tabs button.active {
+  background:var(--abs8-link)!important;color:var(--abs8-panel)!important;
+}
+html[data-abs-theme="light"] body.abs-body[data-home-page="1"] .final-chart-tabs button.active {background:#087da0!important;color:#fff!important;}
+html[data-abs-theme="dark"] body.abs-body[data-home-page="1"] .final-chart-tabs button.active {background:#127999!important;color:#fff!important;}
+html[data-abs-theme] body.abs-body[data-home-page="1"] .final-live-chart {
+  background:linear-gradient(to right,rgba(100,145,174,.09) 1px,transparent 1px) 0 0/20% 100%,
+    linear-gradient(to bottom,rgba(100,145,174,.12) 1px,transparent 1px) 0 0/100% 25%,var(--abs8-inset)!important;
+}
+html[data-abs-theme] body.abs-body[data-home-page="1"] .final-live-chart :is(.chart-loading,.chart-error) {color:var(--abs8-muted)!important;}
+html[data-abs-theme] body.abs-body[data-home-page="1"] .final-sentiment .gauge:after {background:var(--abs8-panel)!important;}
+html[data-abs-theme] body.abs-body[data-home-page="1"] .final-pulse-card strong,
+html[data-abs-theme] body.abs-body[data-home-page="1"] .positive {color:var(--abs8-pos)!important;}
+html[data-abs-theme] body.abs-body[data-home-page="1"] .negative {color:var(--abs8-neg)!important;}
+html[data-abs-theme] body.abs-body[data-home-page="1"] .final-hero-gold,
+html[data-abs-theme] body.abs-body[data-home-page="1"] .final-advantages h2 span,
+html[data-abs-theme] body.abs-body[data-home-page="1"] .final-cta h2 span {color:var(--abs8-accent)!important;}
+html[data-abs-theme] body.abs-body[data-home-page="1"] .final-section-eyebrow,
+html[data-abs-theme] body.abs-body[data-home-page="1"] .final-eyebrow,
+html[data-abs-theme] body.abs-body[data-home-page="1"] .final-section-heading h2 {color:var(--abs8-link)!important;}
+html[data-abs-theme] body.abs-body[data-home-page="1"] .final-coin-strip .coin-icon {color:#fff!important;}
+/* Buttons retain readable text against gold; outline buttons use current tokens. */
+html[data-abs-theme] body.abs-body[data-home-page="1"] :is(.final-button-gold,.final-plan-button,.final-header-button.gold) {
+  background:linear-gradient(#ffd16c,#e5a733)!important;color:#18222c!important;border-color:#bb8324!important;
+}
+html[data-abs-theme] body.abs-body[data-home-page="1"] :is(.final-button-gold,.final-plan-button,.final-header-button.gold) :is(b,span) {color:#18222c!important;}
+html[data-abs-theme] body.abs-body[data-home-page="1"] .final-button-outline {
+  background:var(--abs8-panel)!important;color:var(--abs8-ink)!important;border-color:var(--abs8-line)!important;
+}
+/* Public navigation, branded footer, and non-home marketing routes. */
+html[data-abs-theme] body.abs-body :is(.final-site-header,.final-nav-wrap,.final-nav-inner,.site-header) {
+  background:var(--abs8-panel)!important;color:var(--abs8-ink)!important;border-color:var(--abs8-line)!important;
+}
+html[data-abs-theme] body.abs-body :is(.final-brand-name b,.final-brand-name,.final-main-nav a,.mobile-menu-button,.final-site-header a,.site-header .brand) {color:var(--abs8-ink)!important;}
+html[data-abs-theme] body.abs-body :is(.final-brand-name em,.final-brand-name span) {color:var(--abs8-accent)!important;}
+html[data-abs-theme] body.abs-body .final-header-button.outline {
+  background:var(--abs8-panel)!important;color:var(--abs8-ink)!important;border-color:var(--abs8-line)!important;
+}
+html[data-abs-theme] body.abs-body :is(.final-site-footer,.final-footer-grid,.final-footer-bottom,.site-footer) {background:var(--abs8-panel)!important;color:var(--abs8-ink)!important;border-color:var(--abs8-line)!important;}
+html[data-abs-theme] body.abs-body :is(.final-footer-grid h4,.final-site-footer b) {color:var(--abs8-ink)!important;}
+html[data-abs-theme] body.abs-body :is(.final-footer-grid p,.final-footer-bottom,.final-site-footer small) {color:var(--abs8-muted)!important;}
+html[data-abs-theme] body.abs-body :is(.final-footer-grid a,.final-site-footer a) {color:var(--abs8-link)!important;}
+html[data-abs-theme] body.abs-body :is(.page-hero,.content-card,.panel,.reading-layout,.search-result,.legal-content,.focused-account-grid>.panel,.focused-account-services>a,.focused-account-services>div) {
+  background:var(--abs8-panel)!important;color:var(--abs8-ink)!important;border-color:var(--abs8-line)!important;
+}
+html[data-abs-theme] body.abs-body :is(.page-hero,.content-card,.panel,.reading-layout,.legal-content) :is(h1,h2,h3,h4,b,strong) {color:var(--abs8-ink)!important;}
+html[data-abs-theme] body.abs-body :is(.page-hero,.content-card,.panel,.reading-layout,.legal-content) :is(p,small,.muted) {color:var(--abs8-muted)!important;}
+/* News, live news and macro calendar cards are public content, not charts. */
+html[data-abs-theme] body.abs-body :is(
+  .news-hero-v1512,.news-live-v1512,.news-hero-pills,.live-headline-card,
+  .macro-v1512-event,.macro-v1512-values,.macro-v1512-context,.macro-v1512-note,
+  .live-story-v1560,.live-story-card-v1560,.live-story-v1561,.live-story-panel-v1561,
+  .live-story-side-v1561,.live-story-watch-v1561,.live-story-snapshot-v1561
+){background:var(--abs8-panel)!important;color:var(--abs8-ink)!important;border-color:var(--abs8-line)!important;}
+html[data-abs-theme] body.abs-body :is(.news-hero-v1512,.macro-v1512-event,.live-headline-card,.live-story-v1561,.live-story-v1560) :is(h1,h2,h3,h4,strong,b) {color:var(--abs8-ink)!important;}
+html[data-abs-theme] body.abs-body :is(.news-hero-v1512,.macro-v1512-event,.live-headline-card,.live-story-v1561,.live-story-v1560) :is(p,small,time,.muted) {color:var(--abs8-muted)!important;}
+html[data-abs-theme] body.abs-body :is(.news-live-v1512,.macro-v1512) :is(button,a) {border-color:var(--abs8-line)!important;}
+/* Member + admin: cover shared cards not in pp-* and keep statuses semantic. */
+html[data-abs-theme] body :is(.pi71-panel,.pi71-card,.pi-panel,.pi-card,.wf-panel,.wf-inline-note,.enterprise-surface,.abs-exec-card,.abs-exec-panel,.abs-exec-widget,.admin-card,.admin-panel,.pulse-card,.pulse-panel) {
+  border-color:var(--abs8-line)!important;color:var(--abs8-ink)!important;
+}
+html[data-abs-theme="light"] body :is(.pi71-panel,.pi71-card,.pi-panel,.pi-card,.wf-panel,.wf-inline-note,.enterprise-surface,.abs-exec-card,.abs-exec-panel,.abs-exec-widget,.admin-card,.admin-panel,.pulse-card,.pulse-panel) {
+  background:var(--abs8-panel)!important;
+}
+html[data-abs-theme] body :is(.pi71-panel,.pi71-card,.pi-panel,.pi-card,.wf-panel,.wf-inline-note,.enterprise-surface,.admin-card,.admin-panel,.pulse-card,.pulse-panel) :is(h1,h2,h3,h4,strong,b) {color:var(--abs8-ink)!important;}
+html[data-abs-theme] body :is(.pi71-panel,.pi71-card,.pi-panel,.pi-card,.wf-panel,.wf-inline-note,.enterprise-surface,.admin-card,.admin-panel,.pulse-card,.pulse-panel) :is(p,small,.muted) {color:var(--abs8-muted)!important;}
+/* Disabled actions remain disabled. Don't modify trade or execution behavior. */
+html[data-abs-theme] button:focus-visible,html[data-abs-theme] a:focus-visible,html[data-abs-theme] input:focus-visible {
+  outline:3px solid var(--abs8-link)!important;outline-offset:2px;
+}
+@media(max-width:760px){
+ html[data-abs-theme] body.abs-body[data-home-page="1"] .final-market-board {min-width:0;max-width:100%;}
+ html[data-abs-theme] body.abs-body[data-home-page="1"] :is(.final-market-primary,.final-market-side,.final-side-card,.final-trust-grid article) {min-width:0;}
+ html[data-abs-theme] body.abs-body[data-home-page="1"] .final-hero-grid {min-width:0;}
+ html[data-abs-theme] .abs-theme-toggle {bottom:max(14px,env(safe-area-inset-bottom));right:12px!important;min-height:44px!important;}
+}
+@media(prefers-reduced-motion:reduce){html[data-abs-theme] *{scroll-behavior:auto!important}}
+
+/* V15.8.8 NAVIGATION CONTRAST FIX — do not fade locked destinations.
+   Menu availability is shown with the LOCKED badge, never low opacity text.
+   Scope to actual admin/member shells and apply after legacy premium CSS. */
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav > a {
+  opacity:1!important;
+  color:var(--abs8-ink)!important;
+  font-size:13.5px!important;
+  font-weight:600!important;
+  min-height:44px!important;
+  line-height:1.35!important;
+  white-space:normal!important;
+  border-color:transparent!important;
+  background:transparent!important;
+}
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav > a > span {
+  flex:1 1 auto;min-width:0;overflow-wrap:normal;color:inherit!important;
+}
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav > a > .pulse-icon {
+  flex:0 0 21px;width:21px;height:21px;color:var(--abs8-link)!important;
+}
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav > a.locked,
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav > a[aria-disabled="true"] {
+  opacity:1!important;filter:none!important;color:var(--abs8-muted)!important;
+  cursor:pointer;
+}
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav > a.locked > .pulse-icon {color:var(--abs8-muted)!important;}
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav > a > .pulse-nav-lock {
+  display:inline-flex!important;flex:0 0 auto!important;align-items:center;justify-content:center;
+  min-width:0!important;width:auto!important;height:auto!important;
+  padding:4px 5px!important;margin-left:auto!important;
+  border:1px solid var(--abs8-line)!important;border-radius:5px!important;
+  background:var(--abs8-inset)!important;color:var(--abs8-muted)!important;
+  font-size:9px!important;font-weight:800!important;letter-spacing:.025em!important;
+  line-height:1.1!important;
+}
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav > a:hover,
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav > a:focus-visible {
+  background:var(--abs7-hover)!important;color:var(--abs8-ink)!important;
+  border-color:var(--abs8-line)!important;
+}
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav > a.active,
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav > a[aria-current="page"] {
+  background:var(--abs7-hover)!important;color:var(--abs8-link)!important;
+  border-color:var(--abs8-link)!important;
+  box-shadow:inset 3px 0 var(--abs8-link)!important;
+}
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav > a.active > .pulse-icon {color:var(--abs8-link)!important;}
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-plan-chip {
+  opacity:1!important;background:var(--abs8-inset)!important;color:var(--abs8-ink)!important;
+  border-color:var(--abs8-line)!important;height:auto!important;min-height:44px!important;
+  line-height:1.3!important;white-space:normal!important;
+}
+html[data-abs-theme] body.pulse-body .pulse-sidebar :is(.pulse-user-card,.pulse-user-copy b,.pulse-plan-chip b) {color:var(--abs8-ink)!important;}
+html[data-abs-theme] body.pulse-body .pulse-sidebar :is(.pulse-user-copy small,.pulse-plan-chip small) {color:var(--abs8-muted)!important;}
+html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-user-avatar {background:var(--abs8-panel2)!important;color:var(--abs8-link)!important;border-color:var(--abs8-line)!important;}
+html[data-abs-theme] body.pulse-body .pulse-global-nav a {color:var(--abs8-ink)!important;font-weight:600!important;}
+html[data-abs-theme] body.pulse-body .pulse-global-nav a:hover {color:var(--abs8-link)!important;}
+
+/* Administration left navigation must have legible labels, group headings and controls. */
+html[data-abs-theme] body.admin-body.abs-admin-v1521 .abs-exec-sidebar {
+  background:var(--abs8-panel)!important;color:var(--abs8-ink)!important;border-color:var(--abs8-line)!important;
+}
+html[data-abs-theme] body.admin-body.abs-admin-v1521 .abs-exec-sidebar .abs-sidebar-toolbar {
+  background:var(--abs8-inset)!important;border-color:var(--abs8-line)!important;
+}
+html[data-abs-theme] body.admin-body.abs-admin-v1521 .abs-exec-sidebar .abs-sidebar-tool {
+  color:var(--abs8-ink)!important;background:var(--abs8-panel)!important;
+  border-color:var(--abs8-line)!important;font-size:11px!important;min-height:36px!important;
+}
+html[data-abs-theme] body.admin-body.abs-admin-v1521 .abs-exec-sidebar .abs-sidebar-tool:hover {
+  background:var(--abs7-hover)!important;color:var(--abs8-link)!important;
+}
+html[data-abs-theme] body.admin-body.abs-admin-v1521 .abs-exec-sidebar .abs-nav-group-title {
+  min-height:34px!important;font-size:10.5px!important;font-weight:800!important;
+  line-height:1.3!important;letter-spacing:.07em!important;color:var(--abs8-muted)!important;
+}
+html[data-abs-theme] body.admin-body.abs-admin-v1521 .abs-exec-sidebar .abs-nav-group.is-current > .abs-nav-group-title {
+  color:var(--abs8-accent)!important;
+}
+html[data-abs-theme] body.admin-body.abs-admin-v1521 .abs-exec-sidebar .abs-nav-group-links > a {
+  min-height:42px!important;font-size:12.5px!important;font-weight:600!important;
+  line-height:1.3!important;opacity:1!important;color:var(--abs8-ink)!important;
+  background:transparent!important;border-color:transparent!important;
+}
+html[data-abs-theme] body.admin-body.abs-admin-v1521 .abs-exec-sidebar .abs-nav-group-links > a > i {
+  color:var(--abs8-link)!important;font-size:16px!important;
+}
+html[data-abs-theme] body.admin-body.abs-admin-v1521 .abs-exec-sidebar .abs-nav-group-links > a:hover,
+html[data-abs-theme] body.admin-body.abs-admin-v1521 .abs-exec-sidebar .abs-nav-group-links > a:focus-visible {
+  color:var(--abs8-ink)!important;background:var(--abs7-hover)!important;border-color:var(--abs8-line)!important;
+}
+html[data-abs-theme] body.admin-body.abs-admin-v1521 .abs-exec-sidebar .abs-nav-group-links > a.active {
+  background:var(--abs7-hover)!important;color:var(--abs8-link)!important;
+  border-color:var(--abs8-link)!important;box-shadow:inset 3px 0 var(--abs8-link)!important;
+}
+html[data-abs-theme] body.admin-body.abs-admin-v1521 .abs-exec-sidebar :is(.abs-exec-product-card,.abs-exec-system,.abs-exec-signature) {
+  background:var(--abs8-inset)!important;color:var(--abs8-ink)!important;border-color:var(--abs8-line)!important;
+}
+html[data-abs-theme] body.admin-body.abs-admin-v1521 .abs-exec-sidebar :is(.abs-exec-product-card small,.abs-exec-system small) {color:var(--abs8-muted)!important;}
+html[data-abs-admin-sidebar="collapsed"] body.admin-body.abs-admin-v1521 .abs-exec-sidebar .abs-nav-group-title {
+  min-height:10px!important;height:10px!important;margin:7px 13px 5px!important;padding:0!important;
+}
+@media(max-width:900px){
+ html[data-abs-theme] body.pulse-body .pulse-sidebar .pulse-nav > a {min-height:48px!important;}
+ html[data-abs-theme] body.pulse-body .pulse-mobile-toolbar {background:var(--abs8-panel)!important;color:var(--abs8-ink)!important;border-color:var(--abs8-line)!important;}
+ html[data-abs-theme] body.pulse-body .pulse-mobile-toolbar button {background:var(--abs8-inset)!important;color:var(--abs8-ink)!important;border-color:var(--abs8-line)!important;min-width:44px;min-height:44px;}
+}

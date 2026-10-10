@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 /// Primary shell tabs, in Shell order.
-enum PulseTab { home, pulse, freeSignal, news, account }
+enum PulseTab { home, pulse, freeSignal, news, account, signals, portfolio }
 
 /// Where a notification tap should land.
 @immutable
@@ -97,7 +97,7 @@ class NotificationRouter {
         return const NotificationDestination(PulseTab.home);
       case NotificationTypes.qualifiedSignal:
       case NotificationTypes.entryWatch:
-        return const NotificationDestination(PulseTab.pulse);
+        return const NotificationDestination(PulseTab.signals);
       case NotificationTypes.macroEvent:
       case NotificationTypes.breakingNews:
         return const NotificationDestination(PulseTab.news);
@@ -110,8 +110,9 @@ class NotificationRouter {
       case NotificationTypes.risk:
       case NotificationTypes.system:
       case NotificationTypes.support:
-      case NotificationTypes.privateInvestor:
         return const NotificationDestination(PulseTab.account);
+      case NotificationTypes.privateInvestor:
+        return authenticated ? const NotificationDestination(PulseTab.portfolio) : const NotificationDestination(PulseTab.account);
       case NotificationTypes.marketNotice:
         return const NotificationDestination(PulseTab.home);
       default:

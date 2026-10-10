@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\PortfolioAccount;
 use App\Models\PortfolioDailyAccrual;
 use App\Models\PortfolioInvestmentTerm;
+use App\Models\PortfolioInvestmentRatePeriod;
 use App\Models\PortfolioPerformancePlan;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -31,6 +32,15 @@ class InvestorPerformanceService
     {
         $effective = Carbon::parse($data['effective_from'] ?? now())->startOfDay();
         $rate = round((float) ($data['monthly_target_rate'] ?? 0), 4);
+        $existingTerm = PortfolioInvestmentTerm::query()->where('portfolio_account_id',$account->id)->first();
+        $profitDisposition = $data['profit_disposition'] ?? $existingTerm?->profit_disposition ?? 'payout';
+
+        // Never overwrite historical rates. The term row is the current agreement header;
+        // immutable effective-dated rows drive all monthly calculations.
+        PortfolioInvestmentRatePeriod::query()->updateOrCreate(
+            ['portfolio_account_id'=>$account->id,'effective_from'=>$effective->toDateString()],
+            ['monthly_target_rate'=>$rate,'profit_disposition'=>$profitDisposition,'created_by'=>$adminId,'notes'=>trim((string)($data['notes'] ?? '')) ?: null]
+        );
 
         $term = PortfolioInvestmentTerm::query()->updateOrCreate(
             ['portfolio_account_id' => $account->id],
@@ -40,6 +50,7 @@ class InvestorPerformanceService
                 'status' => $data['status'] ?? 'active',
                 'auto_payout' => array_key_exists('auto_payout', $data) ? (bool)$data['auto_payout'] : true,
                 'payout_day' => isset($data['payout_day']) && $data['payout_day'] !== '' ? (int)$data['payout_day'] : null,
+                'profit_disposition' => in_array($profitDisposition, ['payout','reinvest'], true) ? $profitDisposition : 'payout',
                 'created_by' => $adminId,
                 'notes' => trim((string) ($data['notes'] ?? '')) ?: null,
             ]
@@ -83,7 +94,8 @@ class InvestorPerformanceService
         $term = $this->investmentTerm($account);
         if (! $term || $term->status !== 'active') return collect();
 
-        $first = ($from ?: $term->effective_from ?: now())->copy()->startOfMonth();
+        $oldestRate = PortfolioInvestmentRatePeriod::query()->where('portfolio_account_id',$account->id)->min('effective_from');
+        $first = ($from ?: ($oldestRate ? Carbon::parse($oldestRate) : ($term->effective_from ?: now())))->copy()->startOfMonth();
         $last = ($through ?: now())->copy()->startOfMonth();
         if ($first->gt($last)) return collect();
 
@@ -114,7 +126,8 @@ class InvestorPerformanceService
             if ($existing && $existing->status === 'active') $existing->update(['status' => 'finalized']);
             return $existing?->fresh(['accruals']);
         }
-        $effective = $term->effective_from?->copy()->startOfDay() ?? $month->copy();
+        $firstRate = PortfolioInvestmentRatePeriod::query()->where('portfolio_account_id',$account->id)->orderBy('effective_from')->first();
+        $effective = $firstRate?->effective_from?->copy()->startOfDay() ?? ($term->effective_from?->copy()->startOfDay() ?? $month->copy());
         $start = $effective->gt($month) ? $effective : $month->copy();
         if ($start->gt($monthEnd)) $start = $monthEnd->copy();
 
@@ -123,8 +136,26 @@ class InvestorPerformanceService
         $capitalDays = (float) $active->sum();
         $daysInMonth = max(1, $month->daysInMonth);
         $equivalentBase = round($capitalDays / $daysInMonth, 2);
-        $rate = round((float) $term->monthly_target_rate, 4);
-        $target = round($equivalentBase * ($rate / 100), 2);
+        // Effective-dated rates are applied day-by-day, so a July rate change cannot rewrite Jan-Jun,
+        // and a mid-month change is prorated exactly from its effective date.
+        $target = 0.0;
+        foreach ($active as $date => $capital) {
+            $dayRate = $this->rateForDate($account, Carbon::parse($date), (float)$term->monthly_target_rate);
+            $target += ((float)$capital * ($dayRate / 100)) / $daysInMonth;
+        }
+        $target = round($target, 2);
+        $rate = $equivalentBase > 0 ? round(($target / $equivalentBase) * 100, 4) : $this->rateForDate($account, $month, (float)$term->monthly_target_rate);
+
+        $dailyCapitalUsd = $this->dailyCapitalSeriesUsd($account, $month, $monthEnd);
+        $activeUsd = $dailyCapitalUsd->filter(fn ($value, $date) => Carbon::parse($date)->gte($start));
+        $capitalDaysUsd = (float) $activeUsd->sum();
+        $equivalentBaseUsd = round($capitalDaysUsd / $daysInMonth, 2);
+        $targetUsd = 0.0;
+        foreach ($activeUsd as $date => $capitalUsd) {
+            $dayRate = $this->rateForDate($account, Carbon::parse($date), (float)$term->monthly_target_rate);
+            $targetUsd += ((float)$capitalUsd * ($dayRate / 100)) / $daysInMonth;
+        }
+        $targetUsd = round($targetUsd, 2);
 
         $plan = PortfolioPerformancePlan::query()->updateOrCreate(
             ['portfolio_account_id' => $account->id, 'plan_month' => $month->toDateString()],
@@ -133,8 +164,10 @@ class InvestorPerformanceService
                 'accrual_start_date' => $start->toDateString(),
                 'accrual_end_date' => $monthEnd->toDateString(),
                 'base_amount' => $equivalentBase,
+                'base_amount_usd' => $equivalentBaseUsd,
                 'target_rate' => $rate,
                 'target_amount' => $target,
+                'target_amount_usd' => $targetUsd,
                 'calculation_basis' => 'weighted_calendar_month',
                 'status' => 'active',
                 'created_by' => $adminId ?: $term->created_by,
@@ -177,6 +210,36 @@ class InvestorPerformanceService
         return $series;
     }
 
+
+    /** Daily Admin USD carrying-basis capital series. Uses locked historical transaction basis. */
+    public function dailyCapitalSeriesUsd(PortfolioAccount $account, Carbon $monthStart, Carbon $monthEnd): Collection
+    {
+        $monthStart = $monthStart->copy()->startOfDay();
+        $monthEnd = $monthEnd->copy()->startOfDay();
+        $transactions = $account->transactions()
+            ->where('status', 'posted')
+            ->whereDate('transaction_date', '<=', $monthEnd->toDateString())
+            ->orderBy('transaction_date')->orderBy('id')->get();
+
+        $openingUsd = (float)($account->opening_value_usd ?? (strtoupper((string)$account->currency)==='USD' ? $account->opening_value : 0));
+        $capital = round($openingUsd + (float) $transactions
+            ->filter(fn ($row) => $row->transaction_date?->lt($monthStart))
+            ->sum(fn ($row) => (float)($row->usd_net_contributions_effect ?? 0)), 2);
+
+        $byDate = $transactions
+            ->filter(fn ($row) => $row->transaction_date?->between($monthStart, $monthEnd, true))
+            ->groupBy(fn ($row) => $row->transaction_date?->toDateString());
+
+        $series = collect();
+        for ($day = $monthStart->copy(); $day->lte($monthEnd); $day->addDay()) {
+            foreach ($byDate->get($day->toDateString(), collect()) as $row) {
+                $capital = round(max(0, $capital + (float)($row->usd_net_contributions_effect ?? 0)), 2);
+            }
+            $series->put($day->toDateString(), $capital);
+        }
+        return $series;
+    }
+
     /** Manual month override remains available for exceptional cases. */
     public function savePlan(PortfolioAccount $account, array $data, ?int $adminId = null): PortfolioPerformancePlan
     {
@@ -184,13 +247,19 @@ class InvestorPerformanceService
         $base = round(max(0, (float) ($data['base_amount'] ?? $account->current_value)), 2);
         $rate = round((float) ($data['target_rate'] ?? 0), 4);
         $target = round($base * ($rate / 100), 2);
+        $localPrincipal = max(0.0001, (float)$account->net_contributions);
+        $usdPrincipal = (float)($account->net_contributions_usd ?? (strtoupper((string)$account->currency)==='USD' ? $account->net_contributions : 0));
+        $baseUsd = round($base * ($usdPrincipal / $localPrincipal), 2);
+        $targetUsd = round($baseUsd * ($rate / 100), 2);
 
         $plan = PortfolioPerformancePlan::query()->updateOrCreate(
             ['portfolio_account_id' => $account->id, 'plan_month' => $month->toDateString()],
             [
                 'base_amount' => $base,
+                'base_amount_usd' => $baseUsd,
                 'target_rate' => $rate,
                 'target_amount' => $target,
+                'target_amount_usd' => $targetUsd,
                 'accrual_start_date' => $month->toDateString(),
                 'accrual_end_date' => $month->copy()->endOfMonth()->toDateString(),
                 'calculation_basis' => 'manual_month',
@@ -392,7 +461,8 @@ class InvestorPerformanceService
             ->reject(fn ($p) => in_array($p->plan_month?->format('Y-m'), $publishedMonths, true))
             ->sum(fn ($p) => (float) $p->accruals->whereNotNull('posted_at')->sum(fn ($r) => (float) $r->posted_amount)), 2);
 
-        $fullMonthTarget = round((float) $account->net_contributions * ((float) $term->monthly_target_rate / 100), 2);
+        $currentRate = $this->rateForDate($account, now(), (float)$term->monthly_target_rate);
+        $fullMonthTarget = round((float) $account->net_contributions * ($currentRate / 100), 2);
         return [
             'term' => $term, 'plans' => $plans, 'target_total' => $targetTotal, 'posted_total' => $postedTotal,
             'unfinalized_posted_total' => $unfinalizedPosted,
@@ -419,6 +489,30 @@ class InvestorPerformanceService
                     'progress' => abs((float) $plan->target_amount) > 0.0001 ? ($posted / (float) $plan->target_amount) * 100 : 0,
                 ];
             });
+    }
+
+
+    public function rateHistory(PortfolioAccount $account): Collection
+    {
+        return PortfolioInvestmentRatePeriod::query()->where('portfolio_account_id',$account->id)->orderByDesc('effective_from')->get();
+    }
+
+    public function rateForDate(PortfolioAccount $account, Carbon $date, float $fallback = 0.0): float
+    {
+        $rate = PortfolioInvestmentRatePeriod::query()
+            ->where('portfolio_account_id',$account->id)
+            ->whereDate('effective_from','<=',$date->toDateString())
+            ->orderByDesc('effective_from')->value('monthly_target_rate');
+        return $rate !== null ? (float)$rate : $fallback;
+    }
+
+    public function profitDispositionForDate(PortfolioAccount $account, Carbon $date, string $fallback = 'payout'): string
+    {
+        $value = PortfolioInvestmentRatePeriod::query()
+            ->where('portfolio_account_id',$account->id)
+            ->whereDate('effective_from','<=',$date->toDateString())
+            ->orderByDesc('effective_from')->value('profit_disposition');
+        return in_array($value, ['payout','reinvest'], true) ? $value : $fallback;
     }
 
     private function weight(PortfolioPerformancePlan $plan, PortfolioDailyAccrual $row): float

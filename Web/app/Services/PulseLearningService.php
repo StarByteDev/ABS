@@ -38,7 +38,7 @@ class PulseLearningService
         return ['score' => round($score, 2), 'evidence' => $evidence, 'source' => $scores === [] ? 'neutral_prior' : 'learning_state'];
     }
 
-    public function rebuildDate(Carbon|string $date): void
+    public function rebuildDate(Carbon|string $date, bool $refreshStates = true): void
     {
         foreach (['pulse_signal_validations','pulse_signal_daily_metrics','pulse_strategy_daily_metrics','pulse_strategy_learning_states'] as $table) {
             if (! Schema::hasTable($table)) return;
@@ -84,13 +84,71 @@ class PulseLearningService
             $this->upsertStrategyDaily($date, $slug, $version, $tf, $dir, $regime, $group);
         }
 
-        $this->refreshLearningStates();
+        if ($refreshStates) {
+            $this->refreshLearningStates();
+        }
     }
 
     public function refreshLearningStates(): void
     {
         if (! Schema::hasTable('pulse_strategy_daily_metrics') || ! Schema::hasTable('pulse_strategy_learning_states')) return;
         $groups = PulseStrategyDailyMetric::query()->select('strategy_slug','strategy_version','timeframe','direction','market_regime')->distinct()->get();
+
+        // Build milestone and R:R optimization evidence once per refresh. The optimizer
+        // uses observed MFE/MAE in R units and never rewrites historical outcomes.
+        $milestoneIndex = [];
+        $optimizerIndex = [];
+        $rrCandidates = array_values(array_unique(array_map('floatval', (array) config('pulse.optimizer.rr_candidates', [1.0,1.25,1.5,1.75,2.0,2.25,2.5,3.0]))));
+        sort($rrCandidates);
+        $lookbackDays = max(14, (int) config('pulse.optimizer.lookback_days', 90));
+        $resolvedValidations = PulseSignalValidation::query()
+            ->whereNotNull('resolved_at')
+            ->where('resolved_at', '>=', now()->subDays($lookbackDays))
+            ->get();
+
+        $resolvedValidations->each(function ($validation) use (&$milestoneIndex, &$optimizerIndex, $rrCandidates) {
+            foreach ((array) $validation->strategy_snapshot as $strategy) {
+                if (!is_array($strategy) || isset($strategy['_meta'])) continue;
+                $slug=(string)($strategy['slug']??''); if($slug==='') continue;
+                $version=(string)($strategy['version']??$validation->strategy_version??'1.0');
+                $bias=strtoupper((string)($strategy['bias']??'NEUTRAL'));
+                if((float)($strategy['points']??0)<=0 || !in_array($bias,[strtoupper((string)$validation->direction),'NEUTRAL'],true)) continue;
+
+                $tf = strtolower((string)$validation->timeframe);
+                $dir = strtoupper((string)$validation->direction);
+                $regime = (string)($validation->market_regime ?: 'balanced');
+                $milestoneKey=implode('|',[$slug,$version,$tf,$dir]);
+                $milestoneIndex[$milestoneKey] ??= ['count'=>0,'tp1'=>0,'tp2'=>0,'tp3'=>0];
+                $milestoneIndex[$milestoneKey]['count']++;
+                $level=(int)$validation->highest_tp_level_hit;
+                if($level>=1)$milestoneIndex[$milestoneKey]['tp1']++;
+                if($level>=2)$milestoneIndex[$milestoneKey]['tp2']++;
+                if($level>=3)$milestoneIndex[$milestoneKey]['tp3']++;
+
+                if (!$validation->entry_hit_at || (string)$validation->outcome === 'ambiguous') continue;
+                $mfeR = is_numeric($validation->mfe_r) ? max(0.0, (float)$validation->mfe_r) : 0.0;
+                $maeR = is_numeric($validation->mae_r) ? max(0.0, (float)$validation->mae_r) : 0.0;
+                foreach (array_values(array_unique(['ALL', $regime])) as $scope) {
+                    $key=implode('|',[$slug,$version,$tf,$dir,$scope]);
+                    foreach ($rrCandidates as $rr) {
+                        $rrKey = number_format($rr, 2, '.', '');
+                        $optimizerIndex[$key][$rrKey] ??= ['rr'=>$rr,'wins'=>0,'losses'=>0,'ambiguous'=>0,'unresolved'=>0];
+                        // Conservative counterfactual: if a historical SL trade reached both
+                        // the alternative target and 1R adverse excursion, minute OHLC cannot
+                        // prove which came first, so do not count it as a synthetic win.
+                        if ($mfeR >= $rr) {
+                            if ((string)$validation->outcome === 'sl' && $maeR >= 1.0) $optimizerIndex[$key][$rrKey]['ambiguous']++;
+                            else $optimizerIndex[$key][$rrKey]['wins']++;
+                        } elseif ((string)$validation->outcome === 'sl' || $maeR >= 1.0) {
+                            $optimizerIndex[$key][$rrKey]['losses']++;
+                        } else {
+                            $optimizerIndex[$key][$rrKey]['unresolved']++;
+                        }
+                    }
+                }
+            }
+        });
+
         foreach ($groups as $group) {
             $rows = PulseStrategyDailyMetric::query()
                 ->where('strategy_slug', $group->strategy_slug)->where('strategy_version', $group->strategy_version)
@@ -102,7 +160,17 @@ class PulseLearningService
             $priorSamples = max(1, (int) config('pulse.learning.prior_samples', 20));
             $bayesWin = ($wins + ($priorSamples * 0.5)) / max(1, $decisive + $priorSamples);
             $ambiguityRate = $samples > 0 ? $ambiguous / $samples : 0;
-            $reliability = max(0, min(100, ($bayesWin * 100) * (1 - min(0.25, $ambiguityRate * 0.5))));
+
+            // Intermediate TP milestones provide a small positive evidence bonus. Final
+            // TP/SL remains dominant; partial targets cannot make a poor strategy look strong.
+            $milestoneKey = implode('|',[(string)$group->strategy_slug,(string)$group->strategy_version,strtolower((string)$group->timeframe),strtoupper((string)$group->direction)]);
+            $milestones = $milestoneIndex[$milestoneKey] ?? ['count'=>0,'tp1'=>0,'tp2'=>0,'tp3'=>0];
+            $tp1Hits = (int)$milestones['tp1'];
+            $tp2Hits = (int)$milestones['tp2'];
+            $tp3Hits = (int)$milestones['tp3'];
+            $partialUniverse = max(1, (int)$milestones['count']);
+            $partialBonus = min(12.0, (($tp1Hits / $partialUniverse) * 3.0) + (($tp2Hits / $partialUniverse) * 4.0) + (($tp3Hits / $partialUniverse) * 5.0));
+            $reliability = max(0, min(100, (($bayesWin * 100) * (1 - min(0.25, $ambiguityRate * 0.5))) + $partialBonus));
 
             $weightedNumerator = 0.0; $weightedDenominator = 0.0;
             foreach ($rows as $row) {
@@ -117,15 +185,50 @@ class PulseLearningService
             $level = $samples >= (int) config('pulse.learning.established_samples', 50) ? 'established'
                 : ($samples >= (int) config('pulse.learning.minimum_samples', 20) ? 'developing' : 'insufficient');
 
+            $optimizerKey = implode('|',[(string)$group->strategy_slug,(string)$group->strategy_version,strtolower((string)$group->timeframe),strtoupper((string)$group->direction),(string)$group->market_regime]);
+            $rrOptimizer = $this->optimizerSummary($optimizerIndex[$optimizerKey] ?? [], $priorSamples);
+
             PulseStrategyLearningState::query()->updateOrCreate([
                 'strategy_slug'=>$group->strategy_slug,'strategy_version'=>$group->strategy_version,'timeframe'=>$group->timeframe,
                 'direction'=>$group->direction,'market_regime'=>$group->market_regime,
             ], [
                 'sample_size'=>$samples,'win_rate'=>$decisive > 0 ? $wins/$decisive : null,'ambiguous_rate'=>$samples > 0 ? $ambiguous/$samples : null,
                 'reliability_score'=>round(($reliability * 0.65) + ($recency * 0.35),2),'recency_weighted_score'=>round($recency,2),
-                'evidence_level'=>$level,'meta'=>['wins'=>$wins,'losses'=>$losses,'ambiguous'=>$ambiguous,'total_resolved_signals'=>$totalResolved,'prior_samples'=>$priorSamples], 'calculated_at'=>now(),
+                'evidence_level'=>$level,'meta'=>[
+                    'wins'=>$wins,'losses'=>$losses,'ambiguous'=>$ambiguous,'tp1_hits'=>$tp1Hits,'tp2_hits'=>$tp2Hits,'tp3_hits'=>$tp3Hits,
+                    'partial_tp_bonus'=>round($partialBonus,2),'total_resolved_signals'=>$totalResolved,'prior_samples'=>$priorSamples,
+                    'rr_optimizer'=>$rrOptimizer,
+                ], 'calculated_at'=>now(),
             ]);
         }
+    }
+
+    private function optimizerSummary(array $candidates, int $priorSamples): array
+    {
+        $minimum = max(10, (int) config('pulse.optimizer.minimum_samples', 30));
+        $evaluated = [];
+        foreach ($candidates as $row) {
+            $wins = (int)($row['wins'] ?? 0); $losses = (int)($row['losses'] ?? 0); $rr = (float)($row['rr'] ?? 0);
+            $resolved = $wins + $losses;
+            $expectancy = $resolved > 0 ? (($wins * $rr) - $losses) / $resolved : null;
+            $profitFactor = $losses > 0 ? ($wins * $rr) / $losses : ($wins > 0 ? 99.0 : null);
+            $winRate = $resolved > 0 ? $wins / $resolved : null;
+            $adjusted = $expectancy === null ? null : $expectancy * ($resolved / max(1, $resolved + $priorSamples));
+            $evaluated[] = [
+                'rr'=>round($rr,2),'samples'=>$resolved,'wins'=>$wins,'losses'=>$losses,'ambiguous'=>(int)($row['ambiguous']??0),'unresolved'=>(int)($row['unresolved']??0),
+                'win_rate'=>$winRate===null?null:round($winRate,4),'expectancy_r'=>$expectancy===null?null:round($expectancy,4),
+                'adjusted_expectancy_r'=>$adjusted===null?null:round($adjusted,4),'profit_factor'=>$profitFactor===null?null:round($profitFactor,4),
+            ];
+        }
+        $eligible = array_values(array_filter($evaluated, fn($row)=>(int)$row['samples'] >= $minimum && $row['adjusted_expectancy_r'] !== null));
+        usort($eligible, fn($a,$b)=>(float)$b['adjusted_expectancy_r'] <=> (float)$a['adjusted_expectancy_r']);
+        $best = $eligible[0] ?? null;
+        return [
+            'method'=>'mfe_mae_counterfactual_v1','minimum_samples'=>$minimum,'candidates'=>$evaluated,
+            'recommended_rr'=>$best['rr']??null,'recommended_samples'=>$best['samples']??0,
+            'recommended_win_rate'=>$best['win_rate']??null,'recommended_expectancy_r'=>$best['adjusted_expectancy_r']??null,
+            'recommended_profit_factor'=>$best['profit_factor']??null,
+        ];
     }
 
     private function bestState(string $slug, string $version, string $timeframe, string $direction, ?string $regime): ?PulseStrategyLearningState

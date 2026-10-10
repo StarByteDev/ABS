@@ -19,7 +19,7 @@ class PulseSignalValidationService
         }
         $signals = PulseSignal::query()->whereIn('direction',['LONG','SHORT'])
             ->where(function ($q) { $q->whereIn('status',['active','expired'])->orWhereHas('trades'); })
-            ->where('generated_at','>=',now()->subDays(2))
+            ->where('generated_at','>=',now()->subDays(14))
             ->where(function ($q) {
                 $q->whereDoesntHave('validation')
                     ->orWhereHas('validation', fn ($validation) => $validation->whereNull('resolved_at'));
@@ -34,7 +34,11 @@ class PulseSignalValidationService
             if ($this->evaluate($signal,$validation)) { $resolved++; $dates[$validation->fresh()->resolved_at?->toDateString() ?? now()->toDateString()] = true; }
             $processed++;
         }
-        foreach (array_keys($dates) as $date) $this->learning->rebuildDate(Carbon::parse($date));
+        // A new decisive TP/SL result immediately changes the next scan's learned
+        // confidence. Rebuild all affected daily metrics, then recompute the shared
+        // adaptive state once; avoids O(days x history) repeated work on shared hosting.
+        foreach (array_keys($dates) as $date) $this->learning->rebuildDate(Carbon::parse($date), false);
+        if ($dates !== []) $this->learning->refreshLearningStates();
         $this->pruneDetailed();
         return compact('processed','resolved');
     }
@@ -92,8 +96,24 @@ class PulseSignalValidationService
             if ($slHit) return $this->resolve($signal,$v,'sl',$candleAt,$mfe,$mae,$risk,$highest);
         }
 
-        if ($signal->expires_at && now()->greaterThanOrEqualTo($signal->expires_at)) {
-            return $this->resolve($signal,$v,$v->entry_hit_at?'expired_after_entry':'expired_no_entry',$signal->expires_at,$mfe,$mae,$risk,$highest);
+        if (! $v->entry_hit_at && $signal->expires_at && now()->greaterThanOrEqualTo($signal->expires_at)) {
+            return $this->resolve($signal,$v,'expired_no_entry',$signal->expires_at,$mfe,$mae,$risk,$highest);
+        }
+
+        // V15.8.0: signal-entry validity and post-entry trade holding time are
+        // separate concepts. A trade that entered near the end of a 90-minute
+        // signal window must not immediately expire before its 15M/4H thesis has
+        // a reasonable opportunity to reach TP or SL.
+        if ($v->entry_hit_at) {
+            $holdMinutes = match (strtolower((string)$v->timeframe)) {
+                '4h' => (int) config('pulse.validation.max_hold_minutes.4h', 10080),
+                '1d' => (int) config('pulse.validation.max_hold_minutes.1d', 20160),
+                default => (int) config('pulse.validation.max_hold_minutes.15m', 1440),
+            };
+            $tradeExpiry = $v->entry_hit_at->copy()->addMinutes(max(60,$holdMinutes));
+            if (now()->greaterThanOrEqualTo($tradeExpiry)) {
+                return $this->resolve($signal,$v,'expired_after_entry',$tradeExpiry,$mfe,$mae,$risk,$highest,['reason'=>'max_post_entry_holding_period']);
+            }
         }
 
         $v->mfe_price=$mfe; $v->mae_price=$mae; $v->highest_tp_level_hit=$highest; $v->last_checked_at=now();

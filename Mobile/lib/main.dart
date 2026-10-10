@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'core/ads/ad_service.dart';
 import 'core/notifications/notification_service.dart';
 import 'core/session.dart';
+import 'investor/pulse_experience.dart';
 import 'screens/splash_screen.dart'
     show BackendCompatibilityScreen, MaintenanceScreen, UpdateRequiredScreen;
 import 'template_rebase/screens/shell.dart';
@@ -28,13 +29,17 @@ Future<void> main() async {
 
   final session = AppSession();
   final uiState = AppState(session);
-  runApp(AbsMobileApp(session: session, uiState: uiState));
+  final investor = InvestorExperience(session);
+  runApp(AbsMobileApp(session: session, uiState: uiState, investor: investor));
   // Consent + SDK start-up run in the background and never block launch.
   AdService.instance.initialize(session);
   await session.initialize();
   // After session restore so topics/device registration match the account.
   unawaited(NotificationService.instance.initialize(session));
   await uiState.initialize();
+  if (session.authenticated && session.emailVerified) {
+    await investor.refresh();
+  }
 }
 
 class AbsMobileApp extends StatelessWidget {
@@ -42,16 +47,20 @@ class AbsMobileApp extends StatelessWidget {
     super.key,
     required this.session,
     required this.uiState,
+    required this.investor,
   });
 
   final AppSession session;
   final AppState uiState;
+  final InvestorExperience investor;
 
   @override
   Widget build(BuildContext context) {
     return SessionScope(
       session: session,
-      child: AppScope(
+      child: InvestorScope(
+        experience: investor,
+        child: AppScope(
         notifier: uiState,
         child: AnimatedBuilder(
           animation: session,
@@ -75,6 +84,7 @@ class AbsMobileApp extends StatelessWidget {
                               : const Shell(),
             );
           },
+        ),
         ),
       ),
     );

@@ -49,12 +49,13 @@
             </div>
             <form method="POST" action="{{ route('admin.private-investors.investment-terms.store',$account) }}" class="pi-v1570-form" id="investmentTermsForm">
                 @csrf
-                <input type="hidden" name="auto_payout" value="1">
+                
                 <div class="pi-v1570-form-grid">
                     <label><span>Performance starts</span><input id="termEffective" type="date" name="effective_from" value="{{ old('effective_from',$effective) }}" required><small>Normally the date funds became active.</small></label>
                     <label><span>Agreed monthly profit %</span><div class="pi-input-suffix"><input id="termRate" type="number" step="0.01" min="0" max="50" name="monthly_target_rate" value="{{ old('monthly_target_rate',$term?->monthly_target_rate ?? '') }}" placeholder="Monthly percentage" required><b>%</b></div><small>Applied to the weighted investor principal for each calendar month.</small></label>
+                    <label><span>Monthly profit handling</span><select name="profit_disposition" required><option value="payout" @selected(old('profit_disposition',$term?->profit_disposition ?? 'payout')==='payout')>Pay profit to investor</option><option value="reinvest" @selected(old('profit_disposition',$term?->profit_disposition ?? 'payout')==='reinvest')>Retain & reinvest into capital</option></select><small>Reinvested profit becomes part of invested capital from settlement date; future targets use the increased capital.</small></label>
                     <label><span>Status</span><select name="status"><option value="active" @selected(($term?->status ?? 'active')==='active')>Active</option><option value="paused" @selected($term?->status==='paused')>Paused</option><option value="closed" @selected($term?->status==='closed')>Closed</option></select><small>Pause stops new daily posting without removing history.</small></label>
-                    <label><span>Profit payout timing</span><select name="payout_day"><option value="" @selected(!$term?->payout_day)>Month end</option>@for($d=1;$d<=28;$d++)<option value="{{ $d }}" @selected((int)$term?->payout_day===$d)>Day {{ $d }} of following month</option>@endfor</select><small>ABS automatically pays the completed month on this schedule and publishes its statement.</small></label>
+                    <label><span>Profit payout timing</span><select name="payout_day"><option value="" @selected(!$term?->payout_day)>Month end</option>@for($d=1;$d<=28;$d++)<option value="{{ $d }}" @selected((int)$term?->payout_day===$d)>Day {{ $d }} of following month</option>@endfor</select><small>ABS settles the completed month on this schedule. If profit handling is Reinvest, it is retained as capital instead of being paid out.</small></label>
                     <label><span>Current invested capital</span><div class="pi-readonly-value">{{ $account->currency }} {{ number_format((float)$account->net_contributions,2) }}</div><small>Controlled by posted Investment / Withdrawal transactions.</small></label>
                 </div>
                 <label><span>Internal note</span><textarea name="notes" placeholder="Optional agreement or administration note">{{ old('notes',$term?->notes) }}</textarea></label>
@@ -67,7 +68,7 @@
             <div class="pi-v1570-calc-row"><span>Full month at current capital</span><b id="fullMonthPreview">{{ $account->currency }} {{ number_format($fullTarget,2) }}</b></div>
             <div class="pi-v1570-calc-row"><span>First month</span><b id="firstMonthPreview">Calculated after save</b></div>
             <div class="pi-v1570-calc-row"><span>Daily pattern</span><b>Varied automatically</b></div>
-            <div class="pi-v1570-calc-row"><span>Profit payout</span><b>{{ $term?->payout_day ? 'Day '.$term->payout_day.' next month' : 'Automatic at month end' }}</b></div>
+            <div class="pi-v1570-calc-row"><span>Profit settlement</span><b>{{ ($term?->profit_disposition ?? 'payout')==='reinvest' ? 'Retain & reinvest' : 'Pay to investor' }} · {{ $term?->payout_day ? 'Day '.$term->payout_day.' next month' : 'Month end' }}</b></div>
             <div class="pi-note"><strong>Mid-month investment:</strong> the first calendar month is prorated from the effective date. From the next full month, the full agreed monthly rate applies to invested capital. Capital added or withdrawn later is automatically weighted by the days it was active.</div>
         </aside>
     </div>
@@ -106,4 +107,8 @@
     rate.addEventListener('input',refresh); date.addEventListener('change',refresh); refresh();
 })();
 </script>
+
+@if(($rateHistory ?? collect())->isNotEmpty())
+<section class="pi-card" style="margin-top:18px"><div class="pi-section-head"><div><small>AGREEMENT AUDIT</small><h2>Rate History</h2></div><span class="pi-status good">Effective-dated</span></div><div class="pi-table-wrap"><table class="pi-table"><thead><tr><th>Effective From</th><th>Monthly Rate</th><th>Profit Handling</th><th>Notes</th></tr></thead><tbody>@foreach($rateHistory as $rateRow)<tr><td>{{ $rateRow->effective_from?->format('d M Y') }}</td><td><b>{{ number_format((float)$rateRow->monthly_target_rate,2) }}%</b></td><td>{{ ($rateRow->profit_disposition ?? 'payout')==='reinvest' ? 'Reinvest' : 'Payout' }}</td><td>{{ $rateRow->notes ?: '—' }}</td></tr>@endforeach</tbody></table></div></section>
+@endif
 @endsection

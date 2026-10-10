@@ -221,6 +221,11 @@ class InvestorPortfolioAccountingService
         // but never compounds into investor capital unless a separate Investment entry is posted.
         $settlementUsd = round($amount * $rate, 2);
         $local = $this->effects($type, $amount);
+        $isProfitReinvestment = $type === 'profit' && in_array((string)($data['entry_source'] ?? ''), ['automatic_profit_reinvestment','admin_profit_reinvestment'], true);
+        if ($isProfitReinvestment) {
+            $local['current_value_effect'] = round($amount,2);
+            $local['net_contributions_effect'] = round($amount,2);
+        }
         $principalBasis = null;
         $fxGainLoss = 0.0;
 
@@ -251,6 +256,11 @@ class InvestorPortfolioAccountingService
             $fxGainLoss = round($principalBasis - $settlementUsd, 2);
         } else {
             $usd = $this->effects($type, $settlementUsd, 'usd_');
+            if ($isProfitReinvestment) {
+                $usd['usd_current_value_effect'] = $settlementUsd;
+                $usd['usd_net_contributions_effect'] = $settlementUsd;
+                $principalBasis = $settlementUsd;
+            }
             if ($type === 'deposit') {
                 $principalBasis = $settlementUsd;
             }

@@ -9,7 +9,7 @@ class PortfolioInvestmentTerm extends Model
 {
     protected $fillable = [
         'portfolio_account_id', 'effective_from', 'monthly_target_rate', 'status',
-        'auto_payout', 'payout_day', 'created_by', 'notes',
+        'auto_payout', 'payout_day', 'profit_disposition', 'created_by', 'notes',
     ];
 
     protected function casts(): array

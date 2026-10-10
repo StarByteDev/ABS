@@ -49,51 +49,36 @@ class EconomicCalendarService
         $from ??= CarbonImmutable::now(config('app.timezone'))->subDays(30)->startOfDay();
         $to ??= CarbonImmutable::now(config('app.timezone'))->addDays(45)->endOfDay();
 
+        // Import available sources in priority order. A successful calendar feed may
+        // still lack consensus/actual values; later sources may fill those gaps.
+        $providers = [
+            ['Financial Modeling Prep', $this->primaryConfigured(), fn () => $this->fetchFmpRows($from, $to), 'persistFmpRows'],
+            ['Finance Calendar', $this->financeCalendarEnabled(), fn () => $this->fetchFinanceCalendarRows($from, $to), 'persistFinanceCalendarRows'],
+            ['Xoomar Macro Calendar', $this->xoomarEnabled(), fn () => $this->fetchXoomarRows($from, $to), 'persistXoomarRows'],
+            ['Trading Economics', $this->tradingEconomicsEnabled(), fn () => $this->fetchTradingEconomicsRows($from, $to), 'persistTradingEconomicsRows'],
+        ];
         $attempts = [];
-        $provider = null;
-        $rows = [];
+        $used = [];
+        $result = ['created' => 0, 'updated' => 0, 'skipped' => 0];
 
-        if ($this->primaryConfigured()) {
+        foreach ($providers as [$name, $enabled, $fetch, $persist]) {
+            if (! $enabled) continue;
             try {
-                $rows = $this->fetchFmpRows($from, $to);
-                $provider = 'Financial Modeling Prep';
+                $rows = $fetch();
+                if (! $rows) throw new RuntimeException('Provider returned an empty calendar.');
+                $stats = $this->{$persist}($rows);
+                if (($stats['created'] + $stats['updated']) < 1) {
+                    throw new RuntimeException('Provider returned no usable events.');
+                }
+                $used[] = $name;
+                foreach ($result as $key => $_) $result[$key] += (int) ($stats[$key] ?? 0);
             } catch (Throwable $e) {
-                $attempts[] = 'FMP: '.$e->getMessage();
-                Log::warning('ABS Economic Calendar FMP source unavailable', ['message' => $e->getMessage()]);
+                $attempts[] = $name.': '.$e->getMessage();
+                Log::warning('ABS Economic Calendar provider unavailable', ['provider' => $name, 'message' => $e->getMessage()]);
             }
         }
 
-        if ($provider === null && $this->financeCalendarEnabled()) {
-            try {
-                $rows = $this->fetchFinanceCalendarRows($from, $to);
-                $provider = 'Finance Calendar';
-            } catch (Throwable $e) {
-                $attempts[] = 'Finance Calendar: '.$e->getMessage();
-                Log::warning('ABS Economic Calendar Finance Calendar source unavailable', ['message' => $e->getMessage()]);
-            }
-        }
-
-        if ($provider === null && $this->xoomarEnabled()) {
-            try {
-                $rows = $this->fetchXoomarRows($from, $to);
-                $provider = 'Xoomar Macro Calendar';
-            } catch (Throwable $e) {
-                $attempts[] = 'Xoomar: '.$e->getMessage();
-                Log::warning('ABS Economic Calendar Xoomar source unavailable', ['message' => $e->getMessage()]);
-            }
-        }
-
-        if ($provider === null && $this->tradingEconomicsEnabled()) {
-            try {
-                $rows = $this->fetchTradingEconomicsRows($from, $to);
-                $provider = 'Trading Economics';
-            } catch (Throwable $e) {
-                $attempts[] = 'Trading Economics: '.$e->getMessage();
-                Log::warning('ABS Economic Calendar Trading Economics source unavailable', ['message' => $e->getMessage()]);
-            }
-        }
-
-        if ($provider === null) {
+        if (! $used) {
             $message = $attempts
                 ? 'Economic Calendar refresh failed. '.implode(' | ', $attempts)
                 : 'Economic Calendar has no enabled source.';
@@ -101,26 +86,14 @@ class EconomicCalendarService
             throw new RuntimeException($message);
         }
 
-        $result = match ($provider) {
-            'Financial Modeling Prep' => $this->persistFmpRows($rows),
-            'Finance Calendar' => $this->persistFinanceCalendarRows($rows),
-            'Xoomar Macro Calendar' => $this->persistXoomarRows($rows),
-            default => $this->persistTradingEconomicsRows($rows),
-        };
-
-        if (($result['created'] + $result['updated']) < 1) {
-            $message = $provider.' returned no usable economic-calendar events for the selected window.';
-            $this->recordSyncStatus('failed', $message);
-            throw new RuntimeException($message);
-        }
-
-        $this->recordSyncStatus('success', $provider);
+        $this->recordSyncStatus('success', implode(' + ', $used));
 
         return $result + [
-            'provider' => $provider,
+            'provider' => implode(' + ', $used),
             'total' => $result['created'] + $result['updated'],
             'from' => $from,
             'to' => $to,
+            'warnings' => $attempts,
         ];
     }
 
@@ -227,7 +200,9 @@ class EconomicCalendarService
         $key = trim((string) config('services.trading_economics.api_key', ''));
         if ($key === '') throw new RuntimeException('Trading Economics API credentials are not configured.');
 
-        $rangeUrl = $base.'/country/united%20states/'.$from->toDateString().'/'.$to->toDateString();
+        $countries = (string) config('services.trading_economics.countries', 'united states,canada,united kingdom,euro area,japan,china');
+        $countrySegment = implode(',', array_map(static fn ($country) => rawurlencode(trim($country)), explode(',', $countries)));
+        $rangeUrl = $base.'/country/'.$countrySegment.'/'.$from->toDateString().'/'.$to->toDateString();
         $response = $this->http('AlphaBlockSolutions-EconomicCalendar/15.6.5')
             ->get($rangeUrl, ['c' => $key, 'f' => 'json']);
 
@@ -284,9 +259,9 @@ class EconomicCalendarService
 
             $country = trim((string) ($row['country'] ?? '')) ?: null;
             $currency = strtoupper(trim((string) ($row['currency'] ?? '')) ?: $this->currencyForCountry($country));
-            $actual = $this->stringValue($row['actual'] ?? null);
-            $forecast = $this->stringValue($row['estimate'] ?? $row['forecast'] ?? null);
-            $previous = $this->stringValue($row['previous'] ?? null);
+            $actual = $this->withSourceUnit($row['actual'] ?? $row['Actual'] ?? $row['result'] ?? null, $row['unit'] ?? null);
+            $forecast = $this->withSourceUnit($row['estimate'] ?? $row['forecast'] ?? $row['consensus'] ?? null, $row['unit'] ?? null);
+            $previous = $this->withSourceUnit($row['previous'] ?? null, $row['unit'] ?? null);
             $interpretation = $this->interpreter->interpret($title, $actual, $forecast, $previous);
             $impact = $this->interpreter->classifyImportance($title, $this->stringValue($row['impact'] ?? $row['importance'] ?? null));
             $providerId = 'fmp:'.(string) ($row['id'] ?? sha1($eventAt->utc()->format('Y-m-d H:i:s').'|'.$country.'|'.$currency.'|'.Str::lower($title)));
@@ -326,9 +301,9 @@ class EconomicCalendarService
             $country = trim((string) ($row['country'] ?? $row['region'] ?? '')) ?: null;
             $currency = strtoupper(trim((string) ($row['currency'] ?? '')) ?: $this->currencyForCountry($country));
             if ($currency === '') $currency = $this->inferCurrency($title);
-            $actual = $this->stringValue($row['actual'] ?? null);
-            $forecast = $this->stringValue($row['consensus'] ?? $row['forecast'] ?? null);
-            $previous = $this->stringValue($row['prior'] ?? $row['previous'] ?? null);
+            $actual = $this->stringValue($row['actual'] ?? $row['Actual'] ?? $row['result'] ?? null);
+            $forecast = $this->stringValue($row['consensus'] ?? $row['forecast'] ?? $row['estimate'] ?? null);
+            $previous = $this->stringValue($row['prior'] ?? $row['previous'] ?? $row['previousValue'] ?? null);
             $impact = $this->interpreter->classifyImportance($title, $this->normalizeImpact($row['impact'] ?? null));
             $interpretation = $this->interpreter->interpret($title, $actual, $forecast, $previous);
             $rawId = $row['id'] ?? $row['series'] ?? $row['slug'] ?? null;
@@ -366,8 +341,8 @@ class EconomicCalendarService
             try { $eventAt = CarbonImmutable::parse((string) $dateRaw, 'UTC')->setTimezone(config('app.timezone')); }
             catch (Throwable) { $skipped++; continue; }
 
-            $actual = $this->stringValue($row['actual'] ?? null);
-            $forecast = $this->stringValue($row['forecast'] ?? null);
+            $actual = $this->stringValue($row['actual'] ?? $row['Actual'] ?? $row['result'] ?? null);
+            $forecast = $this->stringValue($row['forecast'] ?? $row['consensus'] ?? null);
             $previous = $this->stringValue($row['previous'] ?? null);
             $impact = $this->interpreter->classifyImportance($title, $this->normalizeImpact($row['importance'] ?? null));
             $interpretation = $this->interpreter->interpret($title, $actual, $forecast, $previous);
@@ -407,8 +382,8 @@ class EconomicCalendarService
 
             $country = trim((string) ($row['Country'] ?? $row['country'] ?? '')) ?: null;
             $currency = strtoupper(trim((string) ($row['Currency'] ?? $row['currency'] ?? '')) ?: $this->currencyForCountry($country));
-            $actual = $this->stringValue($row['Actual'] ?? $row['actual'] ?? null);
-            $forecast = $this->stringValue($row['Forecast'] ?? $row['forecast'] ?? $row['TEForecast'] ?? null);
+            $actual = $this->stringValue($row['Actual'] ?? $row['actual'] ?? $row['Actual'] ?? $row['result'] ?? null);
+            $forecast = $this->stringValue($row['Forecast'] ?? $row['forecast'] ?? null);
             $previous = $this->stringValue($row['Previous'] ?? $row['previous'] ?? null);
             $impact = $this->interpreter->classifyImportance($title, $this->normalizeImpact($row['Importance'] ?? $row['importance'] ?? null));
             $interpretation = $this->interpreter->interpret($title, $actual, $forecast, $previous);
@@ -473,22 +448,77 @@ class EconomicCalendarService
         $existing = EconomicEvent::query()->where('provider_event_id', $values['provider_event_id'])->first();
 
         if (! $existing) {
+            // Join the same release from different providers only when the name,
+            // country/currency (when known), and release time are compatible.
             $eventAt = CarbonImmutable::parse($values['event_at']);
-            $existing = EconomicEvent::query()
-                ->where('title', $values['title'])
-                ->whereBetween('event_at', [$eventAt->subMinutes(5), $eventAt->addMinutes(5)])
-                ->first();
+            $candidates = EconomicEvent::query()
+                ->whereBetween('event_at', [$eventAt->subMinutes(20), $eventAt->addMinutes(20)])
+                ->get();
+            $normal = $this->eventIdentity($values['title']);
+            $existing = $candidates->first(function (EconomicEvent $candidate) use ($values, $normal): bool {
+                if ($this->eventIdentity((string) $candidate->title) !== $normal) return false;
+                foreach (['country', 'currency'] as $key) {
+                    if (! empty($candidate->{$key}) && ! empty($values[$key])) {
+                        if ($key === 'country' && $this->normalizeCountry((string) $candidate->{$key})
+                            === $this->normalizeCountry((string) $values[$key])) continue;
+                        if (strcasecmp(trim((string) $candidate->{$key}), trim((string) $values[$key])) !== 0) return false;
+                    }
+                }
+                return true;
+            });
         }
 
         if (! $existing) {
             EconomicEvent::create($values);
-            $created++;
-        } else {
-            $existing->update($values);
-            $updated++;
+            return [$created + 1, $updated];
         }
 
-        return [$created, $updated];
+        // A partial provider response must NEVER erase a published reading.
+        // Respect Admin-managed (manual) events and original provider identity.
+        $manual = empty($existing->provider_event_id);
+        $sameSource = (string) $existing->provider_event_id === (string) $values['provider_event_id'];
+        foreach (['previous_value', 'forecast_value', 'actual_value'] as $field) {
+            if ($values[$field] === null || (($manual || ! $sameSource) && filled($existing->{$field}))) {
+                $values[$field] = $existing->{$field};
+            }
+        }
+        $analysis = $this->interpreter->interpret(
+            (string) $existing->title,
+            $values['actual_value'], $values['forecast_value'], $values['previous_value']
+        );
+        $values['crypto_impact'] = $analysis['crypto_impact'];
+        $values['easy_explanation'] = $manual && filled($existing->easy_explanation)
+            ? $existing->easy_explanation : $analysis['easy_explanation'];
+        $values['crypto_impact_summary'] = $manual && filled($existing->crypto_impact_summary)
+            ? $existing->crypto_impact_summary : $analysis['crypto_impact_summary'];
+        $values['is_crypto_relevant'] = (bool) $analysis['is_crypto_relevant'] || in_array($existing->impact, ['high', 'medium'], true);
+
+        // The first source retains ownership/provenance, avoiding provider-ID
+        // oscillation and duplicate events on the following sync.
+        foreach (['provider_event_id', 'source', 'source_url', 'title', 'country', 'currency', 'event_at', 'impact'] as $field) {
+            if ($field === 'event_at' && (string) $existing->provider_event_id === (string) $values['provider_event_id']) continue;
+            $values[$field] = $existing->{$field} ?: $values[$field];
+        }
+        $existing->update($values);
+        return [$created, $updated + 1];
+    }
+
+    private function normalizeCountry(string $country): string
+    {
+        return match (mb_strtolower(trim($country))) {
+            'us', 'usa', 'u.s.', 'united states of america', 'united states' => 'united states',
+            'uk', 'gb', 'gbp', 'great britain', 'united kingdom' => 'united kingdom',
+            'eu', 'euro area', 'eurozone' => 'euro area',
+            'ca', 'can' , 'canada' => 'canada',
+            default => mb_strtolower(trim($country)),
+        };
+    }
+
+    private function eventIdentity(string $title): string
+    {
+        // Only remove superficial differences. Do not collapse different
+        // countries, measures, or seasonal-adjustment variants.
+        return trim(preg_replace('/\s+/', ' ', preg_replace('/[^\pL\pN%]+/u', ' ', mb_strtolower($title))));
     }
 
     private function recordSyncStatus(string $status, ?string $detail = null): void
@@ -559,13 +589,37 @@ class EconomicCalendarService
         }
     }
 
+    private function withSourceUnit(mixed $raw, mixed $unit): ?string
+    {
+        $value = $this->stringValue($raw);
+        if ($value === null) return null;
+        if (! is_numeric($raw) || ! is_scalar($unit)) return $value;
+        $unit = trim((string) $unit);
+        if ($unit === '%') return $value.'%';
+        if (in_array($unit, ['K', 'M', 'B', 'T'], true)) return $value.$unit;
+        return $value;
+    }
+
     private function stringValue(mixed $value): ?string
     {
-        if ($value === null) return null;
-        if (is_bool($value)) return $value ? '1' : '0';
+        // Providers return both scalar readings and structured {value,unit}
+        // payloads. Never interpret missing, pending or placeholders as results.
+        if (is_array($value)) {
+            foreach (['value', 'Value', 'raw', 'display', 'formatted', 'text', 'amount'] as $key) {
+                if (array_key_exists($key, $value)) {
+                    $reading = $this->stringValue($value[$key]);
+                    if ($reading === null) return null;
+                    $unit = trim((string) ($value['unit'] ?? $value['Unit'] ?? ''));
+                    return mb_substr($reading.($unit === '%' ? '%' : ($unit !== '' ? ' '.$unit : '')), 0, 140);
+                }
+            }
+            return null;
+        }
+        if ($value === null || is_bool($value)) return null;
         if (! is_scalar($value)) return null;
         $value = trim((string) $value);
-        return $value === '' ? null : mb_substr($value, 0, 140);
+        if ($value === '' || in_array(mb_strtolower($value), ['n/a', 'na', '-', '—', 'pending', 'tba', 'tbd', 'null', 'none', 'not available'], true)) return null;
+        return mb_substr($value, 0, 140);
     }
 
     private function currencyForCountry(?string $country): string
